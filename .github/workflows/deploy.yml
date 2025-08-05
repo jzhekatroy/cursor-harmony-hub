@@ -50,6 +50,11 @@ jobs:
           npm ci --production=false
           echo "✅ Зависимости установлены"
           
+          echo "🔧 Настраиваем окружение..."
+          chmod +x setup-env.sh
+          ./setup-env.sh
+          echo "✅ Окружение настроено"
+          
           echo "🔨 Собираем проект..."
           npm run build
           echo "✅ Проект собран и готов к запуску"
@@ -121,6 +126,9 @@ jobs:
             if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
               echo "✅ Health check прошел успешно!"
               echo "🌐 Приложение доступно на http://test.2minutes.ru"
+              echo "🔗 Тестовые аккаунты:"
+              echo "   - Админ салона: salon@example.com / password123"
+              echo "   - Мастера: anna@example.com, elena@example.com / password123"
               echo "🎉 Деплой завершен успешно!"
               exit 0
             else
@@ -143,6 +151,7 @@ jobs:
       run: |
         echo "🎉 Deployment successful!"
         echo "🔗 Check: http://test.2minutes.ru"
+        echo "👤 Login: salon@example.com / password123"
         
     - name: ❌ Deployment failed
       if: failure()

@@ -28,15 +28,14 @@ jobs:
     - name: 🧪 Run tests (if any)
       run: npm test --if-present
       
-    - name: 🚀 Deploy to server
+    - name: 📥 Update code on server
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
-        script_stop: false
         script: |
-          echo "🚀 Начинаем деплой beauty-booking..."
+          echo "🚀 Обновляем код на сервере..."
           
           # Переходим в директорию проекта
           cd /home/beautyapp/beauty-booking
@@ -53,48 +52,57 @@ jobs:
           
           echo "🔨 Собираем проект..."
           npm run build
-          echo "✅ Проект собран"
+          echo "✅ Проект собран и готов к запуску"
           
-          echo "🛑 Останавливаем текущий процесс..."
-          # Используем более мягкий способ остановки
-          npm_pids=$(pgrep -f "npm start" || echo "")
-          if [ ! -z "$npm_pids" ]; then
-            echo "Найдены процессы npm start: $npm_pids"
-            for pid in $npm_pids; do
-              echo "Останавливаем процесс $pid..."
-              sudo kill -15 $pid 2>/dev/null || echo "Процесс $pid уже остановлен"
-            done
-            echo "Ждем завершения процессов..."
-            sleep 3
-            
-            # Проверяем, остались ли процессы
-            remaining_pids=$(pgrep -f "npm start" || echo "")
-            if [ ! -z "$remaining_pids" ]; then
-              echo "Принудительно останавливаем оставшиеся процессы: $remaining_pids"
-              for pid in $remaining_pids; do
-                sudo kill -9 $pid 2>/dev/null || echo "Процесс $pid уже остановлен"
-              done
-            fi
-          else
-            echo "Процессы npm start не найдены"
-          fi
+    - name: 🔄 Restart application service
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          echo "🔄 Перезапускаем приложение..."
           
-          # Освобождаем порт 3000 если занят
-          port_pid=$(sudo lsof -ti:3000 2>/dev/null || echo "")
-          if [ ! -z "$port_pid" ]; then
-            echo "Освобождаем порт 3000 (процесс $port_pid)..."
-            sudo kill -9 $port_pid 2>/dev/null || echo "Порт уже свободен"
-          fi
+          cd /home/beautyapp/beauty-booking
           
-          echo "⏳ Ждем полного освобождения ресурсов..."
+          # Создаем скрипт перезапуска
+          cat > restart_app.sh << 'EOF'
+          #!/bin/bash
+          
+          echo "Останавливаем старые процессы..."
+          # Останавливаем все процессы npm start
+          pkill -f "npm start" 2>/dev/null || echo "Процессы npm start не найдены"
+          
+          # Освобождаем порт 3000
+          fuser -k 3000/tcp 2>/dev/null || echo "Порт 3000 уже свободен"
+          
+          # Ждем освобождения ресурсов
           sleep 5
           
-          echo "🔄 Запускаем новую версию..."
-          # Запускаем процесс в фоне с перенаправлением вывода
-          sudo -u beautyapp bash -c "cd /home/beautyapp/beauty-booking && NODE_ENV=production PORT=3000 nohup npm start > app.log 2>&1 &"
+          echo "Запускаем новое приложение..."
+          cd /home/beautyapp/beauty-booking
+          NODE_ENV=production PORT=3000 nohup npm start > app.log 2>&1 &
+          
+          echo "Приложение запущено в фоне"
+          EOF
+          
+          # Делаем скрипт исполняемым и запускаем от имени beautyapp
+          chmod +x restart_app.sh
+          sudo -u beautyapp ./restart_app.sh
           
           echo "⏳ Ждем запуска приложения..."
           sleep 10
+          
+    - name: ✅ Verify deployment
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          echo "🔍 Проверяем статус деплоя..."
+          
+          cd /home/beautyapp/beauty-booking
           
           # Проверяем, что процесс запустился
           new_npm_pid=$(pgrep -f "npm start" || echo "")
@@ -103,7 +111,7 @@ jobs:
           else
             echo "❌ Процесс npm start не найден"
             echo "📋 Последние строки лога:"
-            tail -20 /home/beautyapp/beauty-booking/app.log 2>/dev/null || echo "Лог недоступен"
+            tail -20 app.log 2>/dev/null || echo "Лог недоступен"
             exit 1
           fi
           
@@ -123,7 +131,7 @@ jobs:
           
           echo "❌ Приложение не отвечает на health check после 30 секунд"
           echo "📋 Последние строки лога:"
-          tail -30 /home/beautyapp/beauty-booking/app.log 2>/dev/null || echo "Лог недоступен"
+          tail -30 app.log 2>/dev/null || echo "Лог недоступен"
           echo "🔍 Статус процессов:"
           ps aux | grep -E "(npm|node)" | grep -v grep || echo "Нет процессов npm/node"
           echo "🔍 Статус порта 3000:"

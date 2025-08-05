@@ -5,7 +5,7 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 // PUT /api/service-groups/[id] - обновить группу услуг
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get('authorization'))
@@ -18,7 +18,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Неверный токен' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
     const body = await request.json()
     const { name, order } = body
 
@@ -89,7 +89,7 @@ export async function PUT(
 // DELETE /api/service-groups/[id] - удалить группу услуг
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = extractTokenFromHeader(request.headers.get('authorization'))
@@ -102,7 +102,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Неверный токен' }, { status: 401 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Проверяем, что группа принадлежит команде
     const existingGroup = await prisma.serviceGroup.findFirst({

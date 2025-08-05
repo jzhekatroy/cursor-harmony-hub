@@ -25,6 +25,13 @@ export const verifyToken = (token: string): JWTPayload => {
   return jwt.verify(token, process.env.JWT_SECRET!) as JWTPayload
 }
 
+export const extractTokenFromHeader = (authHeader: string | null): string | null => {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null
+  }
+  return authHeader.substring(7) // Remove 'Bearer ' prefix
+}
+
 export const generateTeamNumber = (): string => {
   // Генерирует номер формата B0XXXXXXX где X - случайные цифры
   const randomNumber = Math.floor(Math.random() * 9999999).toString().padStart(7, '0')

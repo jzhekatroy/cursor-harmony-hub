@@ -98,7 +98,8 @@ jobs:
           
           # Делаем скрипт исполняемым и запускаем от имени beautyapp
           chmod +x restart_app.sh
-          sudo -u beautyapp ./restart_app.sh
+          chown beautyapp:beautyapp restart_app.sh
+          sudo -u beautyapp bash -c "cd /home/beautyapp/beauty-booking && ./restart_app.sh"
           
           echo "⏳ Ждем запуска приложения..."
           sleep 10

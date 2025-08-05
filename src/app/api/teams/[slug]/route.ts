@@ -20,9 +20,25 @@ export async function GET(
           },
           orderBy: { order: 'asc' }
         },
+        services: {
+          where: { 
+            isArchived: false,
+            groupId: null
+          },
+          orderBy: { order: 'asc' }
+        },
         masters: {
           where: { isActive: true },
           include: {
+            services: {
+              where: { isArchived: false },
+              select: {
+                id: true,
+                name: true,
+                duration: true,
+                price: true
+              }
+            },
             schedules: true,
             absences: {
               where: {
@@ -70,12 +86,26 @@ export async function GET(
           photoUrl: service.photoUrl
         }))
       })),
+      ungroupedServices: team.services.map(service => ({
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        duration: service.duration,
+        price: Number(service.price),
+        photoUrl: service.photoUrl
+      })),
       masters: team.masters.map(master => ({
         id: master.id,
         firstName: master.firstName,
         lastName: master.lastName,
         description: master.description,
         photoUrl: master.photoUrl,
+        services: master.services.map(service => ({
+          id: service.id,
+          name: service.name,
+          duration: service.duration,
+          price: Number(service.price)
+        })),
         schedules: master.schedules,
         isAvailable: master.absences.length === 0
       }))

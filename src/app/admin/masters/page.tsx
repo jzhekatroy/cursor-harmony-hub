@@ -147,7 +147,7 @@ export default function MastersPage() {
           lastName: formData.lastName.trim(),
           description: formData.description.trim() || null,
           photoUrl: formData.photoUrl.trim() || null,
-          password: formData.password.trim(),
+          ...(formData.password.trim() && { password: formData.password.trim() }),
           serviceIds: formData.serviceIds
         })
       })

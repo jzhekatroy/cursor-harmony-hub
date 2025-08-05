@@ -27,7 +27,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { firstName, lastName, description, photoUrl, serviceIds, isActive } = body
+    const { firstName, lastName, description, photoUrl, serviceIds, isActive, password } = body
 
     // Проверяем, что мастер принадлежит команде
     const existingMaster = await prisma.master.findFirst({
@@ -122,6 +122,7 @@ export async function PUT(
       })
       
       if (servicesCount !== serviceIds.length) {
+        console.error('Service validation failed:', { serviceIds, servicesCount, teamId: decoded.teamId })
         return NextResponse.json({ error: 'Некоторые услуги не принадлежат вашей команде' }, { status: 400 })
       }
     }
@@ -129,13 +130,18 @@ export async function PUT(
     // Обновляем мастера в транзакции
     const updatedMaster = await prisma.$transaction(async (tx) => {
       // Обновляем данные пользователя если нужно
-      if (firstName || lastName) {
+      const userUpdateData: any = {}
+      if (firstName) userUpdateData.firstName = firstName.trim()
+      if (lastName) userUpdateData.lastName = lastName.trim()
+      if (password && password.trim()) {
+        const { hashPassword } = await import('@/lib/auth')
+        userUpdateData.password = await hashPassword(password.trim())
+      }
+      
+      if (Object.keys(userUpdateData).length > 0) {
         await tx.user.update({
           where: { id: existingMaster.userId },
-          data: {
-            ...(firstName && { firstName: firstName.trim() }),
-            ...(lastName && { lastName: lastName.trim() })
-          }
+          data: userUpdateData
         })
       }
 
@@ -147,10 +153,9 @@ export async function PUT(
           ...(lastName && { lastName: lastName.trim() }),
           ...(description !== undefined && { description: description?.trim() || null }),
           ...(photoUrl !== undefined && { photoUrl: photoUrl?.trim() || null }),
-          ...(serviceIds && {
+          ...(serviceIds !== undefined && {
             services: {
-              set: [], // Сначала отключаем все услуги
-              connect: serviceIds.map((serviceId: string) => ({ id: serviceId }))
+              set: serviceIds.map((serviceId: string) => ({ id: serviceId }))
             }
           })
         },

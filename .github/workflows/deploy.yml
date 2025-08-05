@@ -71,38 +71,15 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
         script: |
-          echo "🔄 Перезапускаем приложение..."
+          echo "🔄 Исправляем и перезапускаем приложение..."
           
           cd /home/beautyapp/beauty-booking
           
-          # Создаем скрипт перезапуска
-          cat > restart_app.sh << 'EOF'
-          #!/bin/bash
+          # Используем наш автоматический скрипт исправления
+          chmod +x scripts/fix-server-issues.sh
+          ./scripts/fix-server-issues.sh
           
-          echo "Останавливаем старые процессы..."
-          # Останавливаем все процессы npm start
-          pkill -f "npm start" 2>/dev/null || echo "Процессы npm start не найдены"
-          
-          # Освобождаем порт 3000
-          fuser -k 3000/tcp 2>/dev/null || echo "Порт 3000 уже свободен"
-          
-          # Ждем освобождения ресурсов
-          sleep 5
-          
-          echo "Запускаем новое приложение..."
-          cd /home/beautyapp/beauty-booking
-          NODE_ENV=production PORT=3000 nohup npm start > app.log 2>&1 &
-          
-          echo "Приложение запущено в фоне"
-          EOF
-          
-          # Делаем скрипт исполняемым и запускаем от имени beautyapp
-          chmod +x restart_app.sh
-          chown beautyapp:beautyapp restart_app.sh
-          sudo -u beautyapp bash -c "cd /home/beautyapp/beauty-booking && ./restart_app.sh"
-          
-          echo "⏳ Ждем запуска приложения..."
-          sleep 10
+          echo "✅ Приложение перезапущено автоматическим скриптом"
           
     - name: ✅ Verify deployment
       uses: appleboy/ssh-action@v1.0.3

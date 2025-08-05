@@ -16,6 +16,7 @@ interface Service {
 interface ServiceGroup {
   id: string
   name: string
+  order: number
   services: Service[]
 }
 
@@ -32,47 +33,19 @@ interface Team {
   name: string
   logoUrl?: string
   privacyPolicyUrl?: string
+  slug: string
 }
-
-// Mock данные
-const mockTeam: Team = {
-  id: '1',
-  name: 'Beauty Salon',
-  logoUrl: undefined,
-  privacyPolicyUrl: '/privacy'
-}
-
-const mockServiceGroups: ServiceGroup[] = [
-  {
-    id: '1',
-    name: 'Парикмахерские услуги',
-    services: [
-      { id: '1', name: 'Стрижка женская', duration: 60, price: 2500 },
-      { id: '2', name: 'Стрижка мужская', duration: 45, price: 1500 },
-      { id: '3', name: 'Окрашивание', duration: 180, price: 5000 },
-      { id: '4', name: 'Укладка', duration: 45, price: 1200 }
-    ]
-  },
-  {
-    id: '2',
-    name: 'Маникюр и педикюр',
-    services: [
-      { id: '5', name: 'Маникюр классический', duration: 90, price: 1800 },
-      { id: '6', name: 'Маникюр аппаратный', duration: 75, price: 2000 },
-      { id: '7', name: 'Педикюр', duration: 120, price: 2500 }
-    ]
-  }
-]
-
-const mockMasters: Master[] = [
-  { id: '1', firstName: 'Мария', lastName: 'Петрова' },
-  { id: '2', firstName: 'Анна', lastName: 'Козлова' },
-  { id: '3', firstName: 'Елена', lastName: 'Сидорова' }
-]
 
 export default function BookingWidget() {
   const params = useParams()
   const slug = params.slug as string
+
+  const [team, setTeam] = useState<Team | null>(null)
+  const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
+  const [ungroupedServices, setUngroupedServices] = useState<Service[]>([])
+  const [masters, setMasters] = useState<Master[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const [dataError, setDataError] = useState<string | null>(null)
 
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
@@ -91,6 +64,77 @@ export default function BookingWidget() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
+
+  useEffect(() => {
+    loadTeamData()
+  }, [slug])
+
+  const loadTeamData = async () => {
+    setIsLoadingData(true)
+    setDataError(null)
+    
+    try {
+      // Загружаем данные команды
+      const teamResponse = await fetch(`/api/teams/${slug}`)
+      if (!teamResponse.ok) {
+        throw new Error('Команда не найдена')
+      }
+      
+      const teamData = await teamResponse.json()
+      setTeam(teamData.team)
+      setMasters(teamData.masters || [])
+      
+      // Группируем услуги
+      const groupedServices: ServiceGroup[] = []
+      const ungrouped: Service[] = []
+      
+      if (teamData.services) {
+        // Создаем группы
+        const groupsMap = new Map<string, ServiceGroup>()
+        
+        teamData.services.forEach((service: any) => {
+          if (service.group) {
+            if (!groupsMap.has(service.group.id)) {
+              groupsMap.set(service.group.id, {
+                id: service.group.id,
+                name: service.group.name,
+                order: service.group.order,
+                services: []
+              })
+            }
+            groupsMap.get(service.group.id)!.services.push({
+              id: service.id,
+              name: service.name,
+              description: service.description,
+              duration: service.duration,
+              price: parseFloat(service.price),
+              photoUrl: service.photoUrl
+            })
+          } else {
+            ungrouped.push({
+              id: service.id,
+              name: service.name,
+              description: service.description,
+              duration: service.duration,
+              price: parseFloat(service.price),
+              photoUrl: service.photoUrl
+            })
+          }
+        })
+        
+        // Сортируем группы по порядку
+        const sortedGroups = Array.from(groupsMap.values()).sort((a, b) => a.order - b.order)
+        setServiceGroups(sortedGroups)
+        setUngroupedServices(ungrouped)
+      }
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error)
+      setDataError(error instanceof Error ? error.message : 'Ошибка загрузки данных')
+    } finally {
+      setIsLoadingData(false)
+    }
+  }
 
   const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0)
   const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0)
@@ -159,6 +203,50 @@ export default function BookingWidget() {
     }
   }
 
+  // Показываем загрузку данных
+  if (isLoadingData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка данных...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Показываем ошибку загрузки данных
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 mb-4">
+            <h2 className="text-xl font-bold">Ошибка</h2>
+            <p>{dataError}</p>
+          </div>
+          <button
+            onClick={loadTeamData}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Попробовать снова
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Проверяем, что команда найдена
+  if (!team) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Команда не найдена</h2>
+          <p className="text-gray-600">Проверьте правильность ссылки</p>
+        </div>
+      </div>
+    )
+  }
+
   if (isCompleted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -200,15 +288,15 @@ export default function BookingWidget() {
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center">
-            {mockTeam.logoUrl ? (
-              <img src={mockTeam.logoUrl} alt={mockTeam.name} className="w-12 h-12 rounded-lg mr-4" />
+            {team.logoUrl ? (
+              <img src={team.logoUrl} alt={team.name} className="w-12 h-12 rounded-lg mr-4" />
             ) : (
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
-                <span className="text-blue-600 font-bold text-lg">{mockTeam.name[0]}</span>
+                <span className="text-blue-600 font-bold text-lg">{team.name[0]}</span>
               </div>
             )}
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{mockTeam.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900">{team.name}</h1>
               <p className="text-gray-600">Онлайн запись</p>
             </div>
           </div>
@@ -256,12 +344,17 @@ export default function BookingWidget() {
             {currentStep === 1 && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите услуги</h2>
-                <div className="space-y-6">
-                  {mockServiceGroups.map((group) => (
-                    <div key={group.id}>
-                      <h3 className="text-lg font-medium text-gray-900 mb-3">{group.name}</h3>
+                
+                {serviceGroups.length === 0 && ungroupedServices.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">У команды пока нет доступных услуг</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Услуги без группы */}
+                    {ungroupedServices.length > 0 && (
                       <div className="grid gap-3">
-                        {group.services.map((service) => {
+                        {ungroupedServices.map((service) => {
                           const isSelected = selectedServices.some(s => s.id === service.id)
                           return (
                             <div
@@ -275,13 +368,20 @@ export default function BookingWidget() {
                             >
                               <div className="flex justify-between items-start">
                                 <div className="flex-1">
-                                  <h4 className="font-medium text-gray-900">{service.name}</h4>
-                                  {service.description && (
-                                    <p className="text-sm text-gray-600 mt-1">{service.description}</p>
-                                  )}
-                                  <div className="flex items-center mt-2 text-sm text-gray-500">
-                                    <Clock className="w-4 h-4 mr-1" />
-                                    {formatDuration(service.duration)}
+                                  <div className="flex items-center">
+                                    {service.photoUrl && (
+                                      <img src={service.photoUrl} alt={service.name} className="w-12 h-12 rounded-lg object-cover mr-4" />
+                                    )}
+                                    <div>
+                                      <h4 className="font-medium text-gray-900">{service.name}</h4>
+                                      {service.description && (
+                                        <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                                      )}
+                                      <div className="flex items-center mt-2 text-sm text-gray-500">
+                                        <Clock className="w-4 h-4 mr-1" />
+                                        {formatDuration(service.duration)}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="text-right">
@@ -297,9 +397,60 @@ export default function BookingWidget() {
                           )
                         })}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )}
+
+                    {/* Группы услуг */}
+                    {serviceGroups.map((group) => (
+                      <div key={group.id}>
+                        <h3 className="text-lg font-medium text-gray-900 mb-3">{group.name}</h3>
+                        <div className="grid gap-3">
+                          {group.services.map((service) => {
+                            const isSelected = selectedServices.some(s => s.id === service.id)
+                            return (
+                              <div
+                                key={service.id}
+                                onClick={() => handleServiceToggle(service)}
+                                className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                                  isSelected
+                                    ? 'border-blue-600 bg-blue-50'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center">
+                                      {service.photoUrl && (
+                                        <img src={service.photoUrl} alt={service.name} className="w-12 h-12 rounded-lg object-cover mr-4" />
+                                      )}
+                                      <div>
+                                        <h4 className="font-medium text-gray-900">{service.name}</h4>
+                                        {service.description && (
+                                          <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                                        )}
+                                        <div className="flex items-center mt-2 text-sm text-gray-500">
+                                          <Clock className="w-4 h-4 mr-1" />
+                                          {formatDuration(service.duration)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium text-gray-900">{service.price} ₽</div>
+                                    {isSelected && (
+                                      <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center mt-2">
+                                        <Check className="w-3 h-3 text-white" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -308,38 +459,49 @@ export default function BookingWidget() {
               <div className="space-y-6">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                   <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите мастера</h2>
-                  <div className="grid gap-4">
-                    {mockMasters.map((master) => (
-                      <div
-                        key={master.id}
-                        onClick={() => setSelectedMaster(master)}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                          selectedMaster?.id === master.id
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-                            <User className="w-6 h-6 text-gray-500" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">
-                              {master.firstName} {master.lastName}
-                            </h4>
-                            {master.description && (
-                              <p className="text-sm text-gray-600">{master.description}</p>
+                  
+                  {masters.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">У команды пока нет доступных мастеров</p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {masters.map((master) => (
+                        <div
+                          key={master.id}
+                          onClick={() => setSelectedMaster(master)}
+                          className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                            selectedMaster?.id === master.id
+                              ? 'border-blue-600 bg-blue-50'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <div className="flex items-center">
+                            {master.photoUrl ? (
+                              <img src={master.photoUrl} alt={`${master.firstName} ${master.lastName}`} className="w-12 h-12 rounded-full object-cover mr-4" />
+                            ) : (
+                              <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+                                <User className="w-6 h-6 text-gray-500" />
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <h4 className="font-medium text-gray-900">
+                                {master.firstName} {master.lastName}
+                              </h4>
+                              {master.description && (
+                                <p className="text-sm text-gray-600">{master.description}</p>
+                              )}
+                            </div>
+                            {selectedMaster?.id === master.id && (
+                              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                <Check className="w-3 h-3 text-white" />
+                              </div>
                             )}
                           </div>
-                          {selectedMaster?.id === master.id && (
-                            <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {selectedMaster && (
@@ -474,7 +636,7 @@ export default function BookingWidget() {
                     />
                     <span className="text-sm text-gray-600">
                       Я согласен на обработку персональных данных в соответствии с{' '}
-                      <a href={mockTeam.privacyPolicyUrl} className="text-blue-600 hover:underline">
+                      <a href={team.privacyPolicyUrl || '/privacy'} className="text-blue-600 hover:underline">
                         политикой конфиденциальности
                       </a>
                     </span>

@@ -9,7 +9,7 @@ if [ ! -f .env ]; then
     cat > .env << EOF
 DATABASE_URL="file:./dev.db"
 JWT_SECRET="your-super-secret-jwt-key-change-in-production-$(date +%s)"
-NODE_ENV="production"
+NODE_ENV="development"
 EOF
     echo "✅ .env файл создан"
 else

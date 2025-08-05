@@ -76,11 +76,11 @@ jobs:
           
           cd /home/beautyapp/beauty-booking
           
-          # Используем наш автоматический скрипт исправления
-          chmod +x scripts/fix-server-issues.sh
-          ./scripts/fix-server-issues.sh
+          # Используем быстрый скрипт перезапуска для деплоя
+          chmod +x scripts/deploy-restart.sh
+          timeout 120 ./scripts/deploy-restart.sh
           
-          echo "✅ Приложение перезапущено автоматическим скриптом"
+          echo "✅ Приложение перезапущено"
           
     - name: ✅ Verify deployment
       uses: appleboy/ssh-action@v1.0.3

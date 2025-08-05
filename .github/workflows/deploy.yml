@@ -55,8 +55,13 @@ jobs:
           ./setup-env.sh
           echo "✅ Окружение настроено"
           
+          echo "🔧 Исправляем права доступа..."
+          sudo chown -R beautyapp:beautyapp /home/beautyapp/beauty-booking
+          sudo rm -rf /home/beautyapp/beauty-booking/.next
+          echo "✅ Права доступа исправлены"
+          
           echo "🔨 Собираем проект..."
-          npm run build
+          sudo -u beautyapp npm run build
           echo "✅ Проект собран и готов к запуску"
           
     - name: 🔄 Restart application service

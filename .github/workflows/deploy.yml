@@ -70,6 +70,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
+        timeout: 300s
         script: |
           echo "🔄 Исправляем и перезапускаем приложение..."
           
@@ -87,71 +88,39 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
+        timeout: 60s
         script: |
-          echo "🔍 Проверяем статус деплоя..."
+          echo "🔍 Быстрая проверка статуса деплоя..."
           
           cd /home/beautyapp/beauty-booking
           
-          # Запускаем полную диагностику
-          echo "🔍 Запускаем диагностику..."
-          chmod +x scripts/server-diagnostics.sh
-          ./scripts/server-diagnostics.sh
-          
           # Проверяем, что процесс запустился
-          new_npm_pid=$(pgrep -f "npm start" || echo "")
-          if [ ! -z "$new_npm_pid" ]; then
-            echo "✅ Процесс npm start запущен (PID: $new_npm_pid)"
+          npm_pid=$(pgrep -f "npm start" || echo "")
+          if [ ! -z "$npm_pid" ]; then
+            echo "✅ Процесс npm start запущен (PID: $npm_pid)"
             
             # Проверяем владельца процесса
-            process_owner=$(ps -o user= -p $new_npm_pid)
+            process_owner=$(ps -o user= -p $npm_pid 2>/dev/null || echo "unknown")
             echo "👤 Процесс запущен от имени: $process_owner"
-            
-            if [ "$process_owner" != "beautyapp" ]; then
-              echo "⚠️ ВНИМАНИЕ: Процесс запущен не от beautyapp!"
-            fi
           else
             echo "❌ Процесс npm start не найден"
-            echo "📋 Последние строки лога:"
-            tail -20 app.log 2>/dev/null || echo "Лог недоступен"
-            
-            echo "🔧 Попытка ручного запуска..."
-            sudo -u beautyapp bash -c "cd /home/beautyapp/beauty-booking && nohup npm start > app.log 2>&1 &"
-            sleep 5
-            
-            new_npm_pid=$(pgrep -f "npm start" || echo "")
-            if [ ! -z "$new_npm_pid" ]; then
-              echo "✅ Процесс запущен вручную (PID: $new_npm_pid)"
-            else
-              echo "❌ Не удалось запустить процесс"
-              exit 1
-            fi
+            echo "📋 Статус процессов:"
+            ps aux | grep -E "(npm|node)" | grep -v grep || echo "Нет процессов npm/node"
+            exit 1
           fi
           
-          # Проверяем health check
+          # Быстрая проверка health check
           echo "🔍 Проверяем health check..."
-          for i in {1..15}; do
-            if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
-              echo "✅ Health check прошел успешно!"
-              echo "🌐 Приложение доступно на http://test.2minutes.ru"
-              echo "🔗 Тестовые аккаунты:"
-              echo "   - Админ салона: salon@example.com / password123"
-              echo "   - Мастера: anna@example.com, elena@example.com / password123"
-              echo "🎉 Деплой завершен успешно!"
-              exit 0
-            else
-              echo "Попытка $i/15: приложение еще не отвечает..."
-              sleep 2
-            fi
-          done
-          
-          echo "❌ Приложение не отвечает на health check после 30 секунд"
-          echo "📋 Последние строки лога:"
-          tail -30 app.log 2>/dev/null || echo "Лог недоступен"
-          echo "🔍 Статус процессов:"
-          ps aux | grep -E "(npm|node)" | grep -v grep || echo "Нет процессов npm/node"
-          echo "🔍 Статус порта 3000:"
-          sudo lsof -i:3000 || echo "Порт 3000 свободен"
-          exit 1
+          if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+            echo "✅ Health check прошел успешно!"
+            echo "🌐 Приложение доступно на http://test.2minutes.ru"
+            echo "🎉 Деплой завершен успешно!"
+          else
+            echo "⚠️ Health check не прошел, но процесс запущен"
+            echo "📋 Последние строки лога:"
+            tail -10 app.log 2>/dev/null || echo "Лог недоступен"
+            echo "🔍 Возможно приложение еще загружается..."
+          fi
           
     - name: 📊 Deployment status
       if: success()

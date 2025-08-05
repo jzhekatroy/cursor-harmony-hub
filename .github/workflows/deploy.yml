@@ -39,36 +39,75 @@ jobs:
           
           # Переходим в директорию проекта
           cd /home/beautyapp/beauty-booking
+          echo "📂 Текущая директория: $(pwd)"
           
           echo "📥 Получаем последние изменения из GitHub..."
           git fetch origin
           git reset --hard origin/main
+          echo "✅ Код обновлен до коммита: $(git rev-parse --short HEAD)"
           
           echo "📦 Устанавливаем зависимости..."
           npm ci --production=false
+          echo "✅ Зависимости установлены"
           
           echo "🔨 Собираем проект..."
           npm run build
+          echo "✅ Проект собран"
           
           echo "🛑 Останавливаем текущий процесс..."
-          sudo pkill -f "npm start" || true
-          sleep 2
+          # Находим и останавливаем процесс более аккуратно
+          if pgrep -f "npm start" > /dev/null; then
+            echo "Найден процесс npm start, останавливаем..."
+            sudo pkill -f "npm start" || echo "Процесс уже остановлен"
+          else
+            echo "Процесс npm start не найден"
+          fi
+          
+          # Дополнительно проверяем процессы на порту 3000
+          if sudo lsof -ti:3000 > /dev/null 2>&1; then
+            echo "Найден процесс на порту 3000, останавливаем..."
+            sudo fuser -k 3000/tcp || echo "Порт уже свободен"
+          fi
+          
+          echo "⏳ Ждем полной остановки процессов..."
+          sleep 3
           
           echo "🔄 Запускаем новую версию..."
-          sudo -u beautyapp NODE_ENV=production PORT=3000 nohup npm start > /dev/null 2>&1 &
+          # Запускаем процесс в фоне с перенаправлением вывода
+          sudo -u beautyapp bash -c "cd /home/beautyapp/beauty-booking && NODE_ENV=production PORT=3000 nohup npm start > app.log 2>&1 &"
           
           echo "⏳ Ждем запуска приложения..."
-          sleep 5
+          sleep 8
           
-          # Проверяем, что приложение запустилось
-          if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
-              echo "✅ Деплой успешно завершен!"
-              echo "🌐 Приложение доступно на http://test.2minutes.ru"
+          # Проверяем, что процесс запустился
+          if pgrep -f "npm start" > /dev/null; then
+            echo "✅ Процесс npm start запущен"
           else
-              echo "❌ Приложение не отвечает на health check"
-              echo "🔍 Проверьте логи: sudo journalctl -u beauty-booking -f"
-              exit 1
+            echo "❌ Процесс npm start не найден"
+            echo "📋 Последние строки лога:"
+            tail -20 /home/beautyapp/beauty-booking/app.log || echo "Лог недоступен"
+            exit 1
           fi
+          
+          # Проверяем health check
+          echo "🔍 Проверяем health check..."
+          for i in {1..10}; do
+            if curl -f http://localhost:3000/api/health > /dev/null 2>&1; then
+              echo "✅ Health check прошел успешно!"
+              echo "🌐 Приложение доступно на http://test.2minutes.ru"
+              exit 0
+            else
+              echo "Попытка $i/10: приложение еще не отвечает..."
+              sleep 2
+            fi
+          done
+          
+          echo "❌ Приложение не отвечает на health check после 20 секунд"
+          echo "📋 Последние строки лога:"
+          tail -20 /home/beautyapp/beauty-booking/app.log || echo "Лог недоступен"
+          echo "🔍 Статус процессов:"
+          ps aux | grep -E "(npm|node)" | grep -v grep || echo "Нет процессов npm/node"
+          exit 1
           
     - name: 📊 Deployment status
       if: success()

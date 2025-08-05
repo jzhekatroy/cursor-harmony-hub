@@ -1,0 +1,582 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { Calendar, Clock, User, MapPin, Phone, Mail, MessageCircle, Check } from 'lucide-react'
+
+interface Service {
+  id: string
+  name: string
+  description?: string
+  duration: number
+  price: number
+  photoUrl?: string
+}
+
+interface ServiceGroup {
+  id: string
+  name: string
+  services: Service[]
+}
+
+interface Master {
+  id: string
+  firstName: string
+  lastName: string
+  photoUrl?: string
+  description?: string
+}
+
+interface Team {
+  id: string
+  name: string
+  logoUrl?: string
+  privacyPolicyUrl?: string
+}
+
+// Mock данные
+const mockTeam: Team = {
+  id: '1',
+  name: 'Beauty Salon',
+  logoUrl: undefined,
+  privacyPolicyUrl: '/privacy'
+}
+
+const mockServiceGroups: ServiceGroup[] = [
+  {
+    id: '1',
+    name: 'Парикмахерские услуги',
+    services: [
+      { id: '1', name: 'Стрижка женская', duration: 60, price: 2500 },
+      { id: '2', name: 'Стрижка мужская', duration: 45, price: 1500 },
+      { id: '3', name: 'Окрашивание', duration: 180, price: 5000 },
+      { id: '4', name: 'Укладка', duration: 45, price: 1200 }
+    ]
+  },
+  {
+    id: '2',
+    name: 'Маникюр и педикюр',
+    services: [
+      { id: '5', name: 'Маникюр классический', duration: 90, price: 1800 },
+      { id: '6', name: 'Маникюр аппаратный', duration: 75, price: 2000 },
+      { id: '7', name: 'Педикюр', duration: 120, price: 2500 }
+    ]
+  }
+]
+
+const mockMasters: Master[] = [
+  { id: '1', firstName: 'Мария', lastName: 'Петрова' },
+  { id: '2', firstName: 'Анна', lastName: 'Козлова' },
+  { id: '3', firstName: 'Елена', lastName: 'Сидорова' }
+]
+
+export default function BookingWidget() {
+  const params = useParams()
+  const slug = params.slug as string
+
+  const [currentStep, setCurrentStep] = useState(1)
+  const [selectedServices, setSelectedServices] = useState<Service[]>([])
+  const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [clientData, setClientData] = useState({
+    email: '',
+    phone: '',
+    telegram: '',
+    firstName: '',
+    lastName: '',
+    address: '',
+    notes: '',
+    agreeToTerms: false
+  })
+  const [isLoading, setIsLoading] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
+
+  const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0)
+  const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0)
+
+  const formatDuration = (minutes: number) => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    if (hours > 0) {
+      return mins > 0 ? `${hours}ч ${mins}мин` : `${hours}ч`
+    }
+    return `${mins}мин`
+  }
+
+  const handleServiceToggle = (service: Service) => {
+    setSelectedServices(prev => {
+      const isSelected = prev.some(s => s.id === service.id)
+      if (isSelected) {
+        return prev.filter(s => s.id !== service.id)
+      } else {
+        return [...prev, service]
+      }
+    })
+  }
+
+  const generateTimeSlots = () => {
+    const slots = []
+    for (let hour = 9; hour < 20; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        slots.push(time)
+      }
+    }
+    return slots
+  }
+
+  const handleSubmit = async () => {
+    setIsLoading(true)
+    
+    try {
+      // Создаем бронирование через API
+      const response = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamSlug: slug,
+          serviceIds: selectedServices.map(s => s.id),
+          masterId: selectedMaster?.id,
+          startTime: new Date(`${selectedDate}T${selectedTime}:00`).toISOString(),
+          clientData
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setIsCompleted(true)
+      } else {
+        alert(`Ошибка: ${data.error}`)
+      }
+    } catch (error) {
+      alert('Ошибка соединения с сервером')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (isCompleted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Запись успешно создана!</h2>
+          <p className="text-gray-600 mb-6">
+            Мы отправили подтверждение на указанный email. 
+            Ожидайте подтверждения от администратора.
+          </p>
+          <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Дата:</span>
+              <span className="font-medium">{new Date(selectedDate).toLocaleDateString('ru-RU')}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Время:</span>
+              <span className="font-medium">{selectedTime}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Мастер:</span>
+              <span className="font-medium">{selectedMaster?.firstName} {selectedMaster?.lastName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Сумма:</span>
+              <span className="font-medium">{totalPrice} ₽</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="flex items-center">
+            {mockTeam.logoUrl ? (
+              <img src={mockTeam.logoUrl} alt={mockTeam.name} className="w-12 h-12 rounded-lg mr-4" />
+            ) : (
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-4">
+                <span className="text-blue-600 font-bold text-lg">{mockTeam.name[0]}</span>
+              </div>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">{mockTeam.name}</h1>
+              <p className="text-gray-600">Онлайн запись</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Steps indicator */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {[
+              { number: 1, name: 'Услуги' },
+              { number: 2, name: 'Мастер и время' },
+              { number: 3, name: 'Контакты' }
+            ].map((step, index) => (
+              <div key={step.number} className="flex items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep >= step.number
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {step.number}
+                </div>
+                <span className={`ml-2 text-sm font-medium ${
+                  currentStep >= step.number ? 'text-blue-600' : 'text-gray-500'
+                }`}>
+                  {step.name}
+                </span>
+                {index < 2 && (
+                  <div className={`w-12 h-px mx-4 ${
+                    currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
+                  }`} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main content */}
+          <div className="lg:col-span-2">
+            {/* Step 1: Services */}
+            {currentStep === 1 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите услуги</h2>
+                <div className="space-y-6">
+                  {mockServiceGroups.map((group) => (
+                    <div key={group.id}>
+                      <h3 className="text-lg font-medium text-gray-900 mb-3">{group.name}</h3>
+                      <div className="grid gap-3">
+                        {group.services.map((service) => {
+                          const isSelected = selectedServices.some(s => s.id === service.id)
+                          return (
+                            <div
+                              key={service.id}
+                              onClick={() => handleServiceToggle(service)}
+                              className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                                isSelected
+                                  ? 'border-blue-600 bg-blue-50'
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gray-900">{service.name}</h4>
+                                  {service.description && (
+                                    <p className="text-sm text-gray-600 mt-1">{service.description}</p>
+                                  )}
+                                  <div className="flex items-center mt-2 text-sm text-gray-500">
+                                    <Clock className="w-4 h-4 mr-1" />
+                                    {formatDuration(service.duration)}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-medium text-gray-900">{service.price} ₽</div>
+                                  {isSelected && (
+                                    <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center mt-2">
+                                      <Check className="w-3 h-3 text-white" />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Master and time */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                  <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите мастера</h2>
+                  <div className="grid gap-4">
+                    {mockMasters.map((master) => (
+                      <div
+                        key={master.id}
+                        onClick={() => setSelectedMaster(master)}
+                        className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                          selectedMaster?.id === master.id
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+                            <User className="w-6 h-6 text-gray-500" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">
+                              {master.firstName} {master.lastName}
+                            </h4>
+                            {master.description && (
+                              <p className="text-sm text-gray-600">{master.description}</p>
+                            )}
+                          </div>
+                          {selectedMaster?.id === master.id && (
+                            <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedMaster && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">Выберите дату и время</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Дата</label>
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(e) => setSelectedDate(e.target.value)}
+                          min={new Date().toISOString().split('T')[0]}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        />
+                      </div>
+                      {selectedDate && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Время</label>
+                          <select
+                            value={selectedTime}
+                            onChange={(e) => setSelectedTime(e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                          >
+                            <option value="">Выберите время</option>
+                            {generateTimeSlots().map((time) => (
+                              <option key={time} value={time}>{time}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 3: Contact info */}
+            {currentStep === 3 && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Контактная информация</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={clientData.email}
+                      onChange={(e) => setClientData({...clientData, email: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Телефон *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={clientData.phone}
+                      onChange={(e) => setClientData({...clientData, phone: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Имя
+                    </label>
+                    <input
+                      type="text"
+                      value={clientData.firstName}
+                      onChange={(e) => setClientData({...clientData, firstName: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Фамилия
+                    </label>
+                    <input
+                      type="text"
+                      value={clientData.lastName}
+                      onChange={(e) => setClientData({...clientData, lastName: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Telegram
+                    </label>
+                    <input
+                      type="text"
+                      value={clientData.telegram}
+                      onChange={(e) => setClientData({...clientData, telegram: e.target.value})}
+                      placeholder="@username"
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Адрес
+                    </label>
+                    <input
+                      type="text"
+                      value={clientData.address}
+                      onChange={(e) => setClientData({...clientData, address: e.target.value})}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Примечания
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={clientData.notes}
+                    onChange={(e) => setClientData({...clientData, notes: e.target.value})}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2"
+                    placeholder="Дополнительная информация..."
+                  />
+                </div>
+                <div className="mt-6">
+                  <label className="flex items-start">
+                    <input
+                      type="checkbox"
+                      checked={clientData.agreeToTerms}
+                      onChange={(e) => setClientData({...clientData, agreeToTerms: e.target.checked})}
+                      className="mt-1 mr-3"
+                    />
+                    <span className="text-sm text-gray-600">
+                      Я согласен на обработку персональных данных в соответствии с{' '}
+                      <a href={mockTeam.privacyPolicyUrl} className="text-blue-600 hover:underline">
+                        политикой конфиденциальности
+                      </a>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar with summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sticky top-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Сводка записи</h3>
+              
+              {selectedServices.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Услуги:</h4>
+                  <div className="space-y-2">
+                    {selectedServices.map((service) => (
+                      <div key={service.id} className="flex justify-between text-sm">
+                        <span className="text-gray-600">{service.name}</span>
+                        <span className="font-medium">{service.price} ₽</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedMaster && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Мастер:</h4>
+                  <p className="text-sm text-gray-600">
+                    {selectedMaster.firstName} {selectedMaster.lastName}
+                  </p>
+                </div>
+              )}
+
+              {selectedDate && selectedTime && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Дата и время:</h4>
+                  <p className="text-sm text-gray-600">
+                    {new Date(selectedDate).toLocaleDateString('ru-RU')} в {selectedTime}
+                  </p>
+                </div>
+              )}
+
+              {totalDuration > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Общая продолжительность:</h4>
+                  <p className="text-sm text-gray-600">{formatDuration(totalDuration)}</p>
+                </div>
+              )}
+
+              {totalPrice > 0 && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-medium text-gray-900">Итого:</span>
+                    <span className="text-xl font-bold text-gray-900">{totalPrice} ₽</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-6 space-y-3">
+                {currentStep > 1 && (
+                  <button
+                    onClick={() => setCurrentStep(currentStep - 1)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    Назад
+                  </button>
+                )}
+                
+                {currentStep < 3 ? (
+                  <button
+                    onClick={() => setCurrentStep(currentStep + 1)}
+                    disabled={
+                      (currentStep === 1 && selectedServices.length === 0) ||
+                      (currentStep === 2 && (!selectedMaster || !selectedDate || !selectedTime))
+                    }
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    Продолжить
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={
+                      !clientData.email || 
+                      !clientData.phone || 
+                      !clientData.agreeToTerms ||
+                      isLoading
+                    }
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? 'Создание записи...' : 'Записаться'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

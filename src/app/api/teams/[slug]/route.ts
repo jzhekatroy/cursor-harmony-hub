@@ -1,0 +1,93 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const { slug } = await params
+
+    const team = await prisma.team.findUnique({
+      where: { slug },
+      include: {
+        serviceGroups: {
+          include: {
+            services: {
+              where: { isArchived: false },
+              orderBy: { order: 'asc' }
+            }
+          },
+          orderBy: { order: 'asc' }
+        },
+        masters: {
+          where: { isActive: true },
+          include: {
+            schedules: true,
+            absences: {
+              where: {
+                startDate: { lte: new Date() },
+                endDate: { gte: new Date() }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    if (!team) {
+      return NextResponse.json(
+        { error: 'Команда не найдена' },
+        { status: 404 }
+      )
+    }
+
+    if (team.status === 'DISABLED') {
+      return NextResponse.json(
+        { error: 'Команда временно не принимает записи' },
+        { status: 403 }
+      )
+    }
+
+    // Форматируем данные для фронтенда
+    const formattedData = {
+      team: {
+        id: team.id,
+        name: team.name,
+        logoUrl: team.logoUrl,
+        privacyPolicyUrl: team.privacyPolicyUrl,
+        bookingStep: team.bookingStep
+      },
+      serviceGroups: team.serviceGroups.map(group => ({
+        id: group.id,
+        name: group.name,
+        services: group.services.map(service => ({
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          duration: service.duration,
+          price: Number(service.price),
+          photoUrl: service.photoUrl
+        }))
+      })),
+      masters: team.masters.map(master => ({
+        id: master.id,
+        firstName: master.firstName,
+        lastName: master.lastName,
+        description: master.description,
+        photoUrl: master.photoUrl,
+        schedules: master.schedules,
+        isAvailable: master.absences.length === 0
+      }))
+    }
+
+    return NextResponse.json(formattedData)
+
+  } catch (error) {
+    console.error('Get team error:', error)
+    return NextResponse.json(
+      { error: 'Внутренняя ошибка сервера' },
+      { status: 500 }
+    )
+  }
+}

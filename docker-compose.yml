@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  # Основное приложение
+  beauty-booking:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: beauty-booking-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/prod.db
+      - NEXTAUTH_SECRET=your-super-secure-secret-key-for-production-2024
+      - NEXTAUTH_URL=http://localhost:3000
+      - JWT_SECRET=your-jwt-secret-for-production-2024
+      - APP_URL=http://localhost:3000
+      - SUPER_ADMIN_EMAIL=admin@beauty-booking.com
+      - SUPER_ADMIN_PASSWORD=admin123
+    volumes:
+      # Монтируем директорию для базы данных
+      - beauty_booking_data:/app/data
+      # Монтируем директорию для загрузок
+      - beauty_booking_uploads:/app/public/uploads
+    networks:
+      - beauty_booking_network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Nginx reverse proxy (опционально)
+  nginx:
+    image: nginx:alpine
+    container_name: beauty-booking-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - beauty-booking
+    networks:
+      - beauty_booking_network
+
+volumes:
+  beauty_booking_data:
+    driver: local
+  beauty_booking_uploads:
+    driver: local
+
+networks:
+  beauty_booking_network:
+    driver: bridge

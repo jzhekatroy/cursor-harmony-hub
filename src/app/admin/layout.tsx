@@ -12,7 +12,8 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  ExternalLink
 } from 'lucide-react'
 
 interface User {
@@ -25,6 +26,7 @@ interface User {
     id: string
     name: string
     teamNumber: string
+    slug?: string
   }
 }
 
@@ -35,7 +37,7 @@ export default function AdminLayout({
 }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
 
@@ -56,7 +58,8 @@ export default function AdminLayout({
       team: {
         id: '1',
         name: 'Beauty Salon',
-        teamNumber: 'B0123456'
+        teamNumber: 'B0123456',
+        slug: 'beauty-salon'
       }
     }
     setUser(mockUser)
@@ -90,101 +93,126 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Mobile sidebar backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 lg:hidden z-20"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-30 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      }`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900">{user.team.name}</h1>
-            <p className="text-sm text-gray-500">{user.team.teamNumber}</p>
-          </div>
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-blue-50 text-blue-600 border-r-2 border-blue-600'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                  }`}
-                  onClick={() => setIsSidebarOpen(false)}
-                >
-                  <item.icon className="w-5 h-5 mr-3" />
-                  {item.name}
-                </Link>
-              )
-            })}
-          </div>
-
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium text-gray-900">
-                {user.firstName} {user.lastName}
-              </p>
-              <p className="text-sm text-gray-500">{user.email}</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Top header with horizontal navigation */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo/Brand */}
+            <div className="flex items-center">
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">{user.team.name}</h1>
+                <p className="text-xs text-gray-500">{user.team.teamNumber}</p>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Выйти
-            </button>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden md:flex space-x-8">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'text-blue-600 bg-blue-50'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <item.icon className="w-4 h-4 mr-2" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+            </nav>
+
+            {/* Right side - Public page link + User menu */}
+            <div className="flex items-center space-x-4">
+              {/* Public page link */}
+              {user.team.slug && (
+                <Link
+                  href={`/book/${user.team.slug}`}
+                  target="_blank"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Страница записи
+                </Link>
+              )}
+
+              {/* User info and logout */}
+              <div className="flex items-center space-x-3">
+                <div className="hidden sm:block text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">{user.role === 'ADMIN' ? 'Администратор' : 'Мастер'}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md transition-colors"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Выйти</span>
+                </button>
+              </div>
+
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-50"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+            </div>
           </div>
-        </nav>
+
+          {/* Mobile Navigation */}
+          {isMobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-200 py-4">
+              <div className="space-y-1">
+                {navigation.map((item) => {
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'text-blue-600 bg-blue-50'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <item.icon className="w-4 h-4 mr-3" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+                
+                {/* Mobile public page link */}
+                {user.team.slug && (
+                  <Link
+                    href={`/book/${user.team.slug}`}
+                    target="_blank"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <ExternalLink className="w-4 h-4 mr-3" />
+                    Страница записи
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top header */}
-        <div className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between h-16 px-6">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-            
-            <div className="lg:hidden">
-              <h1 className="text-lg font-semibold text-gray-900">{user.team.name}</h1>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="hidden sm:block text-sm text-gray-500">
-                Роль: {user.role === 'ADMIN' ? 'Администратор' : 'Мастер'}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Page content */}
-        <main className="p-6">
-          {children}
-        </main>
-      </div>
+      <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        {children}
+      </main>
     </div>
   )
 }

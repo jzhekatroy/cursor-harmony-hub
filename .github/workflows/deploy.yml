@@ -34,6 +34,7 @@ jobs:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_KEY }}
+        script_stop: false
         script: |
           echo "🚀 Начинаем деплой beauty-booking..."
           

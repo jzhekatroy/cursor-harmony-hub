@@ -15,11 +15,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Неверный токен' }, { status: 401 })
     }
 
+    // Проверяем параметр includeArchived
+    const { searchParams } = new URL(request.url)
+    const includeArchived = searchParams.get('includeArchived') === 'true'
+
+    const whereClause: any = {
+      teamId: decoded.teamId
+    }
+
+    // Если не включаем архивные, фильтруем их
+    if (!includeArchived) {
+      whereClause.isArchived = false
+    }
+
     const services = await prisma.service.findMany({
-      where: {
-        teamId: decoded.teamId,
-        isArchived: false
-      },
+      where: whereClause,
       include: {
         group: true
       },
@@ -57,7 +67,7 @@ export async function POST(request: NextRequest) {
     const { name, description, duration, price, photoUrl, groupId } = body
 
     // Валидация
-    if (!name || !duration || !price) {
+    if (!name || !duration || price === undefined || price === null) {
       return NextResponse.json(
         { error: 'Название, продолжительность и цена обязательны' },
         { status: 400 }
@@ -108,11 +118,11 @@ export async function POST(request: NextRequest) {
 
     const service = await prisma.service.create({
       data: {
-        name,
-        description: description || null,
+        name: name.trim(),
+        description: description?.trim() || null,
         duration: parseInt(duration),
         price: parseFloat(price),
-        photoUrl: photoUrl || null,
+        photoUrl: photoUrl?.trim() || null,
         teamId: decoded.teamId,
         groupId: groupId || null,
         order: (maxOrder._max.order || 0) + 1

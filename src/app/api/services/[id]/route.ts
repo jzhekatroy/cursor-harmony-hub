@@ -20,10 +20,37 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
+    
+    // Проверяем, что услуга принадлежит команде
+    const existingService = await prisma.service.findFirst({
+      where: {
+        id,
+        teamId: decoded.teamId
+      }
+    })
+
+    if (!existingService) {
+      return NextResponse.json(
+        { error: 'Услуга не найдена' },
+        { status: 404 }
+      )
+    }
+
+    // Если это операция архивирования/восстановления
+    if ('isArchived' in body) {
+      const service = await prisma.service.update({
+        where: { id },
+        data: { isArchived: body.isArchived },
+        include: { group: true }
+      })
+      return NextResponse.json(service)
+    }
+
+    // Обычное обновление услуги
     const { name, description, duration, price, photoUrl, groupId } = body
 
     // Валидация
-    if (!name || !duration || !price) {
+    if (!name || !duration || price === undefined || price === null) {
       return NextResponse.json(
         { error: 'Название, продолжительность и цена обязательны' },
         { status: 400 }
@@ -41,21 +68,6 @@ export async function PUT(
       return NextResponse.json(
         { error: 'Цена не может быть отрицательной' },
         { status: 400 }
-      )
-    }
-
-    // Проверяем, что услуга принадлежит команде
-    const existingService = await prisma.service.findFirst({
-      where: {
-        id,
-        teamId: decoded.teamId
-      }
-    })
-
-    if (!existingService) {
-      return NextResponse.json(
-        { error: 'Услуга не найдена' },
-        { status: 404 }
       )
     }
 
@@ -79,11 +91,11 @@ export async function PUT(
     const service = await prisma.service.update({
       where: { id },
       data: {
-        name,
-        description: description || null,
+        name: name.trim(),
+        description: description?.trim() || null,
         duration: parseInt(duration),
         price: parseFloat(price),
-        photoUrl: photoUrl || null,
+        photoUrl: photoUrl?.trim() || null,
         groupId: groupId || null
       },
       include: {
@@ -101,7 +113,7 @@ export async function PUT(
   }
 }
 
-// DELETE /api/services/[id] - удалить услугу
+// DELETE /api/services/[id] - архивировать услугу (не удалять)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -148,20 +160,20 @@ export async function DELETE(
 
     if (activeBookings) {
       return NextResponse.json(
-        { error: 'Нельзя удалить услугу с активными бронированиями. Архивируйте её вместо удаления.' },
+        { error: 'Нельзя архивировать услугу с активными бронированиями' },
         { status: 400 }
       )
     }
 
-    // Мягкое удаление - архивируем услугу
+    // Архивируем услугу вместо удаления
     await prisma.service.update({
       where: { id },
       data: { isArchived: true }
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, message: 'Услуга архивирована' })
   } catch (error) {
-    console.error('Ошибка удаления услуги:', error)
+    console.error('Ошибка архивирования услуги:', error)
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }

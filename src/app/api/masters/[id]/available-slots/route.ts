@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { BookingStatus } from '@prisma/client'
 
 interface TimeSlot {
   start: string // HH:mm format
@@ -44,7 +45,7 @@ export async function GET(
               lt: new Date(`${date}T23:59:59.999Z`)
             },
             status: {
-              not: 'CANCELLED_BY_CLIENT'
+              in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
             }
           }
         }
@@ -121,20 +122,29 @@ export async function GET(
     const now = new Date()
     const currentTime = now.toTimeString().slice(0, 5) // HH:MM
     const isToday = requestDate.toDateString() === now.toDateString()
+    
+    console.log('🕐 Время сейчас:', currentTime, 'Дата:', requestDate.toDateString(), 'Сегодня:', isToday)
 
     const availableSlots = workingSlots.filter(slot => {
       // Исключаем занятые слоты
       if (isSlotOccupied(slot, occupiedSlots)) {
+        console.log('❌ Слот занят:', slot.start)
         return false
       }
       
       // Если это сегодня, исключаем прошедшие слоты
       if (isToday && slot.start <= currentTime) {
+        console.log('❌ Слот в прошлом:', slot.start, '<=', currentTime)
         return false
       }
       
+      console.log('✅ Слот доступен:', slot.start)
       return true
     })
+    
+    console.log('📊 Всего рабочих слотов:', workingSlots.length)
+    console.log('📊 Занятых слотов:', occupiedSlots.length)
+    console.log('📊 Доступных слотов:', availableSlots.length)
 
     return NextResponse.json({
       date,

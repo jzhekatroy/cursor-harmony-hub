@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Calendar, Clock, User, MapPin, Phone, Mail, MessageCircle, Check } from 'lucide-react'
+import DatePicker from '@/components/DatePicker'
 
 interface Service {
   id: string
@@ -50,7 +51,7 @@ export default function BookingWidget() {
   const [currentStep, setCurrentStep] = useState(1)
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
   const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedTime, setSelectedTime] = useState('')
   const [availableSlots, setAvailableSlots] = useState<{start: string, end: string}[]>([])
   const [isLoadingSlots, setIsLoadingSlots] = useState(false)
@@ -567,12 +568,10 @@ export default function BookingWidget() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Дата</label>
-                        <input
-                          type="date"
-                          value={selectedDate}
-                          onChange={(e) => setSelectedDate(e.target.value)}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2"
+                        <DatePicker
+                          selectedDate={selectedDate}
+                          onDateSelect={setSelectedDate}
+                          className="w-full"
                         />
                       </div>
                       {selectedDate && (

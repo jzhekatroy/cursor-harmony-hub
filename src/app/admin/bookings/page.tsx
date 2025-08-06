@@ -35,16 +35,18 @@ const statusColors = {
   'CREATED': 'bg-yellow-100 text-yellow-800',
   'CONFIRMED': 'bg-blue-100 text-blue-800',
   'COMPLETED': 'bg-green-100 text-green-800',
+  'NO_SHOW': 'bg-orange-100 text-orange-800',
   'CANCELLED_BY_CLIENT': 'bg-red-100 text-red-800',
-  'CANCELLED_BY_ADMIN': 'bg-gray-100 text-gray-800'
+  'CANCELLED_BY_STAFF': 'bg-gray-100 text-gray-800'
 }
 
 const statusNames = {
   'CREATED': 'Создана',
   'CONFIRMED': 'Подтверждена',
   'COMPLETED': 'Завершена',
+  'NO_SHOW': 'Не пришел',
   'CANCELLED_BY_CLIENT': 'Отменена клиентом',
-  'CANCELLED_BY_ADMIN': 'Отменена админом'
+  'CANCELLED_BY_STAFF': 'Отменена администратором'
 }
 
 export default function BookingsPage() {
@@ -207,8 +209,9 @@ export default function BookingsPage() {
                 <option value="CREATED">Создана</option>
                 <option value="CONFIRMED">Подтверждена</option>
                 <option value="COMPLETED">Завершена</option>
+                <option value="NO_SHOW">Не пришел</option>
                 <option value="CANCELLED_BY_CLIENT">Отменена клиентом</option>
-                <option value="CANCELLED_BY_ADMIN">Отменена админом</option>
+                <option value="CANCELLED_BY_STAFF">Отменена администратором</option>
               </select>
             </div>
 

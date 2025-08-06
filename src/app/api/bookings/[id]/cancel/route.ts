@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { BookingStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
 // PUT - отменить бронирование
@@ -55,11 +56,11 @@ export async function PUT(
     }
 
     // Проверяем что бронирование еще можно отменить
-    if (booking.status === 'CANCELLED_BY_ADMIN' || booking.status === 'CANCELLED_BY_CLIENT') {
+    if (booking.status === BookingStatus.CANCELLED_BY_STAFF || booking.status === BookingStatus.CANCELLED_BY_CLIENT) {
       return NextResponse.json({ error: 'Бронирование уже отменено' }, { status: 400 })
     }
 
-    if (booking.status === 'COMPLETED') {
+    if (booking.status === BookingStatus.COMPLETED) {
       return NextResponse.json({ error: 'Нельзя отменить завершенное бронирование' }, { status: 400 })
     }
 
@@ -69,7 +70,7 @@ export async function PUT(
       const updatedBooking = await tx.booking.update({
         where: { id: bookingId },
         data: {
-          status: 'CANCELLED_BY_ADMIN',
+          status: BookingStatus.CANCELLED_BY_STAFF,
           updatedAt: new Date()
         },
         include: {

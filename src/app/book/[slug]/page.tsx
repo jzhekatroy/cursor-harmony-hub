@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Calendar, Clock, User, MapPin, Phone, Mail, MessageCircle, Check } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
+import Head from 'next/head'
 
 interface Service {
   id: string
@@ -75,9 +77,32 @@ export default function BookingWidget() {
   const [isLoading, setIsLoading] = useState(false)
   const [isCompleted, setIsCompleted] = useState(false)
 
+  // Telegram WebApp интеграция
+  const telegram = useTelegramWebApp()
+
   useEffect(() => {
     loadTeamData()
   }, [slug])
+
+  // Автозаполнение данных из Telegram
+  useEffect(() => {
+    if (telegram.user && telegram.isReady) {
+      telegram.addLog('🔄 Auto-filling form with Telegram user data')
+      
+      setClientData(prev => ({
+        ...prev,
+        firstName: telegram.user?.first_name || prev.firstName,
+        lastName: telegram.user?.last_name || prev.lastName,
+        telegram: telegram.user?.username ? `@${telegram.user.username}` : prev.telegram
+      }))
+      
+      telegram.addLog('✅ Form auto-filled', {
+        firstName: telegram.user.first_name,
+        lastName: telegram.user.last_name,
+        username: telegram.user.username
+      })
+    }
+  }, [telegram.user, telegram.isReady])
 
   // Фильтруем мастеров по выбранным услугам
   useEffect(() => {
@@ -384,7 +409,12 @@ export default function BookingWidget() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      <Head>
+        <script src="https://telegram.org/js/telegram-web-app.js" />
+      </Head>
+      
+      <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -865,6 +895,67 @@ export default function BookingWidget() {
           </div>
         </div>
       </div>
+      
+      {/* Telegram WebApp Debug Panel */}
+      {telegram.isReady && (
+        <div className="fixed bottom-4 right-4 max-w-sm">
+          <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+            <h4 className="font-semibold text-sm mb-2 text-blue-600">
+              🤖 Telegram WebApp Debug
+            </h4>
+            
+            {telegram.isAvailable ? (
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span>Status:</span>
+                  <span className="text-green-600 font-medium">✅ Connected</span>
+                </div>
+                
+                {telegram.user && (
+                  <div className="border-t pt-2">
+                    <div className="font-medium text-blue-600">User Info:</div>
+                    <div>ID: {telegram.user.id}</div>
+                    <div>Name: {telegram.user.first_name} {telegram.user.last_name || ''}</div>
+                    {telegram.user.username && <div>@{telegram.user.username}</div>}
+                    <div>Lang: {telegram.user.language_code}</div>
+                    {telegram.user.is_premium && <div className="text-yellow-600">⭐ Premium</div>}
+                  </div>
+                )}
+                
+                <div className="border-t pt-2">
+                  <div className="font-medium text-blue-600">Platform Info:</div>
+                  <div>Platform: {telegram.platform}</div>
+                  <div>Version: {telegram.version}</div>
+                  <div>Theme: {telegram.colorScheme}</div>
+                </div>
+                
+                {telegram.startParam && (
+                  <div className="border-t pt-2">
+                    <div className="font-medium text-blue-600">Start Param:</div>
+                    <div className="break-all">{telegram.startParam}</div>
+                  </div>
+                )}
+                
+                <div className="border-t pt-2">
+                  <div className="font-medium text-blue-600">Recent Logs:</div>
+                  <div className="max-h-32 overflow-y-auto text-xs">
+                    {telegram.logs.slice(-5).map((log, i) => (
+                      <div key={i} className="text-gray-600 break-all">
+                        {log.split('] ')[1]}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-red-600 text-xs">
+                ❌ Not running in Telegram
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
+    </>
   )
 }

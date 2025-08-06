@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, UserMinus, UserCheck, Eye, EyeOff, Camera, Clock, Calendar, X } from 'lucide-react'
+import MasterSchedule from '@/components/MasterSchedule'
 
 interface Master {
   id: string
@@ -568,6 +569,20 @@ export default function MastersPage() {
                             )}
                           </div>
                           <button
+                            onClick={() => setScheduleDialogMaster(master)}
+                            className="p-2 text-gray-400 hover:text-blue-600"
+                            title="Рабочее время"
+                          >
+                            <Clock className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setAbsenceDialogMaster(master)}
+                            className="p-2 text-gray-400 hover:text-green-600"
+                            title="Отпуска и отсутствия"
+                          >
+                            <Calendar className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => startEditingMaster(master)}
                             className="p-2 text-gray-400 hover:text-blue-600"
                             title="Редактировать"
@@ -595,6 +610,50 @@ export default function MastersPage() {
           )}
         </div>
       </div>
+      
+             {/* Диалог управления расписанием */}
+       {scheduleDialogMaster && (
+         <MasterSchedule
+           masterId={scheduleDialogMaster.id}
+           masterName={`${scheduleDialogMaster.firstName} ${scheduleDialogMaster.lastName}`}
+           isOpen={true}
+           onClose={() => setScheduleDialogMaster(null)}
+           onSave={() => {
+             loadData() // Перезагружаем данные после сохранения
+           }}
+         />
+       )}
+
+       {/* Заглушка для диалога отпусков */}
+       {absenceDialogMaster && (
+         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+             <div className="flex items-center justify-between mb-4">
+               <h2 className="text-xl font-semibold text-gray-900">Отпуска и отсутствия</h2>
+               <button
+                 onClick={() => setAbsenceDialogMaster(null)}
+                 className="text-gray-400 hover:text-gray-600"
+               >
+                 <X className="w-6 h-6" />
+               </button>
+             </div>
+             <p className="text-gray-600 mb-4">
+               Управление отпусками для: {absenceDialogMaster.firstName} {absenceDialogMaster.lastName}
+             </p>
+             <p className="text-sm text-gray-500 italic">
+               🚧 Компонент находится в разработке. Скоро будет доступен полный функционал управления отпусками.
+             </p>
+             <div className="mt-6 flex justify-end">
+               <button
+                 onClick={() => setAbsenceDialogMaster(null)}
+                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
+               >
+                 Закрыть
+               </button>
+             </div>
+           </div>
+         </div>
+       )}
     </div>
   )
 }

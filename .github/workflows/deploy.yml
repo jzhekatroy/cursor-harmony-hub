@@ -50,15 +50,13 @@ jobs:
           npm ci --production=false
           echo "✅ Зависимости установлены"
           
-          echo "🔧 Исправляем права доступа сначала..."
+          echo "🔧 Исправляем права доступа..."
           sudo chown -R beautyapp:beautyapp /home/beautyapp/beauty-booking
           sudo rm -rf /home/beautyapp/beauty-booking/.next
           echo "✅ Права доступа исправлены"
           
-          echo "🔧 Настраиваем окружение от имени beautyapp..."
-          chmod +x setup-env.sh
-          sudo -u beautyapp ./setup-env.sh
-          echo "✅ Окружение настроено"
+          echo "🔍 ДИАГНОСТИКА БАЗЫ ДАННЫХ ДО СБОРКИ..."
+          sudo -u beautyapp node check-database.js || echo "❌ Ошибка диагностики"
           
           echo "🔨 Собираем проект от имени beautyapp..."
           sudo -u beautyapp npm run build
@@ -93,6 +91,9 @@ jobs:
           echo "🔍 Быстрая проверка статуса деплоя..."
           
           cd /home/beautyapp/beauty-booking
+          
+          echo "🔍 ФИНАЛЬНАЯ ДИАГНОСТИКА БАЗЫ ДАННЫХ..."
+          sudo -u beautyapp node check-database.js || echo "❌ Ошибка финальной диагностики"
           
           # Проверяем, что процесс запустился
           npm_pid=$(pgrep -f "npm start" || echo "")

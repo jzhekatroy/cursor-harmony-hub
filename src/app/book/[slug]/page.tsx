@@ -72,6 +72,13 @@ export default function BookingWidget() {
     loadTeamData()
   }, [slug])
 
+  // Сбрасываем выбор мастера и времени при изменении даты
+  useEffect(() => {
+    setSelectedMaster(null)
+    setSelectedTime('')
+    setAvailableSlots([])
+  }, [selectedDate])
+
   // Загружаем свободные слоты когда выбран мастер и дата
   useEffect(() => {
     if (selectedMaster && selectedDate) {
@@ -512,113 +519,111 @@ export default function BookingWidget() {
               </div>
             )}
 
-            {/* Step 2: Master and time */}
+            {/* Step 2: Date, Master and Time */}
             {currentStep === 2 && (
               <div className="space-y-6">
+                {/* Шаг 2.1: Выбор даты */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите мастера</h2>
-                  
-                  {masters.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500">У команды пока нет доступных мастеров</p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {masters.map((master) => (
-                        <div
-                          key={master.id}
-                          onClick={() => setSelectedMaster(master)}
-                          className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
-                            selectedMaster?.id === master.id
-                              ? 'border-blue-600 bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex items-center">
-                            {master.photoUrl ? (
-                              <img src={master.photoUrl} alt={`${master.firstName} ${master.lastName}`} className="w-12 h-12 rounded-full object-cover mr-4" />
-                            ) : (
-                              <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
-                                <User className="w-6 h-6 text-gray-500" />
-                              </div>
-                            )}
-                            <div className="flex-1">
-                              <h4 className="font-medium text-gray-900">
-                                {master.firstName} {master.lastName}
-                              </h4>
-                              {master.description && (
-                                <p className="text-sm text-gray-600">{master.description}</p>
-                              )}
-                            </div>
-                            {selectedMaster?.id === master.id && (
-                              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                                <Check className="w-3 h-3 text-white" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <DatePicker
+                    selectedDate={selectedDate}
+                    onDateSelect={setSelectedDate}
+                    className="w-full"
+                  />
                 </div>
 
-                {selectedMaster && (
+                {/* Шаг 2.2: Выбор мастера (показываем только после выбора даты) */}
+                {selectedDate && (
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Выберите дату и время</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Дата</label>
-                        <DatePicker
-                          selectedDate={selectedDate}
-                          onDateSelect={setSelectedDate}
-                          className="w-full"
-                        />
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Выберите мастера</h2>
+                    
+                    {masters.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-gray-500">У команды пока нет доступных мастеров</p>
                       </div>
-                      {selectedDate && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Свободное время
-                            {selectedServices.length > 0 && (
-                              <span className="text-sm text-gray-500 ml-2">
-                                (длительность: {selectedServices.reduce((sum, s) => sum + s.duration, 0)} мин)
-                              </span>
-                            )}
-                          </label>
-                          
-                          {isLoadingSlots ? (
-                            <div className="flex items-center justify-center py-4 border border-gray-300 rounded-md">
-                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
-                              <span className="text-sm text-gray-600">Загружаем свободное время...</span>
+                    ) : (
+                      <div className="grid gap-4">
+                        {masters.map((master) => (
+                          <div
+                            key={master.id}
+                            onClick={() => setSelectedMaster(master)}
+                            className={`p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                              selectedMaster?.id === master.id
+                                ? 'border-blue-600 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            <div className="flex items-center">
+                              {master.photoUrl ? (
+                                <img src={master.photoUrl} alt={`${master.firstName} ${master.lastName}`} className="w-12 h-12 rounded-full object-cover mr-4" />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mr-4">
+                                  <User className="w-6 h-6 text-gray-500" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <h4 className="font-medium text-gray-900">
+                                  {master.firstName} {master.lastName}
+                                </h4>
+                                {master.description && (
+                                  <p className="text-sm text-gray-600">{master.description}</p>
+                                )}
+                              </div>
+                              {selectedMaster?.id === master.id && (
+                                <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
                             </div>
-                          ) : availableSlots.length > 0 ? (
-                            <div className="grid grid-cols-3 gap-2">
-                              {availableSlots.map((slot) => (
-                                <button
-                                  key={slot.start}
-                                  onClick={() => setSelectedTime(slot.start)}
-                                  className={`p-2 text-sm border rounded-md transition-colors ${
-                                    selectedTime === slot.start
-                                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                                      : 'border-gray-300 hover:border-gray-400 text-gray-700'
-                                  }`}
-                                >
-                                  {slot.start}
-                                </button>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-4 border border-gray-300 rounded-md bg-gray-50">
-                              <p className="text-sm text-gray-600">
-                                На выбранную дату нет свободного времени
-                              </p>
-                              <p className="text-xs text-gray-500 mt-1">
-                                Попробуйте выбрать другую дату или мастера
-                              </p>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Шаг 2.3: Выбор времени (показываем только после выбора мастера) */}
+                {selectedDate && selectedMaster && (
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Выберите время
+                      {selectedServices.length > 0 && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          (длительность: {selectedServices.reduce((sum, s) => sum + s.duration, 0)} мин)
+                        </span>
                       )}
-                    </div>
+                    </h3>
+                    
+                    {isLoadingSlots ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+                        <span className="text-gray-600">Загружаем свободное время...</span>
+                      </div>
+                    ) : availableSlots.length > 0 ? (
+                      <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {availableSlots.map((slot) => (
+                          <button
+                            key={slot.start}
+                            onClick={() => setSelectedTime(slot.start)}
+                            className={`p-3 text-sm font-medium border rounded-lg transition-all ${
+                              selectedTime === slot.start
+                                ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md'
+                                : 'border-gray-300 hover:border-blue-300 hover:bg-blue-50 text-gray-700'
+                            }`}
+                          >
+                            {slot.start}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 border border-gray-300 rounded-lg bg-gray-50">
+                        <p className="text-gray-600 mb-2">
+                          На выбранную дату нет свободного времени
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Попробуйте выбрать другую дату или мастера
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -15,7 +15,7 @@ interface DatePickerProps {
 
 export default function DatePicker({ selectedDate, onDateSelect, className = '' }: DatePickerProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [showCalendar, setShowCalendar] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(true) // Всегда показываем календарь
 
   // Форматируем дату для отображения
   const formatDisplayDate = (dateStr: string) => {
@@ -33,7 +33,7 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
   const handleDateSelect = (selectInfo: any) => {
     const selectedDateStr = selectInfo.dateStr
     onDateSelect(selectedDateStr)
-    setShowCalendar(false)
+    // Не закрываем календарь - он всегда открыт
   }
 
   // Проверяем, можно ли выбрать дату (не в прошлом)
@@ -82,33 +82,19 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
   }
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Кнопка выбора даты */}
-      <button
-        type="button"
-        onClick={() => setShowCalendar(!showCalendar)}
-        className="w-full flex items-center justify-between px-4 py-3 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-      >
-        <div className="flex items-center space-x-3">
-          <Calendar className="w-5 h-5 text-gray-400" />
-          <span className={`text-left ${selectedDate ? 'text-gray-900' : 'text-gray-500'}`}>
-            {formatDisplayDate(selectedDate)}
-          </span>
-        </div>
-        <ChevronRight className={`w-5 h-5 text-gray-400 transform transition-transform ${showCalendar ? 'rotate-90' : ''}`} />
-      </button>
+    <div className={`${className}`}>
+      {/* Выбранная дата */}
+      <div className="mb-4 text-center">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Выберите дату</h3>
+        {selectedDate && (
+          <p className="text-sm text-blue-600 font-medium">
+            Выбрано: {formatDisplayDate(selectedDate)}
+          </p>
+        )}
+      </div>
 
-      {/* Календарь */}
-      {showCalendar && (
-        <>
-          {/* Overlay для закрытия */}
-          <div 
-            className="fixed inset-0 z-40 bg-black bg-opacity-25"
-            onClick={() => setShowCalendar(false)}
-          />
-          
-          {/* Календарь */}
-          <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-4">
+      {/* Календарь (всегда показан) */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
             <style jsx global>{`
               .fc {
                 font-family: inherit;
@@ -181,18 +167,10 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
             
             <FullCalendar {...calendarOptions} />
             
-            <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-              <span>Выберите дату для записи</span>
-              <button
-                onClick={() => setShowCalendar(false)}
-                className="text-gray-400 hover:text-gray-600 px-2 py-1 rounded"
-              >
-                Закрыть
-              </button>
+            <div className="mt-4 text-center text-sm text-gray-500">
+              <span>Кликните на дату для выбора</span>
             </div>
           </div>
-        </>
-      )}
-    </div>
+        </div>
   )
 }

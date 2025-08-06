@@ -118,10 +118,11 @@ export async function GET(
       end: formatTime(booking.endTime)
     }))
 
-    // Получаем текущее время для фильтрации прошедших слотов
+    // Получаем текущее время для фильтрации прошедших слотов (московское время)
     const now = new Date()
-    const currentTime = now.toTimeString().slice(0, 5) // HH:MM
-    const isToday = requestDate.toDateString() === now.toDateString()
+    const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)) // UTC+3
+    const currentTime = moscowTime.toTimeString().slice(0, 5) // HH:MM
+    const isToday = requestDate.toDateString() === moscowTime.toDateString()
     
     console.log('🕐 Время сейчас:', currentTime, 'Дата:', requestDate.toDateString(), 'Сегодня:', isToday)
 

@@ -335,7 +335,13 @@ function formatTimeFromMinutes(minutes: number): string {
 
 // Форматирует Date в формат HH:mm (московское время)
 function formatTime(date: Date): string {
-  // Конвертируем в московское время (UTC+3)
-  const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000))
-  return moscowTime.toTimeString().slice(0, 5)
+  // Конвертируем UTC в московское время (UTC+3)
+  const moscowOffset = 3 * 60 // 3 часа в минутах
+  const utcTime = date.getTime()
+  const moscowTime = new Date(utcTime + (moscowOffset * 60 * 1000))
+  
+  const hours = moscowTime.getUTCHours()
+  const minutes = moscowTime.getUTCMinutes()
+  
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 }

@@ -21,10 +21,22 @@ export async function GET(request: NextRequest) {
         schedules: true,
         bookings: {
           where: {
-            startTime: {
-              gte: new Date(`${date}T00:00:00.000Z`),
-              lt: new Date(`${date}T23:59:59.999Z`)
-            },
+            OR: [
+              // Московское время
+              {
+                startTime: {
+                  gte: new Date(`${date}T00:00:00+03:00`),
+                  lt: new Date(`${date}T23:59:59+03:00`)
+                }
+              },
+              // UTC время на всякий случай
+              {
+                startTime: {
+                  gte: new Date(`${date}T00:00:00.000Z`),
+                  lt: new Date(`${date}T23:59:59.999Z`)
+                }
+              }
+            ],
             status: {
               in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
             }

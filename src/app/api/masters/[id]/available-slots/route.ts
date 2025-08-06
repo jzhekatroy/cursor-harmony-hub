@@ -40,10 +40,22 @@ export async function GET(
         absences: true,
         bookings: {
           where: {
-            startTime: {
-              gte: new Date(`${date}T00:00:00.000Z`), // UTC полночь
-              lt: new Date(`${date}T23:59:59.999Z`)   // UTC конец дня
-            },
+            OR: [
+              // Московское время
+              {
+                startTime: {
+                  gte: new Date(`${date}T00:00:00+03:00`),
+                  lt: new Date(`${date}T23:59:59+03:00`)
+                }
+              },
+              // UTC время на всякий случай
+              {
+                startTime: {
+                  gte: new Date(`${date}T00:00:00.000Z`),
+                  lt: new Date(`${date}T23:59:59.999Z`)
+                }
+              }
+            ],
             status: {
               in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
             }

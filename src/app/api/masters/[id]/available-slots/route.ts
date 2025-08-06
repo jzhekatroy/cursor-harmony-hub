@@ -13,10 +13,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let masterId = ''
+  let date = ''
+  let serviceDuration = 60
+  
   try {
     const { searchParams } = new URL(request.url)
-    const date = searchParams.get('date') // YYYY-MM-DD format
-    const serviceDuration = parseInt(searchParams.get('duration') || '60') // минуты
+    date = searchParams.get('date') || '' // YYYY-MM-DD format
+    serviceDuration = parseInt(searchParams.get('duration') || '60') // минуты
 
     if (!date) {
       return NextResponse.json(
@@ -26,7 +30,7 @@ export async function GET(
     }
 
     const resolvedParams = await params
-    const masterId = resolvedParams.id
+    masterId = resolvedParams.id
 
     // Получаем мастера с командой для настроек
     const master = await prisma.master.findUnique({

@@ -161,7 +161,9 @@ function generateDebugSlots(
   }
 
   function formatTimeFromDate(date: Date): string {
-    return date.toTimeString().slice(0, 5)
+    // Конвертируем в московское время (UTC+3)
+    const moscowTime = new Date(date.getTime() + (3 * 60 * 60 * 1000))
+    return moscowTime.toTimeString().slice(0, 5)
   }
 
   const start = parseTime(startTime)

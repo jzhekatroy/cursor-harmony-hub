@@ -152,8 +152,26 @@ export async function GET(
 
   } catch (error) {
     console.error('Ошибка получения свободных слотов:', error)
+    
+    // Более подробная информация об ошибке для отладки
+    const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка'
+    const errorStack = error instanceof Error ? error.stack : 'Нет стека'
+    
+    console.error('Детали ошибки:', {
+      message: errorMessage,
+      stack: errorStack,
+      masterId,
+      date,
+      serviceDuration
+    })
+    
     return NextResponse.json(
-      { error: 'Ошибка получения свободных слотов' },
+      { 
+        error: 'Ошибка получения свободных слотов',
+        details: errorMessage,
+        masterId,
+        date 
+      },
       { status: 500 }
     )
   } finally {

@@ -140,13 +140,17 @@ model MasterSchedule {
 
 // Отсутствие мастера (отпуска, больничные)
 model MasterAbsence {
-  id        String   @id @default(cuid())
-  startDate DateTime
-  endDate   DateTime
-  reason    String?
+  id          String   @id @default(cuid())
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  description String?
+  isRecurring Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-  master    Master   @relation(fields: [masterId], references: [id])
-  masterId  String
+  master      Master   @relation(fields: [masterId], references: [id])
+  masterId    String
 
   @@map("master_absences")
 }

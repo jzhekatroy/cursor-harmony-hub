@@ -95,7 +95,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { startDate, endDate, reason } = body
+    const { startDate, endDate, reason, description, isRecurring } = body
 
     console.log('Absence create request:', { masterId: id, startDate, endDate, reason })
 
@@ -167,7 +167,9 @@ export async function POST(
         masterId: id,
         startDate: start,
         endDate: end,
-        reason: reason || null
+        reason: reason || null,
+        description: description || null,
+        isRecurring: isRecurring || false
       }
     })
 

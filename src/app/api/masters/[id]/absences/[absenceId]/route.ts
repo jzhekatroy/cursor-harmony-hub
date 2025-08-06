@@ -27,7 +27,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { startDate, endDate, reason } = body
+    const { startDate, endDate, reason, description, isRecurring } = body
 
     console.log('Absence update request:', { masterId: id, absenceId, startDate, endDate, reason })
 
@@ -114,7 +114,9 @@ export async function PUT(
       data: {
         startDate: start,
         endDate: end,
-        reason: reason || null
+        reason: reason || null,
+        description: description || null,
+        isRecurring: isRecurring !== undefined ? isRecurring : false
       }
     })
 

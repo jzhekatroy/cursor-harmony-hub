@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
+import type { CalendarOptions } from '@fullcalendar/core'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DatePickerProps {
@@ -43,7 +44,7 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
   }
 
   // Настройки календаря
-  const calendarOptions = {
+  const calendarOptions: CalendarOptions = {
     plugins: [dayGridPlugin, interactionPlugin],
     initialView: 'dayGridMonth',
     headerToolbar: {
@@ -77,7 +78,7 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
       
       return []
     },
-    titleFormat: { year: 'numeric', month: 'long' }
+    titleFormat: { year: 'numeric' as const, month: 'long' as const }
   }
 
   return (

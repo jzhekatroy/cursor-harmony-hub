@@ -76,9 +76,9 @@ jobs:
           
           cd /home/beautyapp/beauty-booking
           
-          # Используем быстрый скрипт перезапуска для деплоя
-          chmod +x scripts/deploy-restart.sh
-          timeout 120 ./scripts/deploy-restart.sh
+          # Используем принудительный скрипт исправления
+          chmod +x scripts/force-fix.sh
+          timeout 120 ./scripts/force-fix.sh
           
           echo "✅ Приложение перезапущено"
           

@@ -161,9 +161,37 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
 
   // Редактирование отсутствия
   const handleEdit = (absence: Absence) => {
+    // Функция для преобразования даты в формат YYYY-MM-DD
+    const formatDateForInput = (dateInput: string | Date): string => {
+      try {
+        let date: Date
+        
+        if (typeof dateInput === 'string') {
+          // Если уже в формате YYYY-MM-DD, оставляем как есть
+          if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            return dateInput
+          }
+          date = new Date(dateInput)
+        } else {
+          date = dateInput
+        }
+        
+        if (isNaN(date.getTime())) {
+          console.error('Invalid date for input:', dateInput)
+          return ''
+        }
+        
+        // Преобразуем в формат YYYY-MM-DD
+        return date.toISOString().split('T')[0]
+      } catch (error) {
+        console.error('Error formatting date for input:', error, dateInput)
+        return ''
+      }
+    }
+    
     setFormData({
-      startDate: absence.startDate,
-      endDate: absence.endDate,
+      startDate: formatDateForInput(absence.startDate),
+      endDate: formatDateForInput(absence.endDate),
       reason: absence.reason,
       description: absence.description || '',
       isRecurring: absence.isRecurring
@@ -173,12 +201,36 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
   }
 
   // Форматирование даты
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr + 'T12:00:00').toLocaleDateString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+  const formatDate = (dateInput: string | Date) => {
+    try {
+      let date: Date
+      
+      if (typeof dateInput === 'string') {
+        // Если это строка в формате YYYY-MM-DD, добавляем время
+        if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          date = new Date(dateInput + 'T12:00:00')
+        } else {
+          date = new Date(dateInput)
+        }
+      } else {
+        date = dateInput
+      }
+      
+      // Проверяем валидность даты
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date:', dateInput)
+        return 'Некорректная дата'
+      }
+      
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    } catch (error) {
+      console.error('Date formatting error:', error, dateInput)
+      return 'Ошибка даты'
+    }
   }
 
   // Получение причины
@@ -188,10 +240,40 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
 
   // Проверка на текущее отсутствие
   const isCurrentAbsence = (absence: Absence) => {
-    const now = new Date()
-    const start = new Date(absence.startDate + 'T00:00:00')
-    const end = new Date(absence.endDate + 'T23:59:59')
-    return now >= start && now <= end
+    try {
+      const now = new Date()
+      
+      // Обрабатываем startDate
+      let start: Date
+      if (typeof absence.startDate === 'string') {
+        start = absence.startDate.match(/^\d{4}-\d{2}-\d{2}$/) 
+          ? new Date(absence.startDate + 'T00:00:00')
+          : new Date(absence.startDate)
+      } else {
+        start = new Date(absence.startDate)
+      }
+      
+      // Обрабатываем endDate
+      let end: Date
+      if (typeof absence.endDate === 'string') {
+        end = absence.endDate.match(/^\d{4}-\d{2}-\d{2}$/)
+          ? new Date(absence.endDate + 'T23:59:59')
+          : new Date(absence.endDate)
+      } else {
+        end = new Date(absence.endDate)
+      }
+      
+      // Проверяем валидность дат
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        console.error('Invalid dates in absence:', absence)
+        return false
+      }
+      
+      return now >= start && now <= end
+    } catch (error) {
+      console.error('Error checking current absence:', error, absence)
+      return false
+    }
   }
 
   if (isLoading) {

@@ -54,6 +54,15 @@ export async function GET(
       }
     })
 
+    console.log(`Found ${absences.length} absences for master ${id}:`, 
+      absences.map(a => ({
+        id: a.id,
+        startDate: a.startDate,
+        endDate: a.endDate,
+        reason: a.reason
+      }))
+    )
+
     return NextResponse.json({ absences })
 
   } catch (error) {
@@ -97,7 +106,14 @@ export async function POST(
     const body = await request.json()
     const { startDate, endDate, reason, description, isRecurring } = body
 
-    console.log('Absence create request:', { masterId: id, startDate, endDate, reason })
+    console.log('Absence create request:', { 
+      masterId: id, 
+      startDate, 
+      endDate, 
+      reason, 
+      description, 
+      isRecurring 
+    })
 
     // Валидация
     if (!startDate || !endDate) {

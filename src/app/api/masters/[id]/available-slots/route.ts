@@ -41,8 +41,8 @@ export async function GET(
         bookings: {
           where: {
             startTime: {
-              gte: new Date(`${date}T00:00:00+03:00`), // Московское время
-              lt: new Date(`${date}T23:59:59+03:00`)   // Московское время
+              gte: new Date(`${date}T00:00:00.000Z`), // UTC полночь
+              lt: new Date(`${date}T23:59:59.999Z`)   // UTC конец дня
             },
             status: {
               in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
@@ -123,35 +123,40 @@ export async function GET(
       console.log(`   ${i + 1}. ${formatTime(booking.startTime)}-${formatTime(booking.endTime)} (${booking.status})`)
     })
 
-    // Получаем текущее время для фильтрации прошедших слотов (московское время)
+    // Получаем текущее время в московском часовом поясе
     const now = new Date()
     const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)) // UTC+3
-    const currentTime = moscowTime.toTimeString().slice(0, 5) // HH:MM
-    const isToday = requestDate.toDateString() === moscowTime.toDateString()
+    
+    // Форматируем текущее время и дату для сравнения
+    const currentHour = moscowTime.getHours()
+    const currentMinute = moscowTime.getMinutes()
+    const currentTimeMinutes = currentHour * 60 + currentMinute
+    const currentDateStr = moscowTime.toISOString().split('T')[0]
+    const isToday = date === currentDateStr
     
     console.log('🕐 DEBUG ВРЕМЯ:')
     console.log('   - UTC время:', now.toISOString())
     console.log('   - Московское время:', moscowTime.toISOString())
-    console.log('   - Текущее время (HH:MM):', currentTime)
-    console.log('   - Запрошенная дата:', date, requestDate.toDateString())
+    console.log('   - Текущее время (минуты от полуночи):', currentTimeMinutes)
+    console.log('   - Запрошенная дата:', date)
+    console.log('   - Текущая дата (московская):', currentDateStr)
     console.log('   - Сегодня ли:', isToday)
     console.log('   - Количество бронирований:', master.bookings.length)
 
     const availableSlots = workingSlots.filter(slot => {
       // Исключаем занятые слоты
-      if (isSlotOccupied(slot, occupiedSlots)) {
+      if (isSlotOccupied(slot, occupiedSlots, serviceDuration)) {
         console.log('❌ Слот занят:', slot.start)
         return false
       }
       
       // Если это сегодня, исключаем прошедшие слоты
       if (isToday) {
-        // Преобразуем время в минуты для точного сравнения
         const slotMinutes = timeToMinutes(slot.start)
-        const currentMinutes = timeToMinutes(currentTime)
         
-        if (slotMinutes <= currentMinutes) {
-          console.log('❌ Слот в прошлом:', slot.start, '(', slotMinutes, 'мин) <=', currentTime, '(', currentMinutes, 'мин)')
+        // Добавляем буфер в 15 минут для избежания краевых случаев
+        if (slotMinutes <= currentTimeMinutes + 15) {
+          console.log('❌ Слот в прошлом или слишком близко:', slot.start, '(', slotMinutes, 'мин) <= текущее+15мин (', currentTimeMinutes + 15, 'мин)')
           return false
         }
       }
@@ -164,6 +169,33 @@ export async function GET(
     function timeToMinutes(time: string): number {
       const [hours, minutes] = time.split(':').map(Number)
       return hours * 60 + minutes
+    }
+
+    // Проверяем, занят ли слот
+    function isSlotOccupied(slot: TimeSlot, occupiedSlots: {start: string, end: string}[], serviceDuration: number): boolean {
+      const slotStartMinutes = timeToMinutes(slot.start)
+      const slotEndMinutes = slotStartMinutes + serviceDuration
+
+      for (const occupied of occupiedSlots) {
+        const occupiedStartMinutes = timeToMinutes(occupied.start)
+        const occupiedEndMinutes = timeToMinutes(occupied.end)
+
+        // Проверяем пересечение интервалов
+        if (
+          (slotStartMinutes < occupiedEndMinutes && slotEndMinutes > occupiedStartMinutes)
+        ) {
+          console.log(`  🔍 Пересечение найдено: слот ${slot.start}-${timeFromMinutes(slotEndMinutes)} пересекается с ${occupied.start}-${occupied.end}`)
+          return true
+        }
+      }
+      return false
+    }
+
+    // Функция для преобразования минут обратно в время HH:MM
+    function timeFromMinutes(totalMinutes: number): string {
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     }
     
     console.log('📊 Всего рабочих слотов:', workingSlots.length)

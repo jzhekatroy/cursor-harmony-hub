@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, UserMinus, UserCheck, Eye, EyeOff, Camera } from 'lucide-react'
+import { Plus, Edit, UserMinus, UserCheck, Eye, EyeOff, Camera, Clock, Calendar, X } from 'lucide-react'
 
 interface Master {
   id: string
@@ -33,6 +33,21 @@ interface Service {
   name: string
 }
 
+interface ScheduleItem {
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  breakStart?: string
+  breakEnd?: string
+}
+
+interface Absence {
+  id: string
+  startDate: string
+  endDate: string
+  reason?: string
+}
+
 export default function MastersPage() {
   const [masters, setMasters] = useState<Master[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -43,6 +58,13 @@ export default function MastersPage() {
   const [editingMaster, setEditingMaster] = useState<Master | null>(null)
   const [isCreatingMaster, setIsCreatingMaster] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
+  
+  // Состояния для управления расписанием
+  const [scheduleDialogMaster, setScheduleDialogMaster] = useState<Master | null>(null)
+  const [absenceDialogMaster, setAbsenceDialogMaster] = useState<Master | null>(null)
+  const [masterSchedules, setMasterSchedules] = useState<ScheduleItem[]>([])
+  const [masterAbsences, setMasterAbsences] = useState<Absence[]>([])
+  const [isScheduleLoading, setIsScheduleLoading] = useState(false)
   
   // Состояния формы
   const [formData, setFormData] = useState({

@@ -139,9 +139,9 @@ export async function GET(
     const now = new Date()
     const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)) // UTC+3
     
-    // Форматируем текущее время и дату для сравнения
-    const currentHour = moscowTime.getHours()
-    const currentMinute = moscowTime.getMinutes()
+    // Форматируем текущее время и дату для сравнения (используем UTC методы)
+    const currentHour = moscowTime.getUTCHours()
+    const currentMinute = moscowTime.getUTCMinutes()
     const currentTimeMinutes = currentHour * 60 + currentMinute
     const currentDateStr = moscowTime.toISOString().split('T')[0]
     const isToday = date === currentDateStr

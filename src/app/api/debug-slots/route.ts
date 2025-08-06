@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
     const now = new Date()
     const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000))
     
-    const currentHour = moscowTime.getHours()
-    const currentMinute = moscowTime.getMinutes()
+      const currentHour = moscowTime.getUTCHours()
+  const currentMinute = moscowTime.getUTCMinutes()
     const currentTimeMinutes = currentHour * 60 + currentMinute
     const currentDateStr = moscowTime.toISOString().split('T')[0]
     const isToday = date === currentDateStr

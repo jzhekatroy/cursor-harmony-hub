@@ -20,11 +20,20 @@ interface Service {
   isArchived: boolean
   order: number
   groupId?: string
+  masters?: Master[]
+}
+
+interface Master {
+  id: string
+  firstName: string
+  lastName: string
+  isActive: boolean
 }
 
 export default function ServicesPage() {
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [masters, setMasters] = useState<Master[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [editingGroup, setEditingGroup] = useState<ServiceGroup | null>(null)
@@ -57,12 +66,21 @@ export default function ServicesPage() {
     setIsLoading(true)
     setError(null)
     try {
-      // Загружаем группы услуг
-      const groupsResponse = await fetch('/api/service-groups', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
+      const token = localStorage.getItem('token')
+      
+      // Загружаем группы услуг, услуги и мастеров параллельно
+      const [groupsResponse, servicesResponse, mastersResponse] = await Promise.all([
+        fetch('/api/service-groups', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/services?includeArchived=true', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/masters', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ])
+
       if (groupsResponse.ok) {
         const groupsData = await groupsResponse.json()
         setServiceGroups(groupsData)
@@ -71,18 +89,20 @@ export default function ServicesPage() {
         setError(`Ошибка загрузки групп: ${errorData.error || 'Неизвестная ошибка'}`)
       }
 
-      // Загружаем все услуги (включая архивные)
-      const servicesResponse = await fetch('/api/services?includeArchived=true', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json()
-        setServices(servicesData)
+        setServices(servicesData.services || servicesData)
       } else {
         const errorData = await servicesResponse.json()
         setError(`Ошибка загрузки услуг: ${errorData.error || 'Неизвестная ошибка'}`)
+      }
+
+      if (mastersResponse.ok) {
+        const mastersData = await mastersResponse.json()
+        setMasters(mastersData.masters || mastersData)
+      } else {
+        const errorData = await mastersResponse.json()
+        setError(`Ошибка загрузки мастеров: ${errorData.error || 'Неизвестная ошибка'}`)
       }
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)

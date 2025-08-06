@@ -31,7 +31,16 @@ export async function GET(request: NextRequest) {
     const services = await prisma.service.findMany({
       where: whereClause,
       include: {
-        group: true
+        group: true,
+        masters: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            isActive: true
+          }
+        }
       },
       orderBy: [
         { group: { order: 'asc' } },
@@ -40,7 +49,7 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    return NextResponse.json(services)
+    return NextResponse.json({ services })
   } catch (error) {
     console.error('Ошибка получения услуг:', error)
     return NextResponse.json(

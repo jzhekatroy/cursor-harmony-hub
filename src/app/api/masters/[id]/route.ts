@@ -28,6 +28,8 @@ export async function PUT(
 
     const body = await request.json()
     const { firstName, lastName, description, photoUrl, serviceIds, isActive, password } = body
+    
+    console.log('Master update request:', { masterId: id, serviceIds, bodyKeys: Object.keys(body) })
 
     // Проверяем, что мастер принадлежит команде
     const existingMaster = await prisma.master.findFirst({

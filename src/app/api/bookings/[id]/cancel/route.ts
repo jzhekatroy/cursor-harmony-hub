@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { BookingStatus } from '@prisma/client'
+import { BookingStatus, ActionType } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 
 // PUT - отменить бронирование
@@ -86,7 +86,7 @@ export async function PUT(
       await tx.bookingLog.create({
         data: {
           bookingId: bookingId,
-          action: 'CANCELLED',
+          action: ActionType.CANCELLED_BY_STAFF,
           description: `Бронирование отменено администратором: ${user.firstName} ${user.lastName}`,
           teamId: user.teamId,
           userId: user.id

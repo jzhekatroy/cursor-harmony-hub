@@ -29,11 +29,11 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
     })
   }
 
-  // Обработка выбора даты в календаре
-  const handleDateSelect = (selectInfo: any) => {
-    const selectedDateStr = selectInfo.dateStr
+  // Обработка клика по дате в календаре
+  const handleDateClick = (dateClickInfo: any) => {
+    const selectedDateStr = dateClickInfo.dateStr
+    console.log('📅 Выбрана дата:', selectedDateStr)
     onDateSelect(selectedDateStr)
-    // Не закрываем календарь - он всегда открыт
   }
 
   // Проверяем, можно ли выбрать дату (не в прошлом)
@@ -60,7 +60,7 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
     weekends: true,
     locale: 'ru',
     firstDay: 1, // Понедельник первый день недели
-    select: handleDateSelect,
+    dateClick: handleDateClick,
     selectConstraint: {
       start: new Date().toISOString().split('T')[0] // Не позволяем выбирать прошлые даты
     },

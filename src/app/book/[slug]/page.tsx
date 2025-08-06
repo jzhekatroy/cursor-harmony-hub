@@ -27,6 +27,12 @@ interface Master {
   lastName: string
   photoUrl?: string
   description?: string
+  services?: {
+    id: string
+    name: string
+    duration: number
+    price: string
+  }[]
 }
 
 interface Team {
@@ -44,6 +50,7 @@ export default function BookingWidget() {
   const [team, setTeam] = useState<Team | null>(null)
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [ungroupedServices, setUngroupedServices] = useState<Service[]>([])
+  const [allMasters, setAllMasters] = useState<Master[]>([])
   const [masters, setMasters] = useState<Master[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [dataError, setDataError] = useState<string | null>(null)
@@ -71,6 +78,34 @@ export default function BookingWidget() {
   useEffect(() => {
     loadTeamData()
   }, [slug])
+
+  // Фильтруем мастеров по выбранным услугам
+  useEffect(() => {
+    if (selectedServices.length === 0) {
+      setMasters([])
+      return
+    }
+
+    const selectedServiceIds = selectedServices.map(s => s.id)
+    const availableMasters = allMasters.filter(master => {
+      // Проверяем, умеет ли мастер делать ВСЕ выбранные услуги
+      const masterServiceIds = master.services?.map(s => s.id) || []
+      return selectedServiceIds.every(serviceId => masterServiceIds.includes(serviceId))
+    })
+
+    console.log('🔍 Фильтрация мастеров:')
+    console.log('   - Выбранные услуги:', selectedServiceIds)
+    console.log('   - Всего мастеров:', allMasters.length)
+    console.log('   - Доступных мастеров:', availableMasters.length)
+    
+    setMasters(availableMasters)
+    // Сбрасываем выбранного мастера если он больше не доступен
+    if (selectedMaster && !availableMasters.find(m => m.id === selectedMaster.id)) {
+      setSelectedMaster(null)
+      setSelectedTime('')
+      setAvailableSlots([])
+    }
+  }, [selectedServices, allMasters, selectedMaster])
 
   // Сбрасываем выбор мастера и времени при изменении даты
   useEffect(() => {
@@ -129,7 +164,8 @@ export default function BookingWidget() {
       
       const teamData = await teamResponse.json()
       setTeam(teamData.team)
-      setMasters(teamData.masters || [])
+      setAllMasters(teamData.masters || [])
+      // Мастера будут фильтроваться при выборе услуг
       
       // Группируем услуги
       const groupedServices: ServiceGroup[] = []

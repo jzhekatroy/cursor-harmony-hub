@@ -361,7 +361,6 @@ export default function MastersPage() {
             onLimitChange={handleLimitChange}
           />
         </div>
-        </div>
 
         {/* Ошибки */}
         {error && (

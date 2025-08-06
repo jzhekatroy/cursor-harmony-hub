@@ -1,0 +1,91 @@
+=====================================================
+        БЫСТРЫЕ КОМАНДЫ BEAUTY BOOKING
+=====================================================
+
+🔌 ПОДКЛЮЧЕНИЕ К СЕРВЕРУ:
+ssh root@test.2minutes.ru
+cd /home/beautyapp/beauty-booking
+
+📊 ПРОСМОТР ЛОГОВ:
+tail -f nohup.out                    # Логи в реальном времени
+tail -50 nohup.out                   # Последние 50 строк
+grep -i error nohup.out | tail -10   # Поиск ошибок
+
+🔍 ДИАГНОСТИКА:
+netstat -punta | grep 3000           # Что слушает порт 3000
+ps aux | grep npm                    # Процессы приложения
+curl http://localhost:3000/api/status # Статус API
+
+🔄 ПЕРЕЗАПУСК ПРИЛОЖЕНИЯ:
+./scripts/force-fix.sh               # Полный перезапуск (РЕКОМЕНДУЕТСЯ)
+./restart-app.sh                     # Быстрый перезапуск
+./scripts/kill-port-3000.sh          # Освободить порт 3000
+
+🚨 ЭКСТРЕННЫЕ КОМАНДЫ:
+# Если "Внутренняя ошибка сервера":
+netstat -punta | grep 3000
+sudo kill -9 PID_ПРОЦЕССА
+./restart-app.sh
+
+# Если приложение зависло:
+sudo pkill -9 -f "npm start"
+sudo pkill -9 -f "node"
+sudo fuser -k 3000/tcp
+sudo -u beautyapp nohup npm start > nohup.out 2>&1 &
+
+🚀 ДЕПЛОЙ:
+# Автоматический (GitHub Actions):
+https://github.com/jzhekatroy/beauty-booking-mvp/actions
+-> "Deploy to Server" -> "Run workflow"
+
+# Ручной деплой:
+git pull origin main
+sudo -u beautyapp npm run build
+./restart-app.sh
+
+🛡️ БАЗА ДАННЫХ:
+./scripts/protect-database.sh        # Создать резервную копию
+ls -la /home/beautyapp/db-backups/   # Список резервных копий
+/home/beautyapp/db-backups/restore-latest.sh  # Восстановить последнюю копию
+./scripts/fix-database-permissions.sh # Исправить права доступа
+
+🌐 ПОЛЕЗНЫЕ ССЫЛКИ:
+http://test.2minutes.ru/admin         # Админка
+http://test.2minutes.ru/login         # Вход
+http://test.2minutes.ru/api/status    # Статус API
+http://test.2minutes.ru/api/debug     # Диагностика
+
+👤 ТЕСТОВЫЕ АККАУНТЫ:
+Супер-админ: admin@beauty-booking.com / admin123
+Админ салона: salon@example.com / password123
+Мастера: anna@example.com, elena@example.com / password123
+
+=====================================================
+           САМЫЕ ЧАСТЫЕ ПРОБЛЕМЫ
+=====================================================
+
+❌ "Внутренняя ошибка сервера":
+1. netstat -punta | grep 3000
+2. sudo kill -9 PID_ПРОЦЕССА  
+3. ./restart-app.sh
+
+❌ Приложение не запускается:
+1. ./scripts/fix-database-permissions.sh
+2. ./setup-env.sh
+3. sudo -u beautyapp npm run build
+4. ./scripts/force-fix.sh
+
+❌ База данных повреждена:
+1. /home/beautyapp/db-backups/restore-latest.sh
+2. Если копий нет: ./scripts/reset-database.sh --force-delete-all-data
+
+❌ Порт 3000 занят:
+1. netstat -punta | grep 3000
+2. sudo kill -9 PID_ПРОЦЕССА
+3. ./scripts/kill-port-3000.sh
+
+❌ Нет доступа к файлам:
+1. sudo chown -R beautyapp:beautyapp /home/beautyapp/beauty-booking
+2. sudo chmod 664 /home/beautyapp/beauty-booking/prisma/dev.db
+
+=====================================================

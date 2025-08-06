@@ -55,6 +55,7 @@ model Team {
   disabledAt      DateTime?
   masterLimit     Int        @default(2)
   bookingStep     Int        @default(15) // шаг бронирования в минутах
+  timezone        String     @default("Europe/Moscow") // часовой пояс салона
   requireConfirmation Boolean @default(false)
   webhooksEnabled Boolean    @default(true)
   privacyPolicyUrl String?

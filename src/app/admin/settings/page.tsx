@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import BookingSettings from '@/components/BookingSettings'
 import BookingLinkSettings from '@/components/BookingLinkSettings'
+import TimezoneSettings from '@/components/TimezoneSettings'
 
 interface TeamSettings {
   bookingStep: number
@@ -15,6 +16,7 @@ interface TeamSettings {
   logoUrl?: string
   slug: string
   bookingSlug: string
+  timezone: string
 }
 
 export default function SettingsPage() {
@@ -77,6 +79,30 @@ export default function SettingsPage() {
     setSettings(data.settings)
   }
 
+  const updateTimezone = async (timezone: string) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('Токен авторизации не найден')
+    }
+
+    const response = await fetch('/api/team/settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ timezone })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Ошибка обновления часового пояса')
+    }
+
+    const data = await response.json()
+    setSettings(data.settings)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -128,6 +154,12 @@ export default function SettingsPage() {
             currentSlug={settings.slug}
             currentBookingSlug={settings.bookingSlug}
             onUpdate={updateBookingSlug}
+          />
+
+          {/* Часовой пояс */}
+          <TimezoneSettings
+            currentTimezone={settings.timezone}
+            onUpdate={updateTimezone}
           />
 
           {/* Настройки бронирования */}

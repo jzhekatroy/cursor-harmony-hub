@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { BookingStatus } from '@prisma/client'
+import { 
+  utcToSalonTime, 
+  formatSalonTime, 
+  getSalonTimeMinutes, 
+  isTodayInSalonTimezone, 
+  getCurrentSalonTime 
+} from '@/lib/timezone'
 
 interface TimeSlot {
   start: string // HH:mm format
@@ -135,23 +142,25 @@ export async function GET(
       console.log(`   ${i + 1}. ${formatTime(booking.startTime)}-${formatTime(booking.endTime)} (${booking.status})`)
     })
 
-    // Получаем текущее время в московском часовом поясе
+    // Получаем текущее время в часовом поясе салона
+    const salonTimezone = master.team.timezone
     const now = new Date()
-    const moscowTime = new Date(now.getTime() + (3 * 60 * 60 * 1000)) // UTC+3
+    const salonTime = getCurrentSalonTime(salonTimezone)
     
-    // Форматируем текущее время и дату для сравнения (используем UTC методы)
-    const currentHour = moscowTime.getUTCHours()
-    const currentMinute = moscowTime.getUTCMinutes()
-    const currentTimeMinutes = currentHour * 60 + currentMinute
-    const currentDateStr = moscowTime.toISOString().split('T')[0]
-    const isToday = date === currentDateStr
+    // Определяем функцию форматирования времени для этого салона
+    formatTime = (date: Date) => formatSalonTime(date, salonTimezone)
+    
+    // Форматируем текущее время и дату для сравнения
+    const currentTimeMinutes = getSalonTimeMinutes(now, salonTimezone)
+    const currentDateStr = salonTime.toISOString().split('T')[0]
+    const isToday = isTodayInSalonTimezone(date, salonTimezone)
     
     console.log('🕐 DEBUG ВРЕМЯ:')
     console.log('   - UTC время:', now.toISOString())
-    console.log('   - Московское время:', moscowTime.toISOString())
+    console.log('   - Время салона (' + salonTimezone + '):', salonTime.toISOString())
     console.log('   - Текущее время (минуты от полуночи):', currentTimeMinutes)
     console.log('   - Запрошенная дата:', date)
-    console.log('   - Текущая дата (московская):', currentDateStr)
+    console.log('   - Текущая дата (в поясе салона):', currentDateStr)
     console.log('   - Сегодня ли:', isToday)
     console.log('   - Количество бронирований:', master.bookings.length)
 
@@ -333,15 +342,5 @@ function formatTimeFromMinutes(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
 }
 
-// Форматирует Date в формат HH:mm (московское время)
-function formatTime(date: Date): string {
-  // Конвертируем UTC в московское время (UTC+3)
-  const moscowOffset = 3 * 60 // 3 часа в минутах
-  const utcTime = date.getTime()
-  const moscowTime = new Date(utcTime + (moscowOffset * 60 * 1000))
-  
-  const hours = moscowTime.getUTCHours()
-  const minutes = moscowTime.getUTCMinutes()
-  
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
-}
+// Функция форматирования будет переопределена в контексте с salonTimezone
+let formatTime: (date: Date) => string

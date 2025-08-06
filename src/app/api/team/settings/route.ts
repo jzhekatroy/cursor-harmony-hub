@@ -36,7 +36,8 @@ export async function GET(request: NextRequest) {
       email: user.team.email,
       logoUrl: user.team.logoUrl,
       slug: user.team.slug,
-      bookingSlug: user.team.bookingSlug || user.team.slug
+      bookingSlug: user.team.bookingSlug || user.team.slug,
+      timezone: user.team.timezone
     }
 
     return NextResponse.json({ settings })
@@ -84,7 +85,8 @@ export async function PUT(request: NextRequest) {
       contactPerson,
       email,
       logoUrl,
-      bookingSlug
+      bookingSlug,
+      timezone
     } = body
 
     // Валидация интервала бронирования
@@ -154,6 +156,22 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Валидация часового пояса
+    if (timezone !== undefined) {
+      const validTimezones = [
+        'Europe/Moscow', 'Europe/Kiev', 'Europe/Minsk', 'Asia/Almaty', 'Asia/Tashkent',
+        'Asia/Yekaterinburg', 'Asia/Novosibirsk', 'Asia/Vladivostok', 'Europe/London',
+        'America/New_York', 'UTC'
+      ]
+      
+      if (!validTimezones.includes(timezone)) {
+        return NextResponse.json(
+          { error: 'Неподдерживаемый часовой пояс' },
+          { status: 400 }
+        )
+      }
+    }
+
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
@@ -164,6 +182,7 @@ export async function PUT(request: NextRequest) {
     if (email !== undefined) updateData.email = email
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null
     if (bookingSlug !== undefined) updateData.bookingSlug = bookingSlug?.trim() || null
+    if (timezone !== undefined) updateData.timezone = timezone
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -182,7 +201,8 @@ export async function PUT(request: NextRequest) {
         email: updatedTeam.email,
         logoUrl: updatedTeam.logoUrl,
         slug: updatedTeam.slug,
-        bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug
+        bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug,
+        timezone: updatedTeam.timezone
       }
     })
 

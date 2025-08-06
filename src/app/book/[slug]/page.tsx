@@ -52,6 +52,8 @@ export default function BookingWidget() {
   const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [availableSlots, setAvailableSlots] = useState<{start: string, end: string}[]>([])
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false)
   const [clientData, setClientData] = useState({
     email: '',
     phone: '',
@@ -68,6 +70,43 @@ export default function BookingWidget() {
   useEffect(() => {
     loadTeamData()
   }, [slug])
+
+  // Загружаем свободные слоты когда выбран мастер и дата
+  useEffect(() => {
+    if (selectedMaster && selectedDate) {
+      loadAvailableSlots()
+    } else {
+      setAvailableSlots([])
+      setSelectedTime('')
+    }
+  }, [selectedMaster, selectedDate, selectedServices])
+
+  const loadAvailableSlots = async () => {
+    if (!selectedMaster || !selectedDate) return
+
+    setIsLoadingSlots(true)
+    try {
+      // Считаем общую длительность выбранных услуг
+      const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0)
+      
+      const response = await fetch(
+        `/api/masters/${selectedMaster.id}/available-slots?date=${selectedDate}&duration=${totalDuration}`
+      )
+      
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки свободных слотов')
+      }
+      
+      const data = await response.json()
+      setAvailableSlots(data.availableSlots || [])
+      
+    } catch (error) {
+      console.error('Ошибка загрузки слотов:', error)
+      setAvailableSlots([])
+    } finally {
+      setIsLoadingSlots(false)
+    }
+  }
 
   const loadTeamData = async () => {
     setIsLoadingData(true)
@@ -520,17 +559,46 @@ export default function BookingWidget() {
                       </div>
                       {selectedDate && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Время</label>
-                          <select
-                            value={selectedTime}
-                            onChange={(e) => setSelectedTime(e.target.value)}
-                            className="w-full border border-gray-300 rounded-md px-3 py-2"
-                          >
-                            <option value="">Выберите время</option>
-                            {generateTimeSlots().map((time) => (
-                              <option key={time} value={time}>{time}</option>
-                            ))}
-                          </select>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Свободное время
+                            {selectedServices.length > 0 && (
+                              <span className="text-sm text-gray-500 ml-2">
+                                (длительность: {selectedServices.reduce((sum, s) => sum + s.duration, 0)} мин)
+                              </span>
+                            )}
+                          </label>
+                          
+                          {isLoadingSlots ? (
+                            <div className="flex items-center justify-center py-4 border border-gray-300 rounded-md">
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                              <span className="text-sm text-gray-600">Загружаем свободное время...</span>
+                            </div>
+                          ) : availableSlots.length > 0 ? (
+                            <div className="grid grid-cols-3 gap-2">
+                              {availableSlots.map((slot) => (
+                                <button
+                                  key={slot.start}
+                                  onClick={() => setSelectedTime(slot.start)}
+                                  className={`p-2 text-sm border rounded-md transition-colors ${
+                                    selectedTime === slot.start
+                                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                                      : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                                  }`}
+                                >
+                                  {slot.start}
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-4 border border-gray-300 rounded-md bg-gray-50">
+                              <p className="text-sm text-gray-600">
+                                На выбранную дату нет свободного времени
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Попробуйте выбрать другую дату или мастера
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -11,7 +11,7 @@ interface TimeSlot {
 // GET - получить свободные слоты мастера на дату
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -25,7 +25,8 @@ export async function GET(
       )
     }
 
-    const masterId = params.id
+    const resolvedParams = await params
+    const masterId = resolvedParams.id
 
     // Получаем мастера с командой для настроек
     const master = await prisma.master.findUnique({

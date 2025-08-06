@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateBookingNumber } from '@/lib/auth'
 import { BookingStatus } from '@prisma/client'
+import jwt from 'jsonwebtoken'
 
 // Создание нового бронирования
 export async function POST(request: NextRequest) {
@@ -224,17 +225,35 @@ export async function POST(request: NextRequest) {
 // Получение бронирований команды
 export async function GET(request: NextRequest) {
   try {
+    // Проверяем авторизацию для админки
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      include: { team: true }
+    })
+
+    if (!user || !user.team) {
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
+    }
+
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+    }
+
     const { searchParams } = new URL(request.url)
-    const teamId = searchParams.get('teamId')
     const masterId = searchParams.get('masterId')
     const date = searchParams.get('date')
+    const status = searchParams.get('status')
 
-    if (!teamId) {
-      return NextResponse.json(
-        { error: 'teamId обязателен' },
-        { status: 400 }
-      )
-    }
+    // Используем teamId из авторизованного пользователя
+    const teamId = user.teamId
 
     let whereClause: any = { teamId }
 
@@ -252,6 +271,10 @@ export async function GET(request: NextRequest) {
         gte: startOfDay,
         lte: endOfDay
       }
+    }
+
+    if (status) {
+      whereClause.status = status
     }
 
     const bookings = await prisma.booking.findMany({

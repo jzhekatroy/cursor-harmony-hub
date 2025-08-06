@@ -52,7 +52,8 @@ export default function DatePicker({ selectedDate, onDateSelect, className = '' 
       center: 'title',
       right: 'next'
     },
-    height: 400,
+    height: 'auto',
+    contentHeight: 'auto',
     selectable: true,
     selectMirror: true,
     dayMaxEvents: false,

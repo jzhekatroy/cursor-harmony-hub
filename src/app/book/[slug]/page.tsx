@@ -127,6 +127,24 @@ export default function BookingWidget() {
       const groupedServices: ServiceGroup[] = []
       const ungrouped: Service[] = []
       
+      // Обрабатываем сгруппированные услуги
+      if (teamData.serviceGroups) {
+        setServiceGroups(teamData.serviceGroups)
+      }
+      
+      // Обрабатываем несгруппированные услуги
+      if (teamData.ungroupedServices) {
+        setUngroupedServices(teamData.ungroupedServices.map((service: any) => ({
+          id: service.id,
+          name: service.name,
+          description: service.description,
+          duration: service.duration,
+          price: parseFloat(service.price),
+          photoUrl: service.photoUrl
+        })))
+      }
+      
+      // Старый код для совместимости (если API вернет services)
       if (teamData.services) {
         // Создаем группы
         const groupsMap = new Map<string, ServiceGroup>()

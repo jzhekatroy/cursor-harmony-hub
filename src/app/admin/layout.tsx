@@ -27,6 +27,7 @@ interface User {
     name: string
     teamNumber: string
     slug?: string
+    bookingSlug?: string
   }
 }
 
@@ -48,22 +49,33 @@ export default function AdminLayout({
       return
     }
 
-    // TODO: Добавить валидацию токена через API
-    // Пока используем заглушку
-    const mockUser: User = {
-      id: '1',
-      email: 'admin@example.com',
-      role: 'ADMIN',
-      firstName: 'Админ',
-      team: {
-        id: '1',
-        name: 'Beauty Salon',
-        teamNumber: 'B0123456',
-        slug: 'beauty-salon'
+    // Получаем данные пользователя через API
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+
+        if (response.ok) {
+          const userData = await response.json()
+          setUser(userData)
+        } else {
+          console.error('Ошибка получения данных пользователя')
+          localStorage.removeItem('token')
+          router.push('/login')
+        }
+      } catch (error) {
+        console.error('Ошибка запроса данных пользователя:', error)
+        localStorage.removeItem('token')
+        router.push('/login')
+      } finally {
+        setIsLoading(false)
       }
     }
-    setUser(mockUser)
-    setIsLoading(false)
+
+    fetchUserData()
   }, [router])
 
   const handleLogout = () => {
@@ -132,7 +144,7 @@ export default function AdminLayout({
               {/* Public page link */}
               {user.team.slug && (
                 <Link
-                  href={`/book/${user.team.slug}`}
+                  href={`/book/${user.team.bookingSlug || user.team.slug}`}
                   target="_blank"
                   className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
                 >
@@ -194,7 +206,7 @@ export default function AdminLayout({
                 {/* Mobile public page link */}
                 {user.team.slug && (
                   <Link
-                    href={`/book/${user.team.slug}`}
+                    href={`/book/${user.team.bookingSlug || user.team.slug}`}
                     target="_blank"
                     className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}

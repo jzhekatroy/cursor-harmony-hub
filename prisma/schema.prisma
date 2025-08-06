@@ -46,6 +46,7 @@ model Team {
   teamNumber      String     @unique // B0XXXXXXX
   name            String
   slug            String     @unique // для публичного URL
+  bookingSlug     String?    // кастомная ссылка для бронирования (если null, используется slug)
   contactPerson   String
   email           String
   logoUrl         String?

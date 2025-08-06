@@ -115,9 +115,24 @@ export async function GET(
       end: formatTime(booking.endTime)
     }))
 
-    const availableSlots = workingSlots.filter(slot => 
-      !isSlotOccupied(slot, occupiedSlots)
-    )
+    // Получаем текущее время для фильтрации прошедших слотов
+    const now = new Date()
+    const currentTime = now.toTimeString().slice(0, 5) // HH:MM
+    const isToday = requestDate.toDateString() === now.toDateString()
+
+    const availableSlots = workingSlots.filter(slot => {
+      // Исключаем занятые слоты
+      if (isSlotOccupied(slot, occupiedSlots)) {
+        return false
+      }
+      
+      // Если это сегодня, исключаем прошедшие слоты
+      if (isToday && slot.start <= currentTime) {
+        return false
+      }
+      
+      return true
+    })
 
     return NextResponse.json({
       date,

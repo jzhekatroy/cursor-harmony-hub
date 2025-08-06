@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
       privacyPolicyUrl: user.team.privacyPolicyUrl,
       contactPerson: user.team.contactPerson,
       email: user.team.email,
-      logoUrl: user.team.logoUrl
+      logoUrl: user.team.logoUrl,
+      slug: user.team.slug,
+      bookingSlug: user.team.bookingSlug || user.team.slug
     }
 
     return NextResponse.json({ settings })
@@ -83,7 +85,8 @@ export async function PUT(request: NextRequest) {
       privacyPolicyUrl,
       contactPerson,
       email,
-      logoUrl
+      logoUrl,
+      bookingSlug
     } = body
 
     // Валидация интервала бронирования
@@ -122,6 +125,37 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Валидация bookingSlug
+    if (bookingSlug !== undefined) {
+      if (bookingSlug && bookingSlug.trim()) {
+        // Проверяем что slug уникален среди других команд
+        const slugPattern = /^[a-z0-9-]+$/
+        if (!slugPattern.test(bookingSlug)) {
+          return NextResponse.json(
+            { error: 'Ссылка может содержать только латинские буквы, цифры и дефисы' },
+            { status: 400 }
+          )
+        }
+
+        const existingTeam = await prisma.team.findFirst({
+          where: {
+            OR: [
+              { slug: bookingSlug },
+              { bookingSlug: bookingSlug }
+            ],
+            NOT: { id: user.teamId }
+          }
+        })
+
+        if (existingTeam) {
+          return NextResponse.json(
+            { error: 'Эта ссылка уже используется другим салоном' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
@@ -131,6 +165,7 @@ export async function PUT(request: NextRequest) {
     if (contactPerson !== undefined) updateData.contactPerson = contactPerson
     if (email !== undefined) updateData.email = email
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null
+    if (bookingSlug !== undefined) updateData.bookingSlug = bookingSlug?.trim() || null
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -147,7 +182,9 @@ export async function PUT(request: NextRequest) {
         privacyPolicyUrl: updatedTeam.privacyPolicyUrl,
         contactPerson: updatedTeam.contactPerson,
         email: updatedTeam.email,
-        logoUrl: updatedTeam.logoUrl
+        logoUrl: updatedTeam.logoUrl,
+        slug: updatedTeam.slug,
+        bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug
       }
     })
 

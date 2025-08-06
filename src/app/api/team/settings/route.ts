@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
-
-const prisma = new PrismaClient()
 
 // GET - получить настройки команды
 export async function GET(request: NextRequest) {
@@ -195,6 +193,6 @@ export async function PUT(request: NextRequest) {
       { status: 500 }
     )
   } finally {
-    await prisma.$disconnect()
+    // Не отключаем singleton Prisma клиент
   }
 }

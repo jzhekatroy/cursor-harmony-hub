@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit, UserMinus, UserCheck, Eye, EyeOff, Camera, Clock, Calendar, X } from 'lucide-react'
 import MasterSchedule from '@/components/MasterSchedule'
+import PhotoUpload from '@/components/PhotoUpload'
+import MasterLimitSettings from '@/components/MasterLimitSettings'
 
 interface Master {
   id: string
@@ -80,6 +82,35 @@ export default function MastersPage() {
 
   const [masterLimit, setMasterLimit] = useState(2)
   const [activeMastersCount, setActiveMastersCount] = useState(0)
+
+  // Функция для сохранения лимита мастеров
+  const handleLimitChange = async (newLimit: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      
+      const response = await fetch('/api/team/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          masterLimit: newLimit
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Ошибка сохранения лимита')
+      }
+
+      setMasterLimit(newLimit)
+      
+    } catch (error) {
+      console.error('Ошибка сохранения лимита:', error)
+      setError(error instanceof Error ? error.message : 'Ошибка сохранения лимита')
+    }
+  }
 
   // Загрузка данных
   const loadData = async () => {
@@ -407,9 +438,15 @@ export default function MastersPage() {
                   />
                 </div>
 
+                <PhotoUpload
+                  currentPhotoUrl={formData.photoUrl}
+                  onPhotoChange={(photoUrl) => setFormData({...formData, photoUrl})}
+                  onPhotoRemove={() => setFormData({...formData, photoUrl: ''})}
+                />
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    URL фото
+                    URL фото (альтернатива)
                   </label>
                   <input
                     type="url"
@@ -418,6 +455,9 @@ export default function MastersPage() {
                     className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                     placeholder="https://example.com/photo.jpg"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Можно указать URL фото вместо загрузки файла
+                  </p>
                 </div>
 
                 <div>

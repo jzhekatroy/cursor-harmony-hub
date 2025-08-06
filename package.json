@@ -10,7 +10,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "rm -f dev.db && prisma db push && npm run db:seed"
+    "db:reset": "echo 'ЗАЩИЩЕННЫЙ РЕЖИМ: db:reset отключен для безопасности' && exit 1"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.18",

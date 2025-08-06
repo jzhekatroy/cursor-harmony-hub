@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import BookingSettings from '@/components/BookingSettings'
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
@@ -33,6 +34,9 @@ export default function SettingsPage() {
         </div>
 
         <div className="mt-8 space-y-6">
+          {/* Настройки бронирования */}
+          <BookingSettings />
+
           {/* Основная информация */}
           <div className="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
             <div className="md:grid md:grid-cols-3 md:gap-6">

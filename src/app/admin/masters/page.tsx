@@ -353,6 +353,16 @@ export default function MastersPage() {
           </div>
         </div>
 
+        {/* Настройки лимита мастеров */}
+        <div className="mt-6">
+          <MasterLimitSettings
+            currentLimit={masterLimit}
+            activeMastersCount={activeMastersCount}
+            onLimitChange={handleLimitChange}
+          />
+        </div>
+        </div>
+
         {/* Ошибки */}
         {error && (
           <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">

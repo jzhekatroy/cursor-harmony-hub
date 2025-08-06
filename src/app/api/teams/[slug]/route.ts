@@ -8,8 +8,14 @@ export async function GET(
   try {
     const { slug } = await params
 
-    const team = await prisma.team.findUnique({
-      where: { slug },
+    // Ищем команду по основному slug или по bookingSlug
+    const team = await prisma.team.findFirst({
+      where: {
+        OR: [
+          { slug: slug },
+          { bookingSlug: slug }
+        ]
+      },
       include: {
         serviceGroups: {
           include: {

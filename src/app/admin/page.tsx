@@ -7,45 +7,58 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 
-interface Booking {
-  id: string
-  clientName: string
-  serviceName: string
-  masterName: string
-  startTime: string
-  endTime: string
-  status: 'CREATED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED_BY_CLIENT' | 'CANCELLED_BY_STAFF' | 'NO_SHOW'
+interface BookingService {
+  name: string
+  duration: number
+  price: number
 }
 
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    clientName: 'Анна Иванова',
-    serviceName: 'Стрижка и укладка',
-    masterName: 'Мария Петрова',
-    startTime: '10:00',
-    endTime: '11:30',
-    status: 'CONFIRMED'
-  },
-  {
-    id: '2',
-    clientName: 'Елена Сидорова',
-    serviceName: 'Маникюр',
-    masterName: 'Анна Козлова',
-    startTime: '12:00',
-    endTime: '13:00',
-    status: 'CREATED'
-  },
-  {
-    id: '3',
-    clientName: 'Ольга Федорова',
-    serviceName: 'Окрашивание',
-    masterName: 'Мария Петрова',
-    startTime: '14:00',
-    endTime: '16:00',
-    status: 'CONFIRMED'
+interface Booking {
+  id: string
+  bookingNumber: string
+  startTime: string
+  endTime: string
+  status: string
+  totalPrice: number
+  notes?: string
+  client: {
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string
+    telegram?: string
   }
-]
+  master: {
+    id: string
+    firstName: string
+    lastName: string
+  }
+  services: BookingService[]
+}
+
+interface Master {
+  id: string
+  firstName: string
+  lastName: string
+  isActive: boolean
+}
+
+interface MasterSchedule {
+  id: string
+  dayOfWeek: number
+  startTime: string
+  endTime: string
+  breakStart?: string
+  breakEnd?: string
+}
+
+interface MasterAbsence {
+  id: string
+  startDate: string
+  endDate: string
+  reason?: string
+  description?: string
+}
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -75,6 +88,211 @@ export default function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedMaster, setSelectedMaster] = useState('all')
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  
+  // Состояние для живых данных
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [masters, setMasters] = useState<Master[]>([])
+  const [masterSchedules, setMasterSchedules] = useState<Record<string, MasterSchedule[]>>({})
+  const [masterAbsences, setMasterAbsences] = useState<Record<string, MasterAbsence[]>>({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Загрузка данных при монтировании компонента
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const token = localStorage.getItem('token')
+      if (!token) {
+        throw new Error('Токен авторизации не найден')
+      }
+
+      console.log('🔑 Токен найден, загружаем данные...')
+
+      // Загружаем бронирования
+      const bookingsResponse = await fetch('/api/bookings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (!bookingsResponse.ok) {
+        throw new Error('Ошибка загрузки бронирований')
+      }
+
+      const bookingsData = await bookingsResponse.json()
+      console.log('📅 Бронирования загружены:', bookingsData.bookings?.length || 0)
+      setBookings(bookingsData.bookings || [])
+
+      // Загружаем мастеров
+      const mastersResponse = await fetch('/api/masters-list', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      console.log('👥 Ответ API мастеров:', mastersResponse.status, mastersResponse.statusText)
+
+      if (mastersResponse.ok) {
+        const mastersData = await mastersResponse.json()
+        console.log('👥 Мастера загружены:', mastersData.masters?.length || 0, mastersData.masters)
+        setMasters(mastersData.masters || [])
+        
+        // Загружаем расписания и отсутствия для каждого мастера
+        if (mastersData.masters && mastersData.masters.length > 0) {
+          const schedulesPromises = mastersData.masters.map((master: Master) =>
+            fetch(`/api/masters/${master.id}/schedule`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).then(res => {
+              console.log(`📅 Расписание для мастера ${master.firstName}:`, res.status)
+              return res.ok ? res.json() : { schedules: [] }
+            })
+          )
+
+          const schedulesResults = await Promise.all(schedulesPromises)
+          const schedulesMap: Record<string, MasterSchedule[]> = {}
+          mastersData.masters.forEach((master: Master, index: number) => {
+            schedulesMap[master.id] = schedulesResults[index].schedules || []
+          })
+          setMasterSchedules(schedulesMap)
+        }
+      } else {
+        console.error('❌ Ошибка загрузки мастеров:', await mastersResponse.text())
+      }
+
+    } catch (err: any) {
+      console.error('❌ Ошибка загрузки данных:', err)
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Фильтруем бронирования по мастеру
+  const filteredBookings = selectedMaster === 'all' 
+    ? bookings 
+    : bookings.filter(booking => booking.master.id === selectedMaster)
+
+  // Генерируем события для календаря
+  const generateCalendarEvents = () => {
+    const events: any[] = []
+
+    // Добавляем бронирования
+    filteredBookings.forEach(booking => {
+      events.push({
+        id: booking.id,
+        title: `${booking.client.firstName} ${booking.client.lastName} - ${booking.services.map(s => s.name).join(', ')}`,
+        start: booking.startTime,
+        end: booking.endTime,
+        backgroundColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
+                     getStatusColor(booking.status).includes('green') ? '#10b981' :
+                     getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
+                     getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
+        borderColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
+                    getStatusColor(booking.status).includes('green') ? '#10b981' :
+                    getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
+                    getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
+        textColor: 'white',
+        extendedProps: {
+          type: 'booking',
+          status: booking.status,
+          clientName: `${booking.client.firstName} ${booking.client.lastName}`,
+          serviceName: booking.services.map(s => s.name).join(', '),
+          masterName: `${booking.master.firstName} ${booking.master.lastName}`,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+        }
+      })
+    })
+
+    // Добавляем нерабочее время для выбранного мастера
+    if (selectedMaster !== 'all') {
+      const masterSchedule = masterSchedules[selectedMaster] || []
+      const masterAbsencesData = masterAbsences[selectedMaster] || []
+      
+      // Генерируем нерабочее время на основе расписания
+      masterSchedule.forEach(schedule => {
+        const dayOfWeek = schedule.dayOfWeek
+        const startTime = schedule.startTime
+        const endTime = schedule.endTime
+        
+        // Создаем события нерабочего времени для следующих 4 недель
+        for (let week = 0; week < 4; week++) {
+          const date = new Date()
+          date.setDate(date.getDate() + (dayOfWeek - date.getDay() + 7) % 7 + week * 7)
+          
+          events.push({
+            id: `non-working-${selectedMaster}-${dayOfWeek}-${week}`,
+            title: 'Нерабочее время',
+            start: `${date.toISOString().split('T')[0]}T${startTime}:00`,
+            end: `${date.toISOString().split('T')[0]}T${endTime}:00`,
+            backgroundColor: '#9ca3af',
+            borderColor: '#6b7280',
+            textColor: '#ffffff',
+            display: 'background',
+            extendedProps: {
+              type: 'non-working',
+              reason: 'Рабочее время'
+            }
+          })
+        }
+      })
+
+      // Добавляем отсутствия
+      masterAbsencesData.forEach((absence: MasterAbsence) => {
+        events.push({
+          id: `absence-${absence.id}`,
+          title: 'Отсутствие',
+          start: absence.startDate,
+          end: absence.endDate,
+          backgroundColor: '#9ca3af',
+          borderColor: '#6b7280',
+          textColor: '#ffffff',
+          display: 'background',
+          extendedProps: {
+            type: 'absence',
+            reason: absence.reason || 'Отсутствие',
+            description: absence.description
+          }
+        })
+      })
+    }
+
+    return events
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-3 text-gray-600">Загружаем календарь...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <h3 className="text-lg font-medium text-red-800 mb-2">
+          Ошибка загрузки данных
+        </h3>
+        <p className="text-red-700">{error}</p>
+        <button
+          onClick={loadData}
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+        >
+          Попробовать снова
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -117,8 +335,11 @@ export default function AdminDashboard() {
               className="border border-gray-300 rounded-md px-3 py-1 text-sm"
             >
               <option value="all">Все мастера</option>
-              <option value="maria">Мария Петрова</option>
-              <option value="anna">Анна Козлова</option>
+              {masters.map(master => (
+                <option key={master.id} value={master.id}>
+                  {master.firstName} {master.lastName}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -147,39 +368,17 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg border border-gray-200 p-4">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
+            initialView="timeGridWeek"
             headerToolbar={{
               left: 'prev,next today',
               center: 'title',
               right: 'dayGridMonth,timeGridWeek,timeGridDay'
             }}
-            events={mockBookings.map(booking => ({
-              id: booking.id,
-              title: `${booking.clientName} - ${booking.serviceName}`,
-              start: `${selectedDate}T${booking.startTime}:00`,
-              end: `${selectedDate}T${booking.endTime}:00`,
-              backgroundColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
-                           getStatusColor(booking.status).includes('green') ? '#10b981' :
-                           getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
-                           getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
-              borderColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
-                          getStatusColor(booking.status).includes('green') ? '#10b981' :
-                          getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
-                          getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
-              textColor: 'white',
-              extendedProps: {
-                status: booking.status,
-                clientName: booking.clientName,
-                serviceName: booking.serviceName,
-                masterName: booking.masterName,
-                startTime: booking.startTime,
-                endTime: booking.endTime,
-              }
-            }))}
+            events={generateCalendarEvents()}
             eventClick={(info) => {
-              const booking = mockBookings.find(b => b.id === info.event.id);
+              const booking = bookings.find(b => b.id === info.event.id);
               if (booking) {
-                alert(`Запись: ${booking.clientName} - ${booking.serviceName}\nСтатус: ${getStatusText(booking.status)}`);
+                alert(`Запись: ${booking.client.firstName} ${booking.client.lastName} - ${booking.services.map(s => s.name).join(', ')}\nСтатус: ${getStatusText(booking.status)}`);
               }
             }}
             selectable
@@ -188,7 +387,7 @@ export default function AdminDashboard() {
             editable
             select={() => false} // Disable default selection
             eventDrop={(info) => {
-              const booking = mockBookings.find(b => b.id === info.event.id);
+              const booking = bookings.find(b => b.id === info.event.id);
               if (booking && info.event.start) {
                 booking.startTime = info.event.start.toISOString().split('T')[1].slice(0, 5);
                 if (info.event.end) {
@@ -198,7 +397,7 @@ export default function AdminDashboard() {
               }
             }}
             eventResize={(info) => {
-              const booking = mockBookings.find(b => b.id === info.event.id);
+              const booking = bookings.find(b => b.id === info.event.id);
               if (booking && info.event.end) {
                 booking.endTime = info.event.end.toISOString().split('T')[1].slice(0, 5);
                 // In a real app, you'd update the backend
@@ -221,22 +420,22 @@ export default function AdminDashboard() {
             </h3>
           </div>
           <div className="divide-y divide-gray-200">
-            {mockBookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <div key={booking.id} className="p-6 hover:bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {booking.startTime} - {booking.endTime}
+                          {new Date(booking.startTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.endTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {booking.clientName}
+                          {booking.client.firstName} {booking.client.lastName}
                         </p>
                         <p className="text-sm text-gray-500 truncate">
-                          {booking.serviceName} • {booking.masterName}
+                          {booking.services.map(s => s.name).join(', ')} • {booking.master.firstName} {booking.master.lastName}
                         </p>
                       </div>
                     </div>

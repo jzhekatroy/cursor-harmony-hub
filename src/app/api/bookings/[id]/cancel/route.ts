@@ -56,7 +56,7 @@ export async function PUT(
     }
 
     // Проверяем что бронирование еще можно отменить
-    if (booking.status === BookingStatus.CANCELLED_BY_STAFF || booking.status === BookingStatus.CANCELLED_BY_CLIENT) {
+    if (booking.status === BookingStatus.CANCELLED_BY_SALON || booking.status === BookingStatus.CANCELLED_BY_CLIENT) {
       return NextResponse.json({ error: 'Бронирование уже отменено' }, { status: 400 })
     }
 
@@ -67,33 +67,25 @@ export async function PUT(
     // Отменяем бронирование в транзакции
     const result = await prisma.$transaction(async (tx) => {
       // Обновляем статус бронирования
-      const updatedBooking = await tx.booking.update({
+      await prisma.booking.update({
         where: { id: bookingId },
         data: {
-          status: BookingStatus.CANCELLED_BY_STAFF,
-          updatedAt: new Date()
-        },
-        include: {
-          client: true,
-          master: true,
-          services: {
-            include: { service: true }
-          }
+          status: BookingStatus.CANCELLED_BY_SALON,
         }
       })
 
       // Создаем лог
-      await tx.bookingLog.create({
+      await prisma.bookingLog.create({
         data: {
           bookingId: bookingId,
-          action: ActionType.CANCELLED_BY_STAFF,
-          description: `Бронирование отменено администратором: ${user.firstName} ${user.lastName}`,
-          teamId: user.teamId,
-          userId: user.id
+          action: ActionType.CANCELLED_BY_SALON,
+          description: 'Бронирование отменено администратором',
+          userId: decoded.userId,
+          teamId: booking.teamId,
         }
       })
 
-      return updatedBooking
+      return booking
     })
 
     return NextResponse.json({

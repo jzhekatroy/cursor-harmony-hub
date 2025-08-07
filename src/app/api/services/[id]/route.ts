@@ -152,7 +152,7 @@ export async function DELETE(
         serviceId: id,
         booking: {
           status: {
-            in: ['CREATED', 'CONFIRMED']
+            in: ['NEW', 'CONFIRMED']
           }
         }
       }

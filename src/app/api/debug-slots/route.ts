@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
               }
             ],
             status: {
-              in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
+              in: [BookingStatus.NEW, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
             }
           }
         }

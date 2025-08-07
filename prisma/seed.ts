@@ -251,7 +251,7 @@ async function main() {
       startTime: nextDay,
       endTime: new Date(nextDay.getTime() + 60 * 60 * 1000), // +60 минут
       totalPrice: 2500,
-      status: BookingStatus.CREATED,
+      status: BookingStatus.NEW,
       teamId: testTeam.id,
       clientId: createdClients[1].id,
       masterId: master2.id,
@@ -270,7 +270,7 @@ async function main() {
   await prisma.bookingLog.create({
     data: {
       bookingId: booking1.id,
-      action: 'CREATED',
+      action: 'NEW',
       description: 'Бронирование создано клиентом',
       teamId: testTeam.id,
     }
@@ -289,7 +289,7 @@ async function main() {
   await prisma.bookingLog.create({
     data: {
       bookingId: booking2.id,
-      action: 'CREATED',
+      action: 'NEW',
       description: 'Бронирование создано клиентом',
       teamId: testTeam.id,
     }

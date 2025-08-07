@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const conflictingBooking = await prisma.booking.findFirst({
       where: {
         masterId: masterId,
-        status: { in: ['CREATED', 'CONFIRMED'] },
+        status: { in: ['NEW', 'CONFIRMED'] },
         OR: [
           {
             startTime: { lte: startDateTime },

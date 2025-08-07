@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import { Calendar, Clock, User, MapPin, Phone, Mail, MessageCircle, Check } from 'lucide-react'
 import DatePicker from '@/components/DatePicker'
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
-import Head from 'next/head'
 
 interface Service {
   id: string
@@ -409,12 +408,7 @@ export default function BookingWidget() {
   }
 
   return (
-    <>
-      <Head>
-        <script src="https://telegram.org/js/telegram-web-app.js" />
-      </Head>
-      
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -954,8 +948,7 @@ export default function BookingWidget() {
             )}
           </div>
         </div>
-      )}
+             )}
     </div>
-    </>
   )
 }

@@ -157,8 +157,25 @@ export const useTelegramWebApp = () => {
     }
 
     addLog('🌐 Window available, checking Telegram WebApp')
+    addLog('🔍 User Agent:', { userAgent: navigator.userAgent })
+    addLog('🔍 Window.Telegram:', { exists: !!window.Telegram })
+    
+    // Проверяем наличие Telegram в user agent
+    const isTelegramUserAgent = /Telegram/i.test(navigator.userAgent)
+    addLog('🔍 Telegram in User Agent:', { isTelegramUserAgent })
 
     const checkTelegram = () => {
+      addLog('🔄 Checking Telegram WebApp availability...')
+      
+      if (window.Telegram) {
+        addLog('✅ window.Telegram found', {
+          WebApp: !!window.Telegram.WebApp,
+          keys: Object.keys(window.Telegram)
+        })
+      } else {
+        addLog('❌ window.Telegram not found')
+      }
+
       if (window.Telegram?.WebApp) {
         const tg = window.Telegram.WebApp
         addLog('✅ Telegram WebApp detected', {
@@ -261,20 +278,44 @@ export const useTelegramWebApp = () => {
       } else {
         addLog('❌ Telegram WebApp not available')
         
+        // Проверяем загрузку скрипта
+        const scripts = Array.from(document.scripts)
+        const telegramScript = scripts.find(s => s.src.includes('telegram-web-app.js'))
+        addLog('🔍 Script check:', {
+          telegramScriptFound: !!telegramScript,
+          scriptSrc: telegramScript?.src,
+          totalScripts: scripts.length
+        })
+        
         // Проверяем через некоторое время (возможно, скрипт еще загружается)
-        setTimeout(() => {
+        let retryCount = 0
+        const maxRetries = 5
+        
+        const retryCheck = () => {
+          retryCount++
+          addLog(`🔄 Retry ${retryCount}/${maxRetries}`)
+          
           if (window.Telegram?.WebApp) {
             addLog('✅ Telegram WebApp found on retry')
             checkTelegram()
+          } else if (retryCount < maxRetries) {
+            setTimeout(retryCheck, 1000)
           } else {
-            addLog('❌ Telegram WebApp still not available after retry')
+            addLog('❌ Telegram WebApp still not available after all retries')
+            addLog('🔍 Final state:', {
+              windowTelegram: !!window.Telegram,
+              webApp: !!window.Telegram?.WebApp,
+              userAgent: navigator.userAgent
+            })
             setData(prev => ({
               ...prev,
               isAvailable: false,
               isReady: true
             }))
           }
-        }, 1000)
+        }
+        
+        setTimeout(retryCheck, 1000)
       }
     }
 

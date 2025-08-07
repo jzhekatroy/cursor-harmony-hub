@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
-
-// Токен бота для проверки данных
-const BOT_TOKEN = '7371704762:AAEidT4jltxoq16OdwGgcD7-3HXa0rGyXtQ'
+import { prisma } from '@/lib/prisma'
 
 // Функция для проверки данных Telegram WebApp
-function validateTelegramWebAppData(initData: string): boolean {
+async function validateTelegramWebAppData(initData: string, teamSlug: string): Promise<boolean> {
   try {
+    // Получаем токен бота из настроек команды
+    const team = await prisma.team.findFirst({
+      where: { 
+        OR: [
+          { slug: teamSlug },
+          { bookingSlug: teamSlug }
+        ]
+      },
+      select: { telegramBotToken: true }
+    })
+
+    if (!team?.telegramBotToken) {
+      console.log('❌ Telegram bot token not configured for team:', teamSlug)
+      return false
+    }
+
     const urlParams = new URLSearchParams(initData)
     const hash = urlParams.get('hash')
     urlParams.delete('hash')
@@ -18,7 +32,7 @@ function validateTelegramWebAppData(initData: string): boolean {
       .join('\n')
     
     // Создаем секретный ключ
-    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(BOT_TOKEN).digest()
+    const secretKey = crypto.createHmac('sha256', 'WebAppData').update(team.telegramBotToken).digest()
     
     // Вычисляем хеш
     const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex')
@@ -54,8 +68,8 @@ export async function POST(request: NextRequest) {
     
     // Проверяем валидность данных (если initData передан)
     let isValid = false
-    if (initData) {
-      isValid = validateTelegramWebAppData(initData)
+    if (initData && salonId) {
+      isValid = await validateTelegramWebAppData(initData, salonId)
       console.log('🔐 Data validation result:', isValid)
     }
     

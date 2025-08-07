@@ -59,6 +59,7 @@ model Team {
   requireConfirmation Boolean @default(false)
   webhooksEnabled Boolean    @default(true)
   privacyPolicyUrl String?
+  telegramBotToken String?   // токен Telegram бота для WebApp
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 

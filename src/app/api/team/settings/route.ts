@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
       logoUrl: user.team.logoUrl,
       slug: user.team.slug,
       bookingSlug: user.team.bookingSlug || user.team.slug,
-      timezone: user.team.timezone
+      timezone: user.team.timezone,
+      telegramBotToken: user.team.telegramBotToken
     }
 
     return NextResponse.json({ settings })
@@ -86,7 +87,8 @@ export async function PUT(request: NextRequest) {
       email,
       logoUrl,
       bookingSlug,
-      timezone
+      timezone,
+      telegramBotToken
     } = body
 
     // Валидация интервала бронирования
@@ -172,6 +174,19 @@ export async function PUT(request: NextRequest) {
       }
     }
 
+    // Валидация Telegram токена
+    if (telegramBotToken !== undefined) {
+      if (telegramBotToken && telegramBotToken.trim()) {
+        const tokenPattern = /^\d+:[A-Za-z0-9_-]+$/
+        if (!tokenPattern.test(telegramBotToken.trim())) {
+          return NextResponse.json(
+            { error: 'Неверный формат токена Telegram бота' },
+            { status: 400 }
+          )
+        }
+      }
+    }
+
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
@@ -183,6 +198,7 @@ export async function PUT(request: NextRequest) {
     if (logoUrl !== undefined) updateData.logoUrl = logoUrl || null
     if (bookingSlug !== undefined) updateData.bookingSlug = bookingSlug?.trim() || null
     if (timezone !== undefined) updateData.timezone = timezone
+    if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken?.trim() || null
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -202,7 +218,8 @@ export async function PUT(request: NextRequest) {
         logoUrl: updatedTeam.logoUrl,
         slug: updatedTeam.slug,
         bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug,
-        timezone: updatedTeam.timezone
+        timezone: updatedTeam.timezone,
+        telegramBotToken: updatedTeam.telegramBotToken
       }
     })
 

@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
           endTime: endDateTime,
           totalPrice: totalPrice,
           notes: clientData.notes,
-          status: team.requireConfirmation ? BookingStatus.CREATED : BookingStatus.CONFIRMED,
+          status: team.requireConfirmation ? BookingStatus.NEW : BookingStatus.CONFIRMED,
           teamId: team.id,
           clientId: client.id,
           masterId: masterId
@@ -166,8 +166,10 @@ export async function POST(request: NextRequest) {
       await tx.bookingLog.create({
         data: {
           bookingId: booking.id,
-          action: 'CREATED',
-          description: 'Бронирование создано клиентом через виджет записи',
+          action: team.requireConfirmation ? 'NEW' : 'CONFIRMED',
+          description: team.requireConfirmation 
+            ? 'Бронирование создано клиентом через виджет записи (требует подтверждения)'
+            : 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
           teamId: team.id
         }
       })

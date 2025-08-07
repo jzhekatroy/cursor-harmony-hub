@@ -22,21 +22,21 @@ enum TeamStatus {
 }
 
 enum BookingStatus {
-  CREATED
-  CONFIRMED
-  COMPLETED
-  NO_SHOW
-  CANCELLED_BY_CLIENT
-  CANCELLED_BY_STAFF
+  NEW              // Новая (требует подтверждения)
+  CONFIRMED        // Подтверждена
+  COMPLETED        // Выполнена
+  CANCELLED_BY_CLIENT // Отменена клиентом
+  CANCELLED_BY_SALON   // Отменена салоном
+  NO_SHOW          // Не пришел
 }
 
 enum ActionType {
-  CREATED
+  NEW
   CONFIRMED
   COMPLETED
   NO_SHOW
   CANCELLED_BY_CLIENT
-  CANCELLED_BY_STAFF
+  CANCELLED_BY_SALON
   UPDATED
 }
 
@@ -224,7 +224,7 @@ model Booking {
   endTime     DateTime
   totalPrice  Decimal
   notes       String?
-  status      BookingStatus @default(CREATED)
+  status      BookingStatus @default(NEW)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 

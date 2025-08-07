@@ -62,23 +62,23 @@ interface MasterAbsence {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'CREATED': return 'bg-yellow-100 text-yellow-800'
-    case 'CONFIRMED': return 'bg-blue-100 text-blue-800'
-    case 'COMPLETED': return 'bg-green-100 text-green-800'
-    case 'CANCELLED_BY_CLIENT':
-    case 'CANCELLED_BY_STAFF': return 'bg-red-100 text-red-800'
-    case 'NO_SHOW': return 'bg-gray-100 text-gray-800'
+    case 'NEW': return 'bg-red-100 text-red-800' // 🔴 Красный - требует внимания
+    case 'CONFIRMED': return 'bg-blue-100 text-blue-800' // 🔵 Синий - подтверждено
+    case 'COMPLETED': return 'bg-green-100 text-green-800' // 🟢 Зеленый - выполнено
+    case 'CANCELLED_BY_CLIENT': return 'bg-gray-100 text-gray-800' // ⚫ Серый - отменено клиентом
+    case 'CANCELLED_BY_SALON': return 'bg-gray-100 text-gray-800' // ⚫ Серый - отменено салоном
+    case 'NO_SHOW': return 'bg-orange-100 text-orange-800' // 🟠 Оранжевый - не пришел (требует внимания)
     default: return 'bg-gray-100 text-gray-800'
   }
 }
 
 const getStatusText = (status: string) => {
   switch (status) {
-    case 'CREATED': return 'Создана'
+    case 'NEW': return 'Новая'
     case 'CONFIRMED': return 'Подтверждена'
     case 'COMPLETED': return 'Выполнена'
     case 'CANCELLED_BY_CLIENT': return 'Отменена клиентом'
-    case 'CANCELLED_BY_STAFF': return 'Отменена сотрудником'
+    case 'CANCELLED_BY_SALON': return 'Отменена салоном'
     case 'NO_SHOW': return 'Не пришел'
     default: return status
   }
@@ -211,14 +211,16 @@ export default function AdminDashboard() {
         title: `${booking.client.firstName} ${booking.client.lastName} - ${booking.services.map(s => s.name).join(', ')}`,
         start: booking.startTime,
         end: booking.endTime,
-        backgroundColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
+        backgroundColor: getStatusColor(booking.status).includes('red') ? '#ef4444' : 
+                     getStatusColor(booking.status).includes('blue') ? '#3b82f6' :
                      getStatusColor(booking.status).includes('green') ? '#10b981' :
-                     getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
-                     getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
-        borderColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
-                    getStatusColor(booking.status).includes('green') ? '#10b981' :
-                    getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
-                    getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
+                     getStatusColor(booking.status).includes('orange') ? '#f97316' :
+                     getStatusColor(booking.status).includes('gray') ? '#6b7280' : '#6b7280',
+        borderColor: getStatusColor(booking.status).includes('red') ? '#dc2626' : 
+                    getStatusColor(booking.status).includes('blue') ? '#2563eb' :
+                    getStatusColor(booking.status).includes('green') ? '#059669' :
+                    getStatusColor(booking.status).includes('orange') ? '#ea580c' :
+                    getStatusColor(booking.status).includes('gray') ? '#4b5563' : '#4b5563',
         textColor: 'white',
         extendedProps: {
           type: 'booking',

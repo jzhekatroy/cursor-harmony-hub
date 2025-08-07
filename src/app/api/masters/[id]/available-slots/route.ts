@@ -64,7 +64,7 @@ export async function GET(
               }
             ],
             status: {
-              in: [BookingStatus.CREATED, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
+              in: [BookingStatus.NEW, BookingStatus.CONFIRMED, BookingStatus.COMPLETED]
             }
           }
         }

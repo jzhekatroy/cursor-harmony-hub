@@ -88,6 +88,7 @@ export default function AdminDashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedMaster, setSelectedMaster] = useState('all')
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
+  const [currentTime, setCurrentTime] = useState(new Date())
   
   // Состояние для живых данных
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -100,6 +101,15 @@ export default function AdminDashboard() {
   // Загрузка данных при монтировании компонента
   useEffect(() => {
     loadData()
+  }, [])
+
+  // Обновление текущего времени каждые 30 секунд
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 30000) // Обновляем каждые 30 секунд
+
+    return () => clearInterval(timer)
   }, [])
 
   const loadData = async () => {
@@ -203,6 +213,65 @@ export default function AdminDashboard() {
   // Генерируем события для календаря
   const generateCalendarEvents = () => {
     const events: any[] = []
+
+    // Добавляем события прошедшего времени
+    const now = currentTime
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    
+    // Генерируем события прошедшего времени для текущей недели
+    const currentDate = new Date(now)
+    const startOfWeek = new Date(currentDate)
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1) // Понедельник текущей недели
+    
+    for (let day = 0; day < 7; day++) {
+      const currentDay = new Date(startOfWeek)
+      currentDay.setDate(startOfWeek.getDate() + day)
+      const dayStr = currentDay.toISOString().split('T')[0]
+      
+      // Проверяем, является ли этот день сегодняшним
+      const isToday = currentDay.toDateString() === now.toDateString()
+      
+      if (isToday) {
+        // Для сегодняшнего дня добавляем прошедшее время до текущего момента
+        const currentHour = now.getHours()
+        const currentMinute = now.getMinutes()
+        
+        // Добавляем прошедшее время с начала дня до текущего момента
+        if (currentHour >= 8) { // Если уже 8 утра или позже
+          const endTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`
+          events.push({
+            id: `past-time-${dayStr}`,
+            title: '',
+            start: `${dayStr}T08:00:00`,
+            end: `${dayStr}T${endTime}`,
+            backgroundColor: '#d1d5db', // Темно-серый
+            borderColor: '#9ca3af',
+            textColor: '#6b7280',
+            display: 'background',
+            extendedProps: {
+              type: 'past-time',
+              reason: 'Прошедшее время'
+            }
+          })
+        }
+      } else if (currentDay < now) {
+        // Для прошедших дней добавляем весь день как прошедшее время
+        events.push({
+          id: `past-time-${dayStr}`,
+          title: '',
+          start: `${dayStr}T08:00:00`,
+          end: `${dayStr}T22:00:00`,
+          backgroundColor: '#d1d5db',
+          borderColor: '#9ca3af',
+          textColor: '#6b7280',
+          display: 'background',
+          extendedProps: {
+            type: 'past-time',
+            reason: 'Прошедшее время'
+          }
+        })
+      }
+    }
 
     // Добавляем бронирования
     filteredBookings.forEach(booking => {
@@ -467,6 +536,8 @@ export default function AdminDashboard() {
               right: 'dayGridMonth,timeGridWeek,timeGridDay'
             }}
             events={generateCalendarEvents()}
+            key={currentTime.getTime()} // Принудительное обновление при изменении времени
+            now={currentTime}
             eventClick={(info) => {
               const booking = bookings.find(b => b.id === info.event.id);
               if (booking) {
@@ -502,6 +573,8 @@ export default function AdminDashboard() {
             slotMaxTime="22:00:00"
             allDaySlot={false}
             slotDuration="00:15:00"
+            nowIndicator={true}
+            nowIndicatorClassNames={['now-indicator']}
           />
         </div>
       ) : (

@@ -82,3 +82,21 @@ body {
 .fc-highlight {
   background-color: #dbeafe !important;
 }
+
+/* Стили для красной линии текущего времени */
+.now-indicator {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  z-index: 10 !important;
+}
+
+.fc-timegrid-now-indicator-line {
+  background-color: #ef4444 !important;
+  border-color: #dc2626 !important;
+  height: 2px !important;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #ef4444 !important;
+  background-color: #ef4444 !important;
+}

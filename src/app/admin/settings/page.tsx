@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import BookingSettings from '@/components/BookingSettings'
 import BookingLinkSettings from '@/components/BookingLinkSettings'
 import TimezoneSettings from '@/components/TimezoneSettings'
+import TelegramBotSettings from '@/components/TelegramBotSettings'
 
 interface TeamSettings {
   bookingStep: number
@@ -17,6 +18,7 @@ interface TeamSettings {
   slug: string
   bookingSlug: string
   timezone: string
+  telegramBotToken: string | null
 }
 
 export default function SettingsPage() {
@@ -103,6 +105,30 @@ export default function SettingsPage() {
     setSettings(data.settings)
   }
 
+  const updateTelegramBotToken = async (telegramBotToken: string | null) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('Токен авторизации не найден')
+    }
+
+    const response = await fetch('/api/team/settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ telegramBotToken })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Ошибка обновления токена Telegram бота')
+    }
+
+    const data = await response.json()
+    setSettings(data.settings)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -160,6 +186,12 @@ export default function SettingsPage() {
           <TimezoneSettings
             currentTimezone={settings.timezone}
             onUpdate={updateTimezone}
+          />
+
+          {/* Telegram Bot */}
+          <TelegramBotSettings
+            currentToken={settings.telegramBotToken}
+            onUpdate={updateTelegramBotToken}
           />
 
           {/* Настройки бронирования */}

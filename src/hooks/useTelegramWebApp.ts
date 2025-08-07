@@ -193,6 +193,15 @@ export const useTelegramWebApp = () => {
         tg.expand()
         addLog('📏 WebApp.expand() called')
 
+        // Логируем сначала все данные для диагностики
+        addLog('🔍 Raw initData string', { initData: tg.initData })
+        addLog('📊 Full initDataUnsafe', { data: tg.initDataUnsafe })
+        addLog('🌐 URL info', { 
+          href: window.location.href,
+          search: window.location.search,
+          hash: window.location.hash
+        })
+
         // Получаем данные пользователя
         const user = tg.initDataUnsafe?.user
         if (user) {
@@ -206,16 +215,21 @@ export const useTelegramWebApp = () => {
           })
         } else {
           addLog('👤 No user data available')
+          addLog('🔍 Possible reasons:', {
+            noInitData: !tg.initData || tg.initData === '',
+            emptyInitDataUnsafe: Object.keys(tg.initDataUnsafe || {}).length === 0,
+            botSetupIssue: 'Bot may not be passing user data correctly',
+            testInBrowser: 'Are you testing in actual Telegram or just browser?'
+          })
         }
 
         // Получаем параметры запуска
         const startParam = tg.initDataUnsafe?.start_param
         if (startParam) {
           addLog('🔗 Start param received', { startParam })
+        } else {
+          addLog('🔗 No start param found')
         }
-
-        // Логируем все initDataUnsafe
-        addLog('📊 Full initDataUnsafe', tg.initDataUnsafe)
 
         // Логируем тему
         addLog('🎨 Theme params', {

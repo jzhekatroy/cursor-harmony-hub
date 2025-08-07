@@ -2,31 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Filter, Calendar as CalendarIcon } from 'lucide-react'
-
-// Заглушка для календаря - позже заменим на FullCalendar
-const CalendarPlaceholder = () => (
-  <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-    <CalendarIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-    <h3 className="text-lg font-medium text-gray-900 mb-2">Календарь бронирований</h3>
-    <p className="text-gray-500 mb-6">
-      Здесь будет отображаться календарь с бронированиями всех мастеров
-    </p>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-2">Сегодня</h4>
-        <p className="text-sm text-gray-600">5 записей</p>
-      </div>
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-2">Завтра</h4>
-        <p className="text-sm text-gray-600">8 записей</p>
-      </div>
-      <div className="bg-gray-50 p-4 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-2">Эта неделя</h4>
-        <p className="text-sm text-gray-600">42 записи</p>
-      </div>
-    </div>
-  </div>
-)
+import FullCalendar from '@fullcalendar/react'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import timeGridPlugin from '@fullcalendar/timegrid'
+import interactionPlugin from '@fullcalendar/interaction'
 
 interface Booking {
   id: string
@@ -165,7 +144,75 @@ export default function AdminDashboard() {
 
       {/* Content */}
       {view === 'calendar' ? (
-        <CalendarPlaceholder />
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView="dayGridMonth"
+            headerToolbar={{
+              left: 'prev,next today',
+              center: 'title',
+              right: 'dayGridMonth,timeGridWeek,timeGridDay'
+            }}
+            events={mockBookings.map(booking => ({
+              id: booking.id,
+              title: `${booking.clientName} - ${booking.serviceName}`,
+              start: `${selectedDate}T${booking.startTime}:00`,
+              end: `${selectedDate}T${booking.endTime}:00`,
+              backgroundColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
+                           getStatusColor(booking.status).includes('green') ? '#10b981' :
+                           getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
+                           getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
+              borderColor: getStatusColor(booking.status).includes('blue') ? '#3b82f6' : 
+                          getStatusColor(booking.status).includes('green') ? '#10b981' :
+                          getStatusColor(booking.status).includes('yellow') ? '#f59e0b' :
+                          getStatusColor(booking.status).includes('red') ? '#ef4444' : '#6b7280',
+              textColor: 'white',
+              extendedProps: {
+                status: booking.status,
+                clientName: booking.clientName,
+                serviceName: booking.serviceName,
+                masterName: booking.masterName,
+                startTime: booking.startTime,
+                endTime: booking.endTime,
+              }
+            }))}
+            eventClick={(info) => {
+              const booking = mockBookings.find(b => b.id === info.event.id);
+              if (booking) {
+                alert(`Запись: ${booking.clientName} - ${booking.serviceName}\nСтатус: ${getStatusText(booking.status)}`);
+              }
+            }}
+            selectable
+            selectMirror
+            dayMaxEvents
+            editable
+            select={() => false} // Disable default selection
+            eventDrop={(info) => {
+              const booking = mockBookings.find(b => b.id === info.event.id);
+              if (booking && info.event.start) {
+                booking.startTime = info.event.start.toISOString().split('T')[1].slice(0, 5);
+                if (info.event.end) {
+                  booking.endTime = info.event.end.toISOString().split('T')[1].slice(0, 5);
+                }
+                // In a real app, you'd update the backend
+              }
+            }}
+            eventResize={(info) => {
+              const booking = mockBookings.find(b => b.id === info.event.id);
+              if (booking && info.event.end) {
+                booking.endTime = info.event.end.toISOString().split('T')[1].slice(0, 5);
+                // In a real app, you'd update the backend
+              }
+            }}
+            height="auto"
+            locale="ru"
+            firstDay={1}
+            slotMinTime="08:00:00"
+            slotMaxTime="22:00:00"
+            allDaySlot={false}
+            slotDuration="00:15:00"
+          />
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">

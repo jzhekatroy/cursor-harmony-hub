@@ -156,12 +156,32 @@ export default function AdminDashboard() {
             })
           )
 
-          const schedulesResults = await Promise.all(schedulesPromises)
+          const absencesPromises = mastersData.masters.map((master: Master) =>
+            fetch(`/api/masters/${master.id}/absences`, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            }).then(res => {
+              console.log(`🏖️ Отсутствия для мастера ${master.firstName}:`, res.status)
+              return res.ok ? res.json() : { absences: [] }
+            })
+          )
+
+          const [schedulesResults, absencesResults] = await Promise.all([
+            Promise.all(schedulesPromises),
+            Promise.all(absencesPromises)
+          ])
+
           const schedulesMap: Record<string, MasterSchedule[]> = {}
+          const absencesMap: Record<string, MasterAbsence[]> = {}
+
           mastersData.masters.forEach((master: Master, index: number) => {
             schedulesMap[master.id] = schedulesResults[index].schedules || []
+            absencesMap[master.id] = absencesResults[index].absences || []
           })
+
           setMasterSchedules(schedulesMap)
+          setMasterAbsences(absencesMap)
         }
       } else {
         console.error('❌ Ошибка загрузки мастеров:', await mastersResponse.text())
@@ -222,24 +242,94 @@ export default function AdminDashboard() {
         const dayOfWeek = schedule.dayOfWeek
         const startTime = schedule.startTime
         const endTime = schedule.endTime
+        const breakStart = schedule.breakStart
+        const breakEnd = schedule.breakEnd
         
         // Создаем события нерабочего времени для следующих 4 недель
         for (let week = 0; week < 4; week++) {
           const date = new Date()
           date.setDate(date.getDate() + (dayOfWeek - date.getDay() + 7) % 7 + week * 7)
+          const dateStr = date.toISOString().split('T')[0]
+          
+          // Добавляем нерабочее время до начала рабочего дня
+          if (startTime !== '00:00') {
+            events.push({
+              id: `non-working-before-${selectedMaster}-${dayOfWeek}-${week}`,
+              title: '', // Убираем текст для нерабочего времени
+              start: `${dateStr}T00:00:00`,
+              end: `${dateStr}T${startTime}:00`,
+              backgroundColor: '#9ca3af',
+              borderColor: '#6b7280',
+              textColor: '#ffffff',
+              display: 'background',
+              extendedProps: {
+                type: 'non-working',
+                reason: 'До рабочего времени'
+              }
+            })
+          }
+          
+          // Добавляем нерабочее время после окончания рабочего дня
+          if (endTime !== '23:59') {
+            events.push({
+              id: `non-working-after-${selectedMaster}-${dayOfWeek}-${week}`,
+              title: '', // Убираем текст для нерабочего времени
+              start: `${dateStr}T${endTime}:00`,
+              end: `${dateStr}T23:59:59`,
+              backgroundColor: '#9ca3af',
+              borderColor: '#6b7280',
+              textColor: '#ffffff',
+              display: 'background',
+              extendedProps: {
+                type: 'non-working',
+                reason: 'После рабочего времени'
+              }
+            })
+          }
+          
+          // Добавляем перерыв, если он есть
+          if (breakStart && breakEnd) {
+            events.push({
+              id: `break-${selectedMaster}-${dayOfWeek}-${week}`,
+              title: 'Перерыв',
+              start: `${dateStr}T${breakStart}:00`,
+              end: `${dateStr}T${breakEnd}:00`,
+              backgroundColor: '#fbbf24',
+              borderColor: '#f59e0b',
+              textColor: '#ffffff',
+              display: 'background',
+              extendedProps: {
+                type: 'break',
+                reason: 'Перерыв'
+              }
+            })
+          }
+        }
+      })
+
+      // Добавляем выходные дни (дни недели, когда мастер не работает)
+      const workingDays = masterSchedule.map(s => s.dayOfWeek)
+      const allDays = [0, 1, 2, 3, 4, 5, 6] // 0 = воскресенье, 1 = понедельник, и т.д.
+      const weekendDays = allDays.filter(day => !workingDays.includes(day))
+      
+      weekendDays.forEach(dayOfWeek => {
+        for (let week = 0; week < 4; week++) {
+          const date = new Date()
+          date.setDate(date.getDate() + (dayOfWeek - date.getDay() + 7) % 7 + week * 7)
+          const dateStr = date.toISOString().split('T')[0]
           
           events.push({
-            id: `non-working-${selectedMaster}-${dayOfWeek}-${week}`,
-            title: 'Нерабочее время',
-            start: `${date.toISOString().split('T')[0]}T${startTime}:00`,
-            end: `${date.toISOString().split('T')[0]}T${endTime}:00`,
+            id: `weekend-${selectedMaster}-${dayOfWeek}-${week}`,
+            title: '', // Убираем текст для выходных
+            start: `${dateStr}T00:00:00`,
+            end: `${dateStr}T23:59:59`,
             backgroundColor: '#9ca3af',
             borderColor: '#6b7280',
             textColor: '#ffffff',
             display: 'background',
             extendedProps: {
-              type: 'non-working',
-              reason: 'Рабочее время'
+              type: 'weekend',
+              reason: 'Выходной день'
             }
           })
         }
@@ -249,11 +339,11 @@ export default function AdminDashboard() {
       masterAbsencesData.forEach((absence: MasterAbsence) => {
         events.push({
           id: `absence-${absence.id}`,
-          title: 'Отсутствие',
+          title: 'Отсутствие', // Оставляем текст для отсутствий
           start: absence.startDate,
           end: absence.endDate,
-          backgroundColor: '#9ca3af',
-          borderColor: '#6b7280',
+          backgroundColor: '#ef4444', // Красный цвет для отсутствий
+          borderColor: '#dc2626',
           textColor: '#ffffff',
           display: 'background',
           extendedProps: {

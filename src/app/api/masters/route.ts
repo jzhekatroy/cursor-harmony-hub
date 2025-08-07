@@ -199,6 +199,27 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Создаем расписание по умолчанию (пн-пт, 9:00-18:00)
+      const defaultSchedules = [
+        { dayOfWeek: 1, startTime: '09:00', endTime: '18:00' }, // Понедельник
+        { dayOfWeek: 2, startTime: '09:00', endTime: '18:00' }, // Вторник
+        { dayOfWeek: 3, startTime: '09:00', endTime: '18:00' }, // Среда
+        { dayOfWeek: 4, startTime: '09:00', endTime: '18:00' }, // Четверг
+        { dayOfWeek: 5, startTime: '09:00', endTime: '18:00' }, // Пятница
+      ]
+
+      await tx.masterSchedule.createMany({
+        data: defaultSchedules.map(schedule => ({
+          masterId: master.id,
+          dayOfWeek: schedule.dayOfWeek,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime
+        }))
+      })
+
+      console.log(`✅ Создано расписание по умолчанию для мастера ${master.firstName} ${master.lastName} (ID: ${master.id})`)
+      console.log(`📅 Рабочие дни: пн-пт, время: 09:00-18:00`)
+
       return master
     })
 

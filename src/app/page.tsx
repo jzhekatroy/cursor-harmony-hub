@@ -17,16 +17,26 @@ export default function HomePage() {
   const [slugError, setSlugError] = useState('')
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false)
+  const [domain, setDomain] = useState('')
   const router = useRouter()
+
+  // Устанавливаем домен после монтирования компонента
+  useEffect(() => {
+    setDomain(window.location.origin)
+  }, [])
 
   // Автоматически генерируем slug при изменении названия салона
   useEffect(() => {
+    console.log('useEffect triggered:', { teamName: formData.teamName, isSlugManuallyEdited })
+    
     if (formData.teamName && !isSlugManuallyEdited) {
       const generatedSlug = formData.teamName.toLowerCase()
         .replace(/[^a-z0-9\s]/g, '') // Убираем все кроме букв, цифр и пробелов
         .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
         .replace(/-+/g, '-') // Убираем множественные дефисы
         .replace(/^-|-$/g, '') // Убираем дефисы в начале и конце
+      
+      console.log('Generated slug:', generatedSlug)
       
       setFormData(prev => ({
         ...prev,
@@ -37,7 +47,7 @@ export default function HomePage() {
         checkSlugAvailability(generatedSlug)
       }
     }
-  }, [formData.teamName, isSlugManuallyEdited])
+  }, [formData.teamName])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -79,6 +89,8 @@ export default function HomePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
+    
+    console.log('handleChange:', name, value)
     
     if (name === 'teamName') {
       setFormData(prev => ({
@@ -177,25 +189,27 @@ export default function HomePage() {
               <label htmlFor="slug" className="block text-sm font-medium text-gray-700 mb-2">
                 URL салона
               </label>
-              <div className="relative">
-                <span className="absolute left-3 top-2 text-gray-500 text-sm">
-                  {typeof window !== 'undefined' ? window.location.origin : 'https://test.2minutes.ru'}/
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500 whitespace-nowrap">
+                  {domain || 'https://test.2minutes.ru'}/
                 </span>
-                <input
-                  type="text"
-                  id="slug"
-                  name="slug"
-                  required
-                  value={formData.slug}
-                  onChange={handleChange}
-                  className="w-full pl-32 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="my-salon"
-                />
-                {isCheckingSlug && (
-                  <div className="absolute right-3 top-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                  </div>
-                )}
+                <div className="flex-1 relative">
+                  <input
+                    type="text"
+                    id="slug"
+                    name="slug"
+                    required
+                    value={formData.slug}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="my-salon"
+                  />
+                  {isCheckingSlug && (
+                    <div className="absolute right-3 top-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                </div>
               </div>
               {slugError && (
                 <p className="mt-1 text-sm text-red-600">

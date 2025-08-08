@@ -1,11 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, Filter, Calendar as CalendarIcon } from 'lucide-react'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import React, { useState, useEffect } from 'react'
+import { Plus, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface BookingService {
   name: string
@@ -84,11 +80,73 @@ const getStatusText = (status: string) => {
   }
 }
 
+const getStatusBgColor = (status: string) => {
+  switch (status) {
+    case 'NEW': return '#ef4444' // Красный
+    case 'CONFIRMED': return '#3b82f6' // Синий
+    case 'COMPLETED': return '#10b981' // Зеленый
+    case 'CANCELLED_BY_CLIENT': return '#6b7280' // Серый
+    case 'CANCELLED_BY_SALON': return '#6b7280' // Серый
+    case 'NO_SHOW': return '#f97316' // Оранжевый
+    default: return '#6b7280'
+  }
+}
+
+const getStatusBorderColor = (status: string) => {
+  switch (status) {
+    case 'NEW': return '#dc2626'
+    case 'CONFIRMED': return '#2563eb'
+    case 'COMPLETED': return '#059669'
+    case 'CANCELLED_BY_CLIENT': return '#4b5563'
+    case 'CANCELLED_BY_SALON': return '#4b5563'
+    case 'NO_SHOW': return '#ea580c'
+    default: return '#4b5563'
+  }
+}
+
+const formatTime = (timeString: string) => {
+  // Если это уже время в формате HH:mm, возвращаем как есть
+  if (timeString.match(/^\d{2}:\d{2}$/)) {
+    return timeString
+  }
+  // Иначе пытаемся парсить как дату
+  const date = new Date(timeString)
+  if (isNaN(date.getTime())) {
+    return timeString // Возвращаем исходную строку если не удалось распарсить
+  }
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+const formatDate = (date: Date) => {
+  return date.toLocaleDateString('ru-RU', { 
+    weekday: 'short', 
+    day: 'numeric', 
+    month: 'short' 
+  })
+}
+
+const getWeekDays = (startDate: Date) => {
+  const days = []
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startDate)
+    day.setDate(startDate.getDate() + i)
+    days.push(day)
+  }
+  return days
+}
+
 export default function AdminDashboard() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
+    const now = new Date()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - now.getDay() + 1)
+    return monday
+  })
+  const [selectedDay, setSelectedDay] = useState(new Date())
   const [selectedMaster, setSelectedMaster] = useState('all')
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
-  const [currentTime, setCurrentTime] = useState(new Date())
+  const [calendarMaster, setCalendarMaster] = useState<string | null>(null) // Мастер, выбранный в календаре
+  const [currentTime, setCurrentTime] = useState(() => new Date())
   
   // Состояние для живых данных
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -98,335 +156,248 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Загрузка данных при монтировании компонента
+  // Обновление времени каждую минуту
   useEffect(() => {
-    loadData()
-  }, [])
-
-  // Обновление текущего времени каждые 30 секунд
-  useEffect(() => {
-    const timer = setInterval(() => {
+    const interval = setInterval(() => {
       setCurrentTime(new Date())
-    }, 30000) // Обновляем каждые 30 секунд
+    }, 60000) // каждую минуту
 
-    return () => clearInterval(timer)
+    return () => clearInterval(interval)
   }, [])
 
+  // Загрузка данных
   const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    
     try {
-      setLoading(true)
-      setError(null)
-      
       const token = localStorage.getItem('token')
+      
       if (!token) {
-        throw new Error('Токен авторизации не найден')
+        setError('Требуется авторизация')
+        setLoading(false)
+        return
       }
-
-      console.log('🔑 Токен найден, загружаем данные...')
 
       // Загружаем бронирования
       const bookingsResponse = await fetch('/api/bookings', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      if (!bookingsResponse.ok) {
-        throw new Error('Ошибка загрузки бронирований')
-      }
-
+      if (!bookingsResponse.ok) throw new Error('Ошибка загрузки бронирований')
       const bookingsData = await bookingsResponse.json()
-      console.log('📅 Бронирования загружены:', bookingsData.bookings?.length || 0)
-      setBookings(bookingsData.bookings || [])
+      setBookings(Array.isArray(bookingsData) ? bookingsData : (bookingsData.bookings || []))
 
       // Загружаем мастеров
       const mastersResponse = await fetch('/api/masters-list', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       })
+      if (!mastersResponse.ok) throw new Error('Ошибка загрузки мастеров')
+      const mastersData = await mastersResponse.json()
+      setMasters(Array.isArray(mastersData) ? mastersData : (mastersData.masters || []))
 
-      console.log('👥 Ответ API мастеров:', mastersResponse.status, mastersResponse.statusText)
+      // Загружаем расписания и отсутствия для каждого мастера
+      const schedulesData: Record<string, MasterSchedule[]> = {}
+      const absencesData: Record<string, MasterAbsence[]> = {}
 
-      if (mastersResponse.ok) {
-        const mastersData = await mastersResponse.json()
-        console.log('👥 Мастера загружены:', mastersData.masters?.length || 0, mastersData.masters)
-        setMasters(mastersData.masters || [])
-        
-        // Загружаем расписания и отсутствия для каждого мастера
-        if (mastersData.masters && mastersData.masters.length > 0) {
-          const schedulesPromises = mastersData.masters.map((master: Master) =>
-            fetch(`/api/masters/${master.id}/schedule`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            }).then(res => {
-              console.log(`📅 Расписание для мастера ${master.firstName}:`, res.status)
-              return res.ok ? res.json() : { schedules: [] }
-            })
-          )
-
-          const absencesPromises = mastersData.masters.map((master: Master) =>
-            fetch(`/api/masters/${master.id}/absences`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            }).then(res => {
-              console.log(`🏖️ Отсутствия для мастера ${master.firstName}:`, res.status)
-              return res.ok ? res.json() : { absences: [] }
-            })
-          )
-
-          const [schedulesResults, absencesResults] = await Promise.all([
-            Promise.all(schedulesPromises),
-            Promise.all(absencesPromises)
-          ])
-
-          const schedulesMap: Record<string, MasterSchedule[]> = {}
-          const absencesMap: Record<string, MasterAbsence[]> = {}
-
-          mastersData.masters.forEach((master: Master, index: number) => {
-            schedulesMap[master.id] = schedulesResults[index].schedules || []
-            absencesMap[master.id] = absencesResults[index].absences || []
-          })
-
-          setMasterSchedules(schedulesMap)
-          setMasterAbsences(absencesMap)
+      const actualMasters = Array.isArray(mastersData) ? mastersData : (mastersData.masters || [])
+      for (const master of actualMasters) {
+        // Расписание
+        const scheduleResponse = await fetch(`/api/masters/${master.id}/schedule`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (scheduleResponse.ok) {
+          const scheduleData = await scheduleResponse.json()
+          const actualSchedule = Array.isArray(scheduleData.schedules) ? scheduleData.schedules : []
+          schedulesData[master.id] = actualSchedule
         }
-      } else {
-        console.error('❌ Ошибка загрузки мастеров:', await mastersResponse.text())
+
+        // Отсутствия
+        const absencesResponse = await fetch(`/api/masters/${master.id}/absences`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+        if (absencesResponse.ok) {
+          const absenceData = await absencesResponse.json()
+          const actualAbsences = Array.isArray(absenceData.absences) ? absenceData.absences : []
+          absencesData[master.id] = actualAbsences
+        }
       }
 
-    } catch (err: any) {
-      console.error('❌ Ошибка загрузки данных:', err)
-      setError(err.message)
+      setMasterSchedules(schedulesData)
+      setMasterAbsences(absencesData)
+
+    } catch (error) {
+      console.error('Ошибка загрузки данных:', error)
+      setError(error instanceof Error ? error.message : 'Неизвестная ошибка')
     } finally {
       setLoading(false)
     }
   }
 
-  // Фильтруем бронирования по мастеру
-  const filteredBookings = selectedMaster === 'all' 
-    ? bookings 
-    : bookings.filter(booking => booking.master.id === selectedMaster)
+  // Обновление текущего времени
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 30000) // Обновляем каждые 30 секунд
 
-  // Генерируем события для календаря
-  const generateCalendarEvents = () => {
-    const events: any[] = []
+    return () => clearInterval(interval)
+  }, [])
 
-    // Добавляем события прошедшего времени
-    const now = currentTime
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  // Загрузка данных при монтировании
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // Определяем, какой мастер показывать в календаре
+  const displayMaster = calendarMaster || selectedMaster
+
+  // Фильтрация бронирований
+  const filteredBookings = (Array.isArray(bookings) ? bookings : []).filter(booking => {
+    const bookingDate = new Date(booking.startTime).toDateString()
+    const selectedDateStr = selectedDay.toDateString()
     
-    // Генерируем события прошедшего времени для текущей недели
-    const currentDate = new Date(now)
-    const startOfWeek = new Date(currentDate)
-    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay() + 1) // Понедельник текущей недели
+    if (displayMaster !== 'all' && booking.master.id !== displayMaster) {
+      return false
+    }
     
-    for (let day = 0; day < 7; day++) {
-      const currentDay = new Date(startOfWeek)
-      currentDay.setDate(startOfWeek.getDate() + day)
-      const dayStr = currentDay.toISOString().split('T')[0]
-      
-      // Проверяем, является ли этот день сегодняшним
-      const isToday = currentDay.toDateString() === now.toDateString()
-      
-      if (isToday) {
-        // Для сегодняшнего дня добавляем прошедшее время до текущего момента
-        const currentHour = now.getHours()
-        const currentMinute = now.getMinutes()
-        
-        // Добавляем прошедшее время с начала дня до текущего момента
-        if (currentHour >= 8) { // Если уже 8 утра или позже
-          const endTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}:00`
-          events.push({
-            id: `past-time-${dayStr}`,
-            title: '',
-            start: `${dayStr}T08:00:00`,
-            end: `${dayStr}T${endTime}`,
-            backgroundColor: '#d1d5db', // Темно-серый
-            borderColor: '#9ca3af',
-            textColor: '#6b7280',
-            display: 'background',
-            extendedProps: {
-              type: 'past-time',
-              reason: 'Прошедшее время'
-            }
-          })
-        }
-      } else if (currentDay < now) {
-        // Для прошедших дней добавляем весь день как прошедшее время
-        events.push({
-          id: `past-time-${dayStr}`,
-          title: '',
-          start: `${dayStr}T08:00:00`,
-          end: `${dayStr}T22:00:00`,
-          backgroundColor: '#d1d5db',
-          borderColor: '#9ca3af',
-          textColor: '#6b7280',
-          display: 'background',
-          extendedProps: {
-            type: 'past-time',
-            reason: 'Прошедшее время'
-          }
-        })
+    return bookingDate === selectedDateStr
+  })
+
+  // Фильтрация мастеров для отображения в календаре
+  const displayMasters = displayMaster === 'all' 
+    ? (Array.isArray(masters) ? masters : [])
+    : (Array.isArray(masters) ? masters : []).filter(master => master.id === displayMaster)
+
+
+
+  // Навигация по неделям
+  const goToPreviousWeek = () => {
+    const newWeekStart = new Date(currentWeekStart)
+    newWeekStart.setDate(currentWeekStart.getDate() - 7)
+    setCurrentWeekStart(newWeekStart)
+  }
+
+  const goToNextWeek = () => {
+    const newWeekStart = new Date(currentWeekStart)
+    newWeekStart.setDate(currentWeekStart.getDate() + 7)
+    setCurrentWeekStart(newWeekStart)
+  }
+
+  const goToToday = () => {
+    const now = new Date()
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - now.getDay() + 1)
+    setCurrentWeekStart(monday)
+    setSelectedDay(now)
+  }
+
+  const resetMasterSelection = () => {
+    setCalendarMaster(null)
+    setSelectedMaster('all')
+  }
+
+  // Генерация временных слотов
+  const generateTimeSlots = () => {
+    const slots = []
+    // Показываем только рабочее время: 9:00 - 18:00
+    for (let hour = 9; hour < 18; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+        slots.push(time)
       }
     }
+    return slots
+  }
 
-    // Добавляем бронирования
-    filteredBookings.forEach(booking => {
-      events.push({
-        id: booking.id,
-        title: `${booking.client.firstName} ${booking.client.lastName} - ${booking.services.map(s => s.name).join(', ')}`,
-        start: booking.startTime,
-        end: booking.endTime,
-        backgroundColor: getStatusColor(booking.status).includes('red') ? '#ef4444' : 
-                     getStatusColor(booking.status).includes('blue') ? '#3b82f6' :
-                     getStatusColor(booking.status).includes('green') ? '#10b981' :
-                     getStatusColor(booking.status).includes('orange') ? '#f97316' :
-                     getStatusColor(booking.status).includes('gray') ? '#6b7280' : '#6b7280',
-        borderColor: getStatusColor(booking.status).includes('red') ? '#dc2626' : 
-                    getStatusColor(booking.status).includes('blue') ? '#2563eb' :
-                    getStatusColor(booking.status).includes('green') ? '#059669' :
-                    getStatusColor(booking.status).includes('orange') ? '#ea580c' :
-                    getStatusColor(booking.status).includes('gray') ? '#4b5563' : '#4b5563',
-        textColor: 'white',
-        extendedProps: {
-          type: 'booking',
-          status: booking.status,
-          clientName: `${booking.client.firstName} ${booking.client.lastName}`,
-          serviceName: booking.services.map(s => s.name).join(', '),
-          masterName: `${booking.master.firstName} ${booking.master.lastName}`,
-          startTime: booking.startTime,
-          endTime: booking.endTime,
-        }
-      })
-    })
+  const timeSlots = generateTimeSlots()
+  const weekDays = getWeekDays(currentWeekStart)
 
-    // Добавляем нерабочее время для выбранного мастера
-    if (selectedMaster !== 'all') {
-      const masterSchedule = masterSchedules[selectedMaster] || []
-      const masterAbsencesData = masterAbsences[selectedMaster] || []
-      
-      // Генерируем нерабочее время на основе расписания
-      masterSchedule.forEach(schedule => {
-        const dayOfWeek = schedule.dayOfWeek
-        const startTime = schedule.startTime
-        const endTime = schedule.endTime
-        const breakStart = schedule.breakStart
-        const breakEnd = schedule.breakEnd
-        
-        // Создаем события нерабочего времени для следующих 4 недель
-        for (let week = 0; week < 4; week++) {
-          const date = new Date()
-          date.setDate(date.getDate() + (dayOfWeek - date.getDay() + 7) % 7 + week * 7)
-          const dateStr = date.toISOString().split('T')[0]
-          
-          // Добавляем нерабочее время до начала рабочего дня
-          if (startTime !== '00:00') {
-            events.push({
-              id: `non-working-before-${selectedMaster}-${dayOfWeek}-${week}`,
-              title: '', // Убираем текст для нерабочего времени
-              start: `${dateStr}T00:00:00`,
-              end: `${dateStr}T${startTime}:00`,
-              backgroundColor: '#9ca3af',
-              borderColor: '#6b7280',
-              textColor: '#ffffff',
-              display: 'background',
-              extendedProps: {
-                type: 'non-working',
-                reason: 'До рабочего времени'
-              }
-            })
-          }
-          
-          // Добавляем нерабочее время после окончания рабочего дня
-          if (endTime !== '23:59') {
-            events.push({
-              id: `non-working-after-${selectedMaster}-${dayOfWeek}-${week}`,
-              title: '', // Убираем текст для нерабочего времени
-              start: `${dateStr}T${endTime}:00`,
-              end: `${dateStr}T23:59:59`,
-              backgroundColor: '#9ca3af',
-              borderColor: '#6b7280',
-              textColor: '#ffffff',
-              display: 'background',
-              extendedProps: {
-                type: 'non-working',
-                reason: 'После рабочего времени'
-              }
-            })
-          }
-          
-          // Добавляем перерыв, если он есть
-          if (breakStart && breakEnd) {
-            events.push({
-              id: `break-${selectedMaster}-${dayOfWeek}-${week}`,
-              title: 'Перерыв',
-              start: `${dateStr}T${breakStart}:00`,
-              end: `${dateStr}T${breakEnd}:00`,
-              backgroundColor: '#fbbf24',
-              borderColor: '#f59e0b',
-              textColor: '#ffffff',
-              display: 'background',
-              extendedProps: {
-                type: 'break',
-                reason: 'Перерыв'
-              }
-            })
-          }
-        }
-      })
 
-      // Добавляем выходные дни (дни недели, когда мастер не работает)
-      const workingDays = masterSchedule.map(s => s.dayOfWeek)
-      const allDays = [0, 1, 2, 3, 4, 5, 6] // 0 = воскресенье, 1 = понедельник, и т.д.
-      const weekendDays = allDays.filter(day => !workingDays.includes(day))
-      
-      weekendDays.forEach(dayOfWeek => {
-        for (let week = 0; week < 4; week++) {
-          const date = new Date()
-          date.setDate(date.getDate() + (dayOfWeek - date.getDay() + 7) % 7 + week * 7)
-          const dateStr = date.toISOString().split('T')[0]
-          
-          events.push({
-            id: `weekend-${selectedMaster}-${dayOfWeek}-${week}`,
-            title: '', // Убираем текст для выходных
-            start: `${dateStr}T00:00:00`,
-            end: `${dateStr}T23:59:59`,
-            backgroundColor: '#9ca3af',
-            borderColor: '#6b7280',
-            textColor: '#ffffff',
-            display: 'background',
-            extendedProps: {
-              type: 'weekend',
-              reason: 'Выходной день'
-            }
-          })
-        }
-      })
 
-      // Добавляем отсутствия
-      masterAbsencesData.forEach((absence: MasterAbsence) => {
-        events.push({
-          id: `absence-${absence.id}`,
-          title: 'Отсутствие', // Оставляем текст для отсутствий
-          start: absence.startDate,
-          end: absence.endDate,
-          backgroundColor: '#ef4444', // Красный цвет для отсутствий
-          borderColor: '#dc2626',
-          textColor: '#ffffff',
-          display: 'background',
-          extendedProps: {
-            type: 'absence',
-            reason: absence.reason || 'Отсутствие',
-            description: absence.description
-          }
-        })
-      })
+  // Проверка, является ли время рабочим для мастера
+  const isWorkingTime = (masterId: string, date: Date, time: string) => {
+    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay() // 1 = понедельник, 7 = воскресенье
+    const schedule = masterSchedules[masterId]?.find(s => s.dayOfWeek === dayOfWeek)
+    
+    if (!schedule) {
+      return false
     }
+    
+    const timeMinutes = parseInt(time.split(':')[0]) * 60 + parseInt(time.split(':')[1])
+    const startMinutes = parseInt(schedule.startTime.split(':')[0]) * 60 + parseInt(schedule.startTime.split(':')[1])
+    const endMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1])
+    
+    // Проверяем перерыв
+    if (schedule.breakStart && schedule.breakEnd) {
+      const breakStartMinutes = parseInt(schedule.breakStart.split(':')[0]) * 60 + parseInt(schedule.breakStart.split(':')[1])
+      const breakEndMinutes = parseInt(schedule.breakEnd.split(':')[0]) * 60 + parseInt(schedule.breakEnd.split(':')[1])
+      
+              if (timeMinutes >= breakStartMinutes && timeMinutes < breakEndMinutes) {
+          return false
+        }
+    }
+    
+    const isWorking = timeMinutes >= startMinutes && timeMinutes < endMinutes
+    return isWorking
+  }
 
-    return events
+  // Проверка отсутствия мастера
+  const isMasterAbsent = (masterId: string, date: Date) => {
+    const dateStr = date.toISOString().split('T')[0]
+    const absences = masterAbsences[masterId] || []
+    
+    return absences.some(absence => {
+      const absenceStart = new Date(absence.startDate)
+      const absenceEnd = new Date(absence.endDate)
+      const checkDate = new Date(dateStr)
+      
+      return checkDate >= absenceStart && checkDate < absenceEnd
+    })
+  }
+
+  // Проверка, является ли время прошедшим
+  const isPastTime = (date: Date, time: string) => {
+    const now = currentTime
+    const checkDateTime = new Date(date)
+    const [hours, minutes] = time.split(':').map(Number)
+    checkDateTime.setHours(hours, minutes, 0, 0)
+    
+    return checkDateTime < now
+  }
+
+  // Получение бронирования для конкретного времени и мастера
+  const getBookingAtTime = (masterId: string, date: Date, time: string) => {
+    const dateStr = date.toISOString().split('T')[0]
+    const timeStr = `${dateStr}T${time}:00`
+    
+    const booking = bookings.find(booking => {
+      const bookingStart = new Date(booking.startTime)
+      const bookingEnd = new Date(booking.endTime)
+      const checkTime = new Date(timeStr)
+      
+      return booking.master.id === masterId && 
+             checkTime >= bookingStart && 
+             checkTime < bookingEnd
+    })
+    
+    return booking
+  }
+
+  // Проверка, является ли это началом бронирования
+  const isBookingStart = (masterId: string, date: Date, time: string) => {
+    const dateStr = date.toISOString().split('T')[0]
+    const timeStr = `${dateStr}T${time}:00`
+    
+    const booking = bookings.find(booking => {
+      const bookingStart = new Date(booking.startTime)
+      const checkTime = new Date(timeStr)
+      
+      return booking.master.id === masterId && 
+             Math.abs(checkTime.getTime() - bookingStart.getTime()) < 60000 // в пределах 1 минуты
+    })
+    
+
+    
+    return booking
   }
 
   if (loading) {
@@ -460,7 +431,14 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Календарь</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Календарь
+            {calendarMaster && (
+              <span className="text-lg font-normal text-blue-600 ml-2">
+                - {displayMasters.find(m => m.id === calendarMaster)?.firstName} {displayMasters.find(m => m.id === calendarMaster)?.lastName}
+              </span>
+            )}
+          </h1>
           <p className="text-gray-600">Управление бронированиями и расписанием</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
@@ -479,16 +457,6 @@ export default function AdminDashboard() {
       <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
           <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Дата:</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-            />
-          </div>
-          
-          <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">Мастер:</label>
             <select
               value={selectedMaster}
@@ -496,12 +464,20 @@ export default function AdminDashboard() {
               className="border border-gray-300 rounded-md px-3 py-1 text-sm"
             >
               <option value="all">Все мастера</option>
-              {masters.map(master => (
+              {(Array.isArray(masters) ? masters : []).map(master => (
                 <option key={master.id} value={master.id}>
                   {master.firstName} {master.lastName}
                 </option>
               ))}
             </select>
+            {calendarMaster && (
+              <button
+                onClick={resetMasterSelection}
+                className="ml-2 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
+              >
+                Показать всех
+              </button>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -526,62 +502,257 @@ export default function AdminDashboard() {
 
       {/* Content */}
       {view === 'calendar' ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <FullCalendar
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="timeGridWeek"
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay'
-            }}
-            events={generateCalendarEvents()}
-            key={currentTime.getTime()} // Принудительное обновление при изменении времени
-            now={currentTime}
-            eventClick={(info) => {
-              const booking = bookings.find(b => b.id === info.event.id);
-              if (booking) {
-                alert(`Запись: ${booking.client.firstName} ${booking.client.lastName} - ${booking.services.map(s => s.name).join(', ')}\nСтатус: ${getStatusText(booking.status)}`);
-              }
-            }}
-            selectable
-            selectMirror
-            dayMaxEvents
-            editable
-            select={() => false} // Disable default selection
-            eventDrop={(info) => {
-              const booking = bookings.find(b => b.id === info.event.id);
-              if (booking && info.event.start) {
-                booking.startTime = info.event.start.toISOString().split('T')[1].slice(0, 5);
-                if (info.event.end) {
-                  booking.endTime = info.event.end.toISOString().split('T')[1].slice(0, 5);
-                }
-                // In a real app, you'd update the backend
-              }
-            }}
-            eventResize={(info) => {
-              const booking = bookings.find(b => b.id === info.event.id);
-              if (booking && info.event.end) {
-                booking.endTime = info.event.end.toISOString().split('T')[1].slice(0, 5);
-                // In a real app, you'd update the backend
-              }
-            }}
-            height="auto"
-            locale="ru"
-            firstDay={1}
-            slotMinTime="08:00:00"
-            slotMaxTime="22:00:00"
-            allDaySlot={false}
-            slotDuration="00:15:00"
-            nowIndicator={true}
-            nowIndicatorClassNames={['now-indicator']}
-          />
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+          {/* Week Navigation */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
+            <button
+              onClick={goToPreviousWeek}
+              className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            
+            <div className="flex items-center space-x-6">
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {formatDate(currentWeekStart)} - {formatDate(new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000))}
+                </h2>
+                <div className="text-sm text-gray-500 mt-1">
+                  {Array.isArray(masters) ? masters.length : 0} мастеров
+                </div>
+              </div>
+              <button
+                onClick={goToToday}
+                className="px-6 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all duration-200"
+              >
+                Сегодня
+              </button>
+            </div>
+            
+            <button
+              onClick={goToNextWeek}
+              className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Day Tabs */}
+          <div className="flex border-b border-gray-200 bg-white">
+            {weekDays.map((day, index) => (
+              <button
+                key={index}
+                onClick={() => setSelectedDay(day)}
+                className={`flex-1 px-4 py-4 text-sm font-medium border-b-2 transition-all duration-200 cursor-pointer ${
+                  selectedDay.toDateString() === day.toDateString()
+                    ? 'border-blue-500 text-blue-600 bg-blue-50 shadow-sm'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                }`}
+              >
+                <div className="text-xs text-gray-400 mb-1 font-medium">
+                  {day.toLocaleDateString('ru-RU', { weekday: 'short' })}
+                </div>
+                <div className={`text-lg font-bold ${
+                  selectedDay.toDateString() === day.toDateString() ? 'text-blue-600' : 'text-gray-700'
+                }`}>
+                  {day.getDate()}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Calendar Grid */}
+          <div className="overflow-x-auto">
+            <div className="min-w-max">
+              {/* Time slots and masters grid */}
+              <div className="grid relative" style={{ 
+                gridTemplateColumns: `80px repeat(${displayMasters.length}, 1fr)`,
+                gridTemplateRows: `40px repeat(${timeSlots.length}, 50px)`
+              }}>
+
+                
+                {/* Current time indicator - внутри grid-контейнера */}
+                {selectedDay.toDateString() === currentTime.toDateString() && (() => {
+                  const currentHour = currentTime.getHours()
+                  const currentMinute = currentTime.getMinutes()
+                  
+                  // Проверяем, что время в рабочем диапазоне (9:00-18:00)
+                  if (currentHour >= 9 && currentHour < 18) {
+                    const timeSlotIndex = (currentHour - 9) * 2 + Math.floor(currentMinute / 30)
+                    
+                                      // Вычисляем позицию: заголовок (40px) + слоты до текущего времени (timeSlotIndex * 50px) + точная позиция внутри слота
+                  const minutesInSlot = currentMinute % 30
+                  const positionInSlot = (minutesInSlot / 30) * 50 // пропорция внутри 30-минутного слота
+                  const topPosition = 40 + (timeSlotIndex * 50) + positionInSlot
+                    
+                    return (
+                                          <div 
+                      className="absolute bg-red-500 h-2 z-35 pointer-events-none shadow-lg"
+                      style={{
+                        top: `${topPosition}px`,
+                        left: '0px',
+                        right: '0px',
+                        border: '2px solid red'
+                      }}
+                      title={`Текущее время: ${currentTime.toLocaleTimeString()}`}
+                    />
+                    )
+                  }
+                  return null
+                })()}
+                {/* Header row with master names */}
+                <div className="bg-gradient-to-b from-gray-50 to-gray-100 border-r border-b border-gray-200 flex items-center justify-center text-sm font-bold text-gray-700">
+                  Время
+                </div>
+                {displayMasters.map(master => (
+                  <button
+                    key={master.id}
+                    onClick={() => {
+                      if (calendarMaster === master.id) {
+                        resetMasterSelection()
+                      } else {
+                        setCalendarMaster(master.id)
+                        setSelectedMaster(master.id)
+                      }
+                    }}
+                    className={`bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200 flex items-center justify-center text-sm font-bold text-gray-700 px-3 text-center cursor-pointer transition-all duration-200 hover:from-blue-50 hover:to-blue-100 hover:text-blue-700 ${
+                      calendarMaster === master.id ? 'from-blue-100 to-blue-200 text-blue-800 shadow-sm' : ''
+                    }`}
+                  >
+                    <div>
+                      <div className="font-semibold">{master.firstName}</div>
+                      <div className="text-xs text-gray-500">{master.lastName}</div>
+                      {calendarMaster === master.id && (
+                        <div className="text-xs text-blue-600 mt-1">✓ Выбран</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+
+                {/* Time slots and booking cells */}
+                {timeSlots.map((time, timeIndex) => (
+                  <React.Fragment key={`time-slot-${time}`}>
+                    {/* Time label */}
+                    <div className="border-r border-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 bg-gray-50">
+                      <div className="text-center">
+                        <div className="font-bold">{formatTime(time)}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Master columns */}
+                    {displayMasters.map(master => {
+                      const isAbsent = isMasterAbsent(master.id, selectedDay)
+                      const isWorking = isWorkingTime(master.id, selectedDay, time)
+                      const isPastTimeSlot = isPastTime(selectedDay, time)
+                      const booking = getBookingAtTime(master.id, selectedDay, time)
+                      
+                      let cellClass = 'border-r border-gray-200 relative'
+                      let cellContent = null
+                      
+                      if (isAbsent) {
+                        cellClass += ' bg-red-50 border-red-200'
+                        cellContent = (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-xs text-red-600 text-center font-medium">
+                              <div className="w-2 h-2 bg-red-400 rounded-full mx-auto mb-1"></div>
+                              Отсутствует
+                            </div>
+                          </div>
+                        )
+                      } else if (isPastTimeSlot) {
+                        cellClass += ' bg-gray-100'
+                      } else if (!isWorking) {
+                        cellClass += ' bg-gray-50'
+                      } else {
+                        cellClass += ' bg-white'
+                      }
+                      
+                      // Добавляем горизонтальные линии
+                      cellClass += ' border-b border-gray-100'
+                      
+                      if (isBookingStart(master.id, selectedDay, time) && booking) {
+                        
+                        // Вычисляем длительность бронирования в ячейках
+                        const startTime = new Date(booking.startTime)
+                        const endTime = new Date(booking.endTime)
+                        const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
+                        const durationSlots = Math.ceil(durationMinutes / 30)
+                        
+                        // Проверяем, является ли бронь прошедшей или текущей
+                        const now = currentTime
+                        const isPast = endTime < now
+                        const isCurrent = startTime <= now && endTime > now
+                        
+
+                        
+
+                        
+                        cellContent = (
+                          <div 
+                            className={`absolute rounded-lg text-xs text-white p-2 overflow-hidden shadow-lg ${
+                              isCurrent ? 'shadow-xl ring-2 ring-yellow-300' : ''
+                            }`}
+                            style={{
+                              backgroundColor: getStatusBgColor(booking.status),
+                              border: isCurrent ? '2px solid #fbbf24' : 'none',
+                              inset: '2px',
+                              height: `${durationSlots * 50 - 4}px`, // Растягиваем на всю длительность
+                              zIndex: isCurrent ? 40 : 10, // Текущие брони над красной линией
+                              opacity: isPast ? 0.2 : isCurrent ? 1 : 0.9
+                            }}
+                          >
+                            <div className="font-bold truncate mb-1 text-base leading-tight text-white drop-shadow-lg">
+                              {booking.services.map((s: any) => s.service.name).join(', ')}
+                            </div>
+                            <div className="text-xs text-white font-medium drop-shadow-sm" style={{ color: 'white', fontWeight: '500' }}>
+                              {booking.client.firstName} {booking.client.lastName}
+                            </div>
+                            <div className="text-xs text-white font-medium drop-shadow-sm" style={{ color: 'white', fontWeight: '500' }}>
+                              {booking.master.firstName} • {formatTime(booking.startTime)}-{formatTime(booking.endTime)}
+                            </div>
+                          </div>
+                        )
+                      } else if (booking) {
+                        // Для остальных ячеек бронирования - просто фон без текста
+                        const endTime = new Date(booking.endTime)
+                        const startTime = new Date(booking.startTime)
+                        const now = currentTime
+                        const isPast = endTime < now
+                        const isCurrent = startTime <= now && endTime > now
+                        
+
+                        
+
+
+                        cellContent = (
+                          <div 
+                            className="absolute inset-1 rounded-lg"
+                            style={{
+                              backgroundColor: getStatusBgColor(booking.status),
+                              zIndex: isCurrent ? 40 : 10,
+                              opacity: isPast ? 0.2 : isCurrent ? 0.8 : 0.9
+                            }}
+                          />
+                        )
+                      }
+                      
+                      return (
+                        <div key={`${master.id}-${time}`} className={cellClass}>
+                          {cellContent}
+                        </div>
+                      )
+                    })}
+                  </React.Fragment>
+                ))}
+                              </div>
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
             <h3 className="text-lg font-medium text-gray-900">
-              Записи на {new Date(selectedDate).toLocaleDateString('ru-RU')}
+              Записи на {selectedDay.toLocaleDateString('ru-RU')}
             </h3>
           </div>
           <div className="divide-y divide-gray-200">
@@ -592,7 +763,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center space-x-3">
                       <div className="flex-shrink-0">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {new Date(booking.startTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} - {new Date(booking.endTime).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                          {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">

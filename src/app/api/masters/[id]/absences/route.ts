@@ -54,14 +54,7 @@ export async function GET(
       }
     })
 
-    console.log(`Found ${absences.length} absences for master ${id}:`, 
-      absences.map(a => ({
-        id: a.id,
-        startDate: a.startDate,
-        endDate: a.endDate,
-        reason: a.reason
-      }))
-    )
+
 
     return NextResponse.json({ absences })
 

@@ -100,3 +100,36 @@ body {
   border-color: #ef4444 !important;
   background-color: #ef4444 !important;
 }
+
+/* Стили для нового календаря */
+.calendar-grid {
+  position: relative;
+}
+
+.current-time-indicator {
+  position: absolute;
+  background-color: #ef4444;
+  height: 2px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.booking-cell {
+  position: relative;
+  min-height: 60px;
+  border-right: 1px solid #e5e7eb;
+}
+
+.booking-item {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 4px;
+  padding: 4px;
+  font-size: 0.75rem;
+  color: white;
+  overflow: hidden;
+  z-index: 5;
+}

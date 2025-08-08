@@ -27,16 +27,12 @@ export default function HomePage() {
 
   // Автоматически генерируем slug при изменении названия салона
   useEffect(() => {
-    console.log('useEffect triggered:', { teamName: formData.teamName, isSlugManuallyEdited })
-    
     if (formData.teamName && !isSlugManuallyEdited) {
       const generatedSlug = formData.teamName.toLowerCase()
         .replace(/[^a-z0-9\s]/g, '') // Убираем все кроме букв, цифр и пробелов
         .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
         .replace(/-+/g, '-') // Убираем множественные дефисы
         .replace(/^-|-$/g, '') // Убираем дефисы в начале и конце
-      
-      console.log('Generated slug:', generatedSlug)
       
       setFormData(prev => ({
         ...prev,
@@ -89,8 +85,6 @@ export default function HomePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    
-    console.log('handleChange:', name, value)
     
     if (name === 'teamName') {
       setFormData(prev => ({

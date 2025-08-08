@@ -698,7 +698,7 @@ export default function AdminDashboard() {
                               inset: '2px',
                               height: `${durationSlots * 50 - 4}px`, // Растягиваем на всю длительность
                               zIndex: isCurrent ? 40 : 10, // Текущие брони над красной линией
-                              opacity: isPast ? 0.15 : isCurrent ? 1 : 0.9
+                              opacity: isPast ? 0.05 : isCurrent ? 1 : 0.9
                             }}
                           >
                             <div style={{ 
@@ -706,10 +706,10 @@ export default function AdminDashboard() {
                               overflow: 'hidden', 
                               textOverflow: 'ellipsis', 
                               marginBottom: '4px', 
-                              fontSize: '16px', 
+                              fontSize: '18px', 
                               lineHeight: '1.2', 
                               color: 'white', 
-                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                              textShadow: '0 3px 6px rgba(0,0,0,0.8)'
                             }}>
                               {booking.services.map((s: any) => s.service.name).join(', ')}
                             </div>
@@ -717,44 +717,22 @@ export default function AdminDashboard() {
                               overflow: 'hidden', 
                               textOverflow: 'ellipsis', 
                               marginBottom: '4px', 
-                              fontSize: '12px', 
+                              fontSize: '14px', 
                               color: 'white', 
-                              fontWeight: '600',
-                              textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                              fontWeight: '700',
+                              textShadow: '0 2px 4px rgba(0,0,0,0.8)'
                             }}>
                               {booking.client.firstName} {booking.client.lastName}
                             </div>
                             <div style={{ 
-                              fontSize: '12px', 
+                              fontSize: '14px', 
                               color: 'white', 
-                              fontWeight: '600',
-                              textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                              fontWeight: '700',
+                              textShadow: '0 2px 4px rgba(0,0,0,0.8)'
                             }}>
                               {booking.master.firstName} • {formatTime(booking.startTime)}-{formatTime(booking.endTime)}
                             </div>
                           </div>
-                        )
-                      } else if (booking) {
-                        // Для остальных ячеек бронирования - просто фон без текста
-                        const endTime = new Date(booking.endTime)
-                        const startTime = new Date(booking.startTime)
-                        const now = currentTime
-                        const isPast = endTime < now
-                        const isCurrent = startTime <= now && endTime > now
-                        
-
-                        
-
-
-                        cellContent = (
-                          <div 
-                            className="absolute inset-1 rounded-lg"
-                            style={{
-                              backgroundColor: getStatusBgColor(booking.status),
-                              zIndex: isCurrent ? 40 : 10,
-                              opacity: isPast ? 0.15 : isCurrent ? 0.8 : 0.9
-                            }}
-                          />
                         )
                       }
                       

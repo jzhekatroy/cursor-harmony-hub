@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
@@ -17,6 +17,26 @@ export default function HomePage() {
   const [slugError, setSlugError] = useState('')
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
   const router = useRouter()
+
+  // Автоматически генерируем slug при изменении названия салона
+  useEffect(() => {
+    if (formData.teamName) {
+      const generatedSlug = formData.teamName.toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '') // Убираем все кроме букв, цифр и пробелов
+        .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
+        .replace(/-+/g, '-') // Убираем множественные дефисы
+        .replace(/^-|-$/g, '') // Убираем дефисы в начале и конце
+      
+      setFormData(prev => ({
+        ...prev,
+        slug: generatedSlug
+      }))
+      
+      if (generatedSlug) {
+        checkSlugAvailability(generatedSlug)
+      }
+    }
+  }, [formData.teamName])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,23 +80,10 @@ export default function HomePage() {
     const { name, value } = e.target
     
     if (name === 'teamName') {
-      // Автоматически генерируем slug из названия салона
-      const generatedSlug = value.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Убираем все кроме букв, цифр и пробелов
-        .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
-        .replace(/-+/g, '-') // Убираем множественные дефисы
-        .replace(/^-|-$/g, '') // Убираем дефисы в начале и конце
-      
-      setFormData({
-        ...formData,
-        teamName: value,
-        slug: generatedSlug
-      })
-      
-      // Проверяем уникальность slug
-      if (generatedSlug) {
-        checkSlugAvailability(generatedSlug)
-      }
+      setFormData(prev => ({
+        ...prev,
+        teamName: value
+      }))
     } else if (name === 'slug') {
       setFormData({
         ...formData,

@@ -698,16 +698,38 @@ export default function AdminDashboard() {
                               inset: '2px',
                               height: `${durationSlots * 50 - 4}px`, // Растягиваем на всю длительность
                               zIndex: isCurrent ? 40 : 10, // Текущие брони над красной линией
-                              opacity: isPast ? 0.2 : isCurrent ? 1 : 0.9
+                              opacity: isPast ? 0.15 : isCurrent ? 1 : 0.9
                             }}
                           >
-                            <div className="font-bold truncate mb-1 text-base leading-tight text-white drop-shadow-lg">
+                            <div style={{ 
+                              fontWeight: 'bold', 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis', 
+                              marginBottom: '4px', 
+                              fontSize: '16px', 
+                              lineHeight: '1.2', 
+                              color: 'white', 
+                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                            }}>
                               {booking.services.map((s: any) => s.service.name).join(', ')}
                             </div>
-                            <div className="text-xs text-white font-medium drop-shadow-sm" style={{ color: 'white', fontWeight: '500' }}>
+                            <div style={{ 
+                              overflow: 'hidden', 
+                              textOverflow: 'ellipsis', 
+                              marginBottom: '4px', 
+                              fontSize: '12px', 
+                              color: 'white', 
+                              fontWeight: '600',
+                              textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                            }}>
                               {booking.client.firstName} {booking.client.lastName}
                             </div>
-                            <div className="text-xs text-white font-medium drop-shadow-sm" style={{ color: 'white', fontWeight: '500' }}>
+                            <div style={{ 
+                              fontSize: '12px', 
+                              color: 'white', 
+                              fontWeight: '600',
+                              textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                            }}>
                               {booking.master.firstName} • {formatTime(booking.startTime)}-{formatTime(booking.endTime)}
                             </div>
                           </div>
@@ -730,7 +752,7 @@ export default function AdminDashboard() {
                             style={{
                               backgroundColor: getStatusBgColor(booking.status),
                               zIndex: isCurrent ? 40 : 10,
-                              opacity: isPast ? 0.2 : isCurrent ? 0.8 : 0.9
+                              opacity: isPast ? 0.15 : isCurrent ? 0.8 : 0.9
                             }}
                           />
                         )

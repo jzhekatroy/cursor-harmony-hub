@@ -16,11 +16,12 @@ export default function HomePage() {
   const [error, setError] = useState('')
   const [slugError, setSlugError] = useState('')
   const [isCheckingSlug, setIsCheckingSlug] = useState(false)
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false)
   const router = useRouter()
 
   // Автоматически генерируем slug при изменении названия салона
   useEffect(() => {
-    if (formData.teamName) {
+    if (formData.teamName && !isSlugManuallyEdited) {
       const generatedSlug = formData.teamName.toLowerCase()
         .replace(/[^a-z0-9\s]/g, '') // Убираем все кроме букв, цифр и пробелов
         .replace(/\s+/g, '-') // Заменяем пробелы на дефисы
@@ -36,7 +37,7 @@ export default function HomePage() {
         checkSlugAvailability(generatedSlug)
       }
     }
-  }, [formData.teamName])
+  }, [formData.teamName, isSlugManuallyEdited])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,6 +90,9 @@ export default function HomePage() {
         ...formData,
         [name]: value
       })
+      
+      // Отмечаем, что пользователь редактировал slug вручную
+      setIsSlugManuallyEdited(true)
       
       // Проверяем уникальность slug при ручном изменении
       if (value) {
@@ -175,7 +179,7 @@ export default function HomePage() {
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-gray-500 text-sm">
-                  beauty-booking.com/
+                  {typeof window !== 'undefined' ? window.location.origin : 'https://test.2minutes.ru'}/
                 </span>
                 <input
                   type="text"

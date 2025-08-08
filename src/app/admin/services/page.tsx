@@ -19,6 +19,7 @@ interface Service {
   photoUrl?: string
   isArchived: boolean
   order: number
+  requireConfirmation: boolean
   groupId?: string
   masters?: Master[]
 }
@@ -49,7 +50,8 @@ export default function ServicesPage() {
     duration: 60,
     price: 0,
     photoUrl: '',
-    groupId: ''
+    groupId: '',
+    requireConfirmation: false
   })
 
   // Форма для группы
@@ -148,7 +150,7 @@ export default function ServicesPage() {
         await loadData()
         setEditingService(null)
         setIsCreatingService(false)
-        setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '' })
+        setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '', requireConfirmation: false })
         setError(null)
       } else {
         const errorData = await response.json()
@@ -256,7 +258,8 @@ export default function ServicesPage() {
       duration: service.duration,
       price: service.price,
       photoUrl: service.photoUrl || '',
-      groupId: service.groupId || ''
+      groupId: service.groupId || '',
+      requireConfirmation: service.requireConfirmation
     })
     setError(null)
   }
@@ -272,7 +275,7 @@ export default function ServicesPage() {
 
   const startCreatingService = () => {
     setIsCreatingService(true)
-    setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '' })
+    setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '', requireConfirmation: false })
     setError(null)
   }
 
@@ -287,7 +290,7 @@ export default function ServicesPage() {
     setEditingGroup(null)
     setIsCreatingService(false)
     setIsCreatingGroup(false)
-    setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '' })
+    setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '', requireConfirmation: false })
     setGroupForm({ name: '', order: 0 })
     setError(null)
   }
@@ -496,6 +499,23 @@ export default function ServicesPage() {
                 placeholder="https://example.com/photo.jpg"
               />
             </div>
+            <div className="md:col-span-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="requireConfirmation"
+                  checked={serviceForm.requireConfirmation}
+                  onChange={(e) => setServiceForm({...serviceForm, requireConfirmation: e.target.checked})}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="requireConfirmation" className="ml-3 text-sm text-gray-700">
+                  Требовать подтверждение записи
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Если включено, записи на эту услугу будут требовать подтверждения от администратора
+              </p>
+            </div>
           </div>
           <div className="flex justify-end space-x-3 mt-6">
             <button
@@ -545,6 +565,11 @@ export default function ServicesPage() {
                           <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                             <span>{service.duration} мин</span>
                             <span>{service.price} ₽</span>
+                            {service.requireConfirmation && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                Требует подтверждения
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -611,6 +636,11 @@ export default function ServicesPage() {
                             <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                               <span>{service.duration} мин</span>
                               <span>{service.price} ₽</span>
+                              {service.requireConfirmation && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  Требует подтверждения
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>

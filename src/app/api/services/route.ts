@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { name, description, duration, price, photoUrl, groupId } = body
+    const { name, description, duration, price, photoUrl, groupId, requireConfirmation } = body
 
     // Валидация
     if (!name || !duration || price === undefined || price === null) {
@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         duration: parseInt(duration),
         price: parseFloat(price),
         photoUrl: photoUrl?.trim() || null,
+        requireConfirmation: requireConfirmation || false,
         teamId: decoded.teamId,
         groupId: groupId || null,
         order: (maxOrder._max.order || 0) + 1

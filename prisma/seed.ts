@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TeamStatus, BookingStatus } from '@prisma/client'
+import { PrismaClient, UserRole, TeamStatus, BookingStatus, ActionType } from '@prisma/client'
 import { hashPassword, generateTeamNumber, generateBookingNumber } from '../src/lib/auth'
 
 const prisma = new PrismaClient()
@@ -41,7 +41,6 @@ async function main() {
       email: 'salon@example.com',
       masterLimit: 5,
       bookingStep: 15,
-      requireConfirmation: false,
     }
   })
 
@@ -270,7 +269,7 @@ async function main() {
   await prisma.bookingLog.create({
     data: {
       bookingId: booking1.id,
-      action: 'NEW',
+      action: ActionType.NEW,
       description: 'Бронирование создано клиентом',
       teamId: testTeam.id,
     }
@@ -279,7 +278,7 @@ async function main() {
   await prisma.bookingLog.create({
     data: {
       bookingId: booking1.id,
-      action: 'CONFIRMED',
+      action: ActionType.CONFIRMED,
       description: 'Бронирование подтверждено администратором',
       userId: teamAdmin.id,
       teamId: testTeam.id,
@@ -289,7 +288,7 @@ async function main() {
   await prisma.bookingLog.create({
     data: {
       bookingId: booking2.id,
-      action: 'NEW',
+      action: ActionType.NEW,
       description: 'Бронирование создано клиентом',
       teamId: testTeam.id,
     }

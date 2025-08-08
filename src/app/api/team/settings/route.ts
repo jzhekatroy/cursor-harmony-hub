@@ -29,7 +29,6 @@ export async function GET(request: NextRequest) {
     const settings = {
       bookingStep: user.team.bookingStep,
       masterLimit: user.team.masterLimit,
-      requireConfirmation: user.team.requireConfirmation,
       webhooksEnabled: user.team.webhooksEnabled,
       privacyPolicyUrl: user.team.privacyPolicyUrl,
       contactPerson: user.team.contactPerson,
@@ -80,7 +79,6 @@ export async function PUT(request: NextRequest) {
     const {
       bookingStep,
       masterLimit,
-      requireConfirmation,
       webhooksEnabled,
       privacyPolicyUrl,
       contactPerson,
@@ -190,7 +188,7 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
-    if (requireConfirmation !== undefined) updateData.requireConfirmation = requireConfirmation
+
     if (webhooksEnabled !== undefined) updateData.webhooksEnabled = webhooksEnabled
     if (privacyPolicyUrl !== undefined) updateData.privacyPolicyUrl = privacyPolicyUrl || null
     if (contactPerson !== undefined) updateData.contactPerson = contactPerson
@@ -210,7 +208,7 @@ export async function PUT(request: NextRequest) {
       settings: {
         bookingStep: updatedTeam.bookingStep,
         masterLimit: updatedTeam.masterLimit,
-        requireConfirmation: updatedTeam.requireConfirmation,
+
         webhooksEnabled: updatedTeam.webhooksEnabled,
         privacyPolicyUrl: updatedTeam.privacyPolicyUrl,
         contactPerson: updatedTeam.contactPerson,

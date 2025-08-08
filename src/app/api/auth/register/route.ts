@@ -6,10 +6,10 @@ import { UserRole } from '@prisma/client'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, teamName, contactPerson } = body
+    const { email, password, teamName, contactPerson, slug } = body
 
     // Валидация
-    if (!email || !password || !teamName || !contactPerson) {
+    if (!email || !password || !teamName || !contactPerson || !slug) {
       return NextResponse.json(
         { error: 'Все поля обязательны для заполнения' },
         { status: 400 }
@@ -39,26 +39,17 @@ export async function POST(request: NextRequest) {
       isUnique = !existingTeam
     } while (!isUnique)
 
-    // Генерация slug для команды
-    const baseSlug = teamName.toLowerCase()
-      .replace(/[^a-z0-9]/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-    
-    let slug = baseSlug
-    let slugCounter = 1
-    let isSlugUnique = false
-    do {
-      const existingTeam = await prisma.team.findUnique({
-        where: { slug }
-      })
-      if (!existingTeam) {
-        isSlugUnique = true
-      } else {
-        slug = `${baseSlug}-${slugCounter}`
-        slugCounter++
-      }
-    } while (!isSlugUnique)
+    // Проверка уникальности slug
+    const existingTeamWithSlug = await prisma.team.findUnique({
+      where: { slug }
+    })
+
+    if (existingTeamWithSlug) {
+      return NextResponse.json(
+        { error: 'URL салона уже занят. Выберите другой.' },
+        { status: 409 }
+      )
+    }
 
     // Хеширование пароля
     const hashedPassword = await hashPassword(password)

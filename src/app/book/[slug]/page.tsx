@@ -6,8 +6,7 @@ import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
 import { ProgressIndicator } from '@/components/ProgressIndicator'
 import { EnhancedServiceSelection } from '@/components/EnhancedServiceSelection'
 import { EnhancedDateMasterTimeSelection } from '@/components/EnhancedDateMasterTimeSelection'
-import { EnhancedClientInfoForm } from '@/components/EnhancedClientInfoForm'
-import { BookingConfirmation } from '@/components/BookingConfirmation'
+import { EnhancedClientInfoAndConfirmation } from '@/components/EnhancedClientInfoAndConfirmation'
 import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, ClientInfo } from '@/types/booking'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -101,18 +100,12 @@ export default function BookingWidget() {
       case 'select-date-time':
         if (bookingData.date && bookingData.master && bookingData.timeSlot) {
           goToStep('client-info')
-      } else {
+        } else {
           alert('Пожалуйста, выберите дату, мастера и время.')
         }
         break
       case 'client-info':
-        // Валидация формы клиента будет внутри компонента EnhancedClientInfoForm
-        // Здесь просто переходим, если форма считается валидной
-        goToStep('confirmation')
-        break
-      case 'confirmation':
-        // Это финальный шаг, здесь может быть отправка бронирования
-        // Или просто переход на страницу успеха
+        // Финальный шаг - обработка в компоненте EnhancedClientInfoAndConfirmation
         break
     }
   }
@@ -124,9 +117,6 @@ export default function BookingWidget() {
         break
       case 'client-info':
         goToStep('select-date-time')
-        break
-      case 'confirmation':
-        goToStep('client-info')
         break
     }
   }
@@ -143,10 +133,6 @@ export default function BookingWidget() {
 
   const handleClientInfoChange = (info: ClientInfo) => {
     setBookingData(prev => ({ ...prev, clientInfo: info }))
-  }
-
-  const handleFormSubmit = () => {
-    handleNext()
   }
 
   const handleBookingConfirmed = () => {
@@ -238,21 +224,14 @@ export default function BookingWidget() {
               className="animate-fade-in"
             />
           )}
-          {currentStep === 'client-info' && (
-            <EnhancedClientInfoForm
-              clientInfo={bookingData.clientInfo}
+                    {currentStep === 'client-info' && (
+            <EnhancedClientInfoAndConfirmation
+              bookingData={bookingData}
               onClientInfoChange={handleClientInfoChange}
-              onFormSubmit={handleFormSubmit}
+              onBookingConfirmed={handleBookingConfirmed}
               className="animate-fade-in"
             />
           )}
-          {currentStep === 'confirmation' && (
-            <BookingConfirmation
-              bookingData={bookingData}
-              onConfirmBooking={handleBookingConfirmed}
-              className="animate-fade-in"
-            />
-            )}
           </div>
 
         <div className="flex justify-between items-center pt-4 border-t border-gray-200">
@@ -267,7 +246,7 @@ export default function BookingWidget() {
             </Button>
           )}
 
-          {currentStep !== 'confirmation' && currentStep !== 'client-info' && (
+          {currentStep !== 'client-info' && (
             <Button
               onClick={handleNext}
               className={`ml-auto flex items-center space-x-2 bg-[#00acf4] hover:bg-[#0099e0] text-white ${
@@ -276,7 +255,7 @@ export default function BookingWidget() {
                   ? 'opacity-50 cursor-not-allowed'
                   : ''
               }`}
-                    disabled={
+              disabled={
                 (currentStep === 'select-services' && bookingData.services.length === 0) ||
                 (currentStep === 'select-date-time' && (!bookingData.date || !bookingData.master || !bookingData.timeSlot))
               }

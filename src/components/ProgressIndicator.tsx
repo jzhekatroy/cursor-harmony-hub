@@ -11,8 +11,7 @@ interface ProgressIndicatorProps {
 const steps: { id: BookingStep; name: string }[] = [
   { id: 'select-services', name: 'Услуги' },
   { id: 'select-date-time', name: 'Дата и время' },
-  { id: 'client-info', name: 'Ваши данные' },
-  { id: 'confirmation', name: 'Подтверждение' },
+  { id: 'client-info', name: 'Данные и подтверждение' },
 ]
 
 export function ProgressIndicator({ currentStep }: ProgressIndicatorProps) {

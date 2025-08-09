@@ -51,7 +51,6 @@ export async function GET(
       name: `${master.firstName} ${master.lastName}`,
       photoUrl: master.photoUrl,
       description: master.description,
-      rating: master.rating,
       services: master.services.map(service => service.id) // Возвращаем только ID услуг
     }))
 

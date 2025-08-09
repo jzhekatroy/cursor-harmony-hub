@@ -26,7 +26,6 @@ export interface Master {
   specialization?: string;
   photoUrl?: string;
   description?: string;
-  rating?: number;
   services?: string[]; // ID услуг
 }
 
@@ -60,11 +59,10 @@ export interface Team {
   slug: string;
 }
 
-export type BookingStep = 'select-services' | 'select-date-time' | 'client-info' | 'confirmation';
+export type BookingStep = 'select-services' | 'select-date-time' | 'client-info';
 
 export const stepNames: Record<BookingStep, string> = {
   'select-services': 'Выбор услуг',
   'select-date-time': 'Дата и время',
-  'client-info': 'Контактные данные',
-  confirmation: 'Подтверждение'
+  'client-info': 'Контактные данные'
 };

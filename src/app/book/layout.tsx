@@ -11,12 +11,18 @@ export default function BookLayout({
         src="https://telegram.org/js/telegram-web-app.js"
         strategy="beforeInteractive"
       />
-      <Script id="telegram-css-fix" strategy="afterInteractive">
+      <Script id="telegram-css-fix" strategy="beforeInteractive">
         {`
-          // Устанавливаем CSS переменные по умолчанию для предотвращения ошибок гидратации
-          if (typeof document !== 'undefined') {
-            document.documentElement.style.setProperty('--tg-viewport-height', '100vh');
-            document.documentElement.style.setProperty('--tg-viewport-stable-height', '100vh');
+          // Предотвращаем изменение CSS переменных Telegram WebApp для избежания ошибок гидратации
+          if (typeof window !== 'undefined') {
+            // Переопределяем setProperty для блокировки изменений tg-viewport переменных
+            const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
+            CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
+              if (property.startsWith('--tg-viewport')) {
+                return; // Игнорируем установку tg-viewport переменных
+              }
+              return originalSetProperty.call(this, property, value, priority);
+            };
           }
         `}
       </Script>

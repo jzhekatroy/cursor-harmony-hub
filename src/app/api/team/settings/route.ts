@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
       bookingStep: user.team.bookingStep,
       masterLimit: user.team.masterLimit,
       webhooksEnabled: user.team.webhooksEnabled,
+      fairMasterRotation: Boolean(user.team.fairMasterRotation), // Явно преобразуем в boolean
       privacyPolicyUrl: user.team.privacyPolicyUrl,
       contactPerson: user.team.contactPerson,
       email: user.team.email,
@@ -75,11 +76,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
     }
 
-    const body = await request.json()
+    let body
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('❌ JSON parse error:', error)
+      return NextResponse.json({ error: 'Неверный формат данных' }, { status: 400 })
+    }
+    
     const {
       bookingStep,
       masterLimit,
       webhooksEnabled,
+      fairMasterRotation,
       privacyPolicyUrl,
       contactPerson,
       email,
@@ -188,8 +197,8 @@ export async function PUT(request: NextRequest) {
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
-
     if (webhooksEnabled !== undefined) updateData.webhooksEnabled = webhooksEnabled
+    if (fairMasterRotation !== undefined) updateData.fairMasterRotation = fairMasterRotation
     if (privacyPolicyUrl !== undefined) updateData.privacyPolicyUrl = privacyPolicyUrl || null
     if (contactPerson !== undefined) updateData.contactPerson = contactPerson
     if (email !== undefined) updateData.email = email
@@ -208,8 +217,8 @@ export async function PUT(request: NextRequest) {
       settings: {
         bookingStep: updatedTeam.bookingStep,
         masterLimit: updatedTeam.masterLimit,
-
         webhooksEnabled: updatedTeam.webhooksEnabled,
+        fairMasterRotation: Boolean(updatedTeam.fairMasterRotation), // Явно преобразуем в boolean
         privacyPolicyUrl: updatedTeam.privacyPolicyUrl,
         contactPerson: updatedTeam.contactPerson,
         email: updatedTeam.email,
@@ -223,6 +232,17 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error('Ошибка обновления настроек команды:', error)
+    
+    if (process.env.NODE_ENV === 'development') {
+      return NextResponse.json(
+        { 
+          error: 'Ошибка обновления настроек',
+          details: error instanceof Error ? error.message : 'Unknown error'
+        },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
       { error: 'Ошибка обновления настроек' },
       { status: 500 }

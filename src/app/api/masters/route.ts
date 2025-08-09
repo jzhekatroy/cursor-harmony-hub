@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractTokenFromHeader, verifyToken, hashPassword } from '@/lib/auth'
+import { initializeMasterRotation } from '@/lib/masterRotation'
 
 // GET /api/masters - получить список мастеров команды
 export async function GET(request: NextRequest) {
@@ -222,6 +223,9 @@ export async function POST(request: NextRequest) {
 
       return master
     })
+
+    // Инициализируем ротацию для нового мастера
+    await initializeMasterRotation(decoded.teamId, result.id)
 
     return NextResponse.json({ 
       success: true, 

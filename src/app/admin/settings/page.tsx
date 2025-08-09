@@ -10,6 +10,7 @@ interface TeamSettings {
   bookingStep: number
   masterLimit: number
   webhooksEnabled: boolean
+  fairMasterRotation: boolean
   privacyPolicyUrl?: string
   contactPerson: string
   email: string
@@ -128,6 +129,31 @@ export default function SettingsPage() {
     setSettings(data.settings)
   }
 
+  const updateFairMasterRotation = async (fairMasterRotation: boolean) => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('Токен авторизации не найден')
+    }
+
+    const response = await fetch('/api/team/settings', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ fairMasterRotation })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('❌ API Error:', errorData)
+      throw new Error(errorData.details || errorData.error || 'Ошибка обновления настройки справедливого распределения')
+    }
+
+    const data = await response.json()
+    setSettings(data.settings)
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -192,6 +218,50 @@ export default function SettingsPage() {
             currentToken={settings.telegramBotToken}
             onUpdate={updateTelegramBotToken}
           />
+
+          {/* Справедливое распределение мастеров */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Справедливое распределение мастеров
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Включить справедливое распределение
+                  </label>
+                  <p className="text-sm text-gray-600">
+                    Мастера будут показываться в случайном порядке, но каждый будет появляться на разных позициях одинаковое количество раз. Это обеспечивает равные возможности получения заказов.
+                  </p>
+                </div>
+                <div className="ml-4">
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      (settings.fairMasterRotation ?? false) ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                    onClick={() => updateFairMasterRotation(!(settings.fairMasterRotation ?? false))}
+                    aria-pressed={settings.fairMasterRotation ?? false}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        (settings.fairMasterRotation ?? false) ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+              
+              {(settings.fairMasterRotation ?? false) && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    <strong>Как это работает:</strong> Система отслеживает, сколько раз каждый мастер показывался на каждой позиции (1-й, 2-й, 3-й и т.д.). При каждом обращении к странице записи мастера переставляются так, чтобы выровнять количество показов на всех позициях.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Настройки бронирования */}
           <BookingSettings />

@@ -57,6 +57,7 @@ model Team {
   bookingStep     Int        @default(15) // шаг бронирования в минутах
   timezone        String     @default("Europe/Moscow") // часовой пояс салона
   webhooksEnabled Boolean    @default(true)
+  fairMasterRotation Boolean @default(false) // Справедливое распределение мастеров
   privacyPolicyUrl String?
   telegramBotToken String?   // токен Telegram бота для WebApp
   createdAt       DateTime   @default(now())
@@ -71,6 +72,7 @@ model Team {
   clients         Client[]
   bookingLogs     BookingLog[]
   teamLogs        TeamLog[]
+  masterRotations MasterRotation[]
 
   @@map("teams")
 }
@@ -118,6 +120,7 @@ model Master {
   absences    MasterAbsence[]
   bookings    Booking[]
   services    Service[] @relation("MasterServices")
+  rotations   MasterRotation[]
 
   @@map("masters")
 }
@@ -287,6 +290,25 @@ model TeamLog {
   userId      String
 
   @@map("team_logs")
+}
+
+// Ротация мастеров для справедливого распределения
+model MasterRotation {
+  id          String   @id @default(cuid())
+  teamId      String
+  masterId    String
+  position    Int      // текущая позиция в ротации
+  showCount   Int      @default(0) // количество показов на этой позиции
+  lastShownAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Связи
+  team        Team     @relation(fields: [teamId], references: [id])
+  master      Master   @relation(fields: [masterId], references: [id])
+  
+  @@unique([teamId, masterId])
+  @@map("master_rotations")
 }
 
 // Вебхуки

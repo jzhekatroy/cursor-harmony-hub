@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface BookingService {
@@ -143,9 +143,7 @@ export default function AdminDashboard() {
     return monday
   })
   const [selectedDay, setSelectedDay] = useState(new Date())
-  const [selectedMaster, setSelectedMaster] = useState('all')
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
-  const [calendarMaster, setCalendarMaster] = useState<string | null>(null) // Мастер, выбранный в календаре
   const [currentTime, setCurrentTime] = useState(() => new Date())
   
   // Состояние для живых данных
@@ -155,6 +153,10 @@ export default function AdminDashboard() {
   const [masterAbsences, setMasterAbsences] = useState<Record<string, MasterAbsence[]>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedMaster, setSelectedMaster] = useState<string>('all')
+  const [calendarMaster, setCalendarMaster] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+  const [isAutoUpdating, setIsAutoUpdating] = useState(false)
 
   // Обновление времени каждую минуту
   useEffect(() => {
@@ -224,6 +226,7 @@ export default function AdminDashboard() {
 
       setMasterSchedules(schedulesData)
       setMasterAbsences(absencesData)
+      setLastUpdated(new Date())
 
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)
@@ -233,13 +236,31 @@ export default function AdminDashboard() {
     }
   }
 
-  // Обновление текущего времени
+  // Обновление текущего времени (каждые 10 секунд для плавности красной линии)
   useEffect(() => {
-    const interval = setInterval(() => {
+    const timeInterval = setInterval(() => {
       setCurrentTime(new Date())
-    }, 30000) // Обновляем каждые 30 секунд
+    }, 10000) // Обновляем каждые 10 секунд
 
-    return () => clearInterval(interval)
+    return () => clearInterval(timeInterval)
+  }, [])
+
+  // Автообновление данных календаря каждую минуту
+  useEffect(() => {
+    const dataInterval = setInterval(async () => {
+      console.log('🔄 Автообновление данных календаря...')
+      setIsAutoUpdating(true)
+      try {
+        await loadData()
+        setLastUpdated(new Date())
+      } catch (error) {
+        console.error('Ошибка автообновления:', error)
+      } finally {
+        setIsAutoUpdating(false)
+      }
+    }, 60000) // Обновляем данные каждую минуту
+
+    return () => clearInterval(dataInterval)
   }, [])
 
   // Загрузка данных при монтировании
@@ -295,20 +316,44 @@ export default function AdminDashboard() {
     setSelectedMaster('all')
   }
 
-  // Генерация временных слотов
+  // Генерация временных слотов на основе рабочего времени мастеров
   const generateTimeSlots = () => {
     const slots = []
-    // Показываем только рабочее время: 9:00 - 18:00
-    for (let hour = 9; hour < 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-        slots.push(time)
-      }
+    
+    // Определяем общий диапазон времени работы всех мастеров
+    let earliestStart = 9 * 60 // 09:00 по умолчанию (в минутах)
+    let latestEnd = 18 * 60    // 18:00 по умолчанию (в минутах)
+    
+    // Если есть расписания мастеров, вычисляем реальный диапазон
+    const allSchedules = Object.values(masterSchedules).flat()
+    if (allSchedules.length > 0) {
+      earliestStart = Math.min(...allSchedules.map(schedule => {
+        const [hour, minute] = schedule.startTime.split(':').map(Number)
+        return hour * 60 + minute
+      }))
+      
+      latestEnd = Math.max(...allSchedules.map(schedule => {
+        const [hour, minute] = schedule.endTime.split(':').map(Number)
+        return hour * 60 + minute
+      }))
+      
+      // Округляем до получаса для удобства
+      earliestStart = Math.floor(earliestStart / 30) * 30
+      latestEnd = Math.ceil(latestEnd / 30) * 30
     }
+    
+    // Генерируем слоты с шагом 30 минут
+    for (let minutes = earliestStart; minutes < latestEnd; minutes += 30) {
+      const hour = Math.floor(minutes / 60)
+      const minute = minutes % 60
+      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+      slots.push(time)
+    }
+    
     return slots
   }
 
-  const timeSlots = generateTimeSlots()
+  const timeSlots = useMemo(() => generateTimeSlots(), [masterSchedules])
   const weekDays = getWeekDays(currentWeekStart)
 
 
@@ -431,14 +476,39 @@ export default function AdminDashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Календарь
-            {calendarMaster && (
-              <span className="text-lg font-normal text-blue-600 ml-2">
-                - {displayMasters.find(m => m.id === calendarMaster)?.firstName} {displayMasters.find(m => m.id === calendarMaster)?.lastName}
-              </span>
-            )}
-          </h1>
+          <div className="flex items-center space-x-4">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Календарь
+              {calendarMaster && (
+                <span className="text-lg font-normal text-blue-600 ml-2">
+                  - {displayMasters.find(m => m.id === calendarMaster)?.firstName} {displayMasters.find(m => m.id === calendarMaster)?.lastName}
+                </span>
+              )}
+            </h1>
+            
+            {/* Live status indicator */}
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${isAutoUpdating ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+                <span className="text-xs text-gray-500">
+                  {isAutoUpdating ? 'Обновление...' : `Обновлено ${lastUpdated.toLocaleTimeString()}`}
+                </span>
+              </div>
+              
+              {/* Manual refresh button */}
+              <button
+                onClick={() => {
+                  setIsAutoUpdating(true)
+                  loadData().finally(() => setIsAutoUpdating(false))
+                }}
+                disabled={isAutoUpdating}
+                className="text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
+                title="Обновить вручную"
+              >
+                🔄
+              </button>
+            </div>
+          </div>
           <p className="text-gray-600">Управление бронированиями и расписанием</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
@@ -575,28 +645,40 @@ export default function AdminDashboard() {
                 {selectedDay.toDateString() === currentTime.toDateString() && (() => {
                   const currentHour = currentTime.getHours()
                   const currentMinute = currentTime.getMinutes()
+                  const currentTimeMinutes = currentHour * 60 + currentMinute
                   
-                  // Проверяем, что время в рабочем диапазоне (9:00-18:00)
-                  if (currentHour >= 9 && currentHour < 18) {
-                    const timeSlotIndex = (currentHour - 9) * 2 + Math.floor(currentMinute / 30)
+                  // Находим первый и последний временной слот
+                  if (timeSlots.length > 0) {
+                    const firstSlot = timeSlots[0]
+                    const lastSlot = timeSlots[timeSlots.length - 1]
+                    const [firstHour, firstMin] = firstSlot.split(':').map(Number)
+                    const [lastHour, lastMin] = lastSlot.split(':').map(Number)
+                    const firstSlotMinutes = firstHour * 60 + firstMin
+                    const lastSlotMinutes = lastHour * 60 + lastMin + 30 // +30 для конца последнего слота
                     
-                                      // Вычисляем позицию: заголовок (40px) + слоты до текущего времени (timeSlotIndex * 50px) + точная позиция внутри слота
-                  const minutesInSlot = currentMinute % 30
-                  const positionInSlot = (minutesInSlot / 30) * 50 // пропорция внутри 30-минутного слота
-                  const topPosition = 40 + (timeSlotIndex * 50) + positionInSlot
+                    // Проверяем, что время в рабочем диапазоне
+                    if (currentTimeMinutes >= firstSlotMinutes && currentTimeMinutes < lastSlotMinutes) {
+                      // Находим индекс текущего временного слота
+                      const timeSlotIndex = Math.floor((currentTimeMinutes - firstSlotMinutes) / 30)
+                      
+                      // Вычисляем позицию: заголовок (40px) + слоты до текущего времени (timeSlotIndex * 50px) + точная позиция внутри слота
+                      const minutesInSlot = (currentTimeMinutes - firstSlotMinutes) % 30
+                      const positionInSlot = (minutesInSlot / 30) * 50 // пропорция внутри 30-минутного слота
+                      const topPosition = 40 + (timeSlotIndex * 50) + positionInSlot
                     
-                    return (
-                                          <div 
-                      className="absolute bg-red-500 h-2 z-35 pointer-events-none shadow-lg"
-                      style={{
-                        top: `${topPosition}px`,
-                        left: '0px',
-                        right: '0px',
-                        border: '2px solid red'
-                      }}
-                      title={`Текущее время: ${currentTime.toLocaleTimeString()}`}
-                    />
-                    )
+                      return (
+                        <div 
+                          className="absolute bg-red-500 h-2 z-35 pointer-events-none shadow-lg"
+                          style={{
+                            top: `${topPosition}px`,
+                            left: '0px',
+                            right: '0px',
+                            border: '2px solid red'
+                          }}
+                          title={`Текущее время: ${currentTime.toLocaleTimeString()}`}
+                        />
+                      )
+                    }
                   }
                   return null
                 })()}

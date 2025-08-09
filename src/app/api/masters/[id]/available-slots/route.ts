@@ -122,6 +122,14 @@ export async function GET(
 
     // Генерируем все возможные слоты
     const bookingStep = master.team.bookingStep
+    // Получаем текущее время в часовом поясе салона
+    const salonTimezone = master.team.timezone
+    const now = new Date()
+    const salonTime = getCurrentSalonTime(salonTimezone)
+    
+    // Определяем функцию форматирования времени для этого салона
+    const formatTimeForSalon = (date: Date) => formatSalonTime(date, salonTimezone)
+
     const workingSlots = generateWorkingSlots(
       daySchedule.startTime,
       daySchedule.endTime,
@@ -133,22 +141,14 @@ export async function GET(
 
     // Фильтруем занятые слоты
     const occupiedSlots = master.bookings.map(booking => ({
-      start: formatTime(booking.startTime),
-      end: formatTime(booking.endTime)
+      start: formatTimeForSalon(booking.startTime),
+      end: formatTimeForSalon(booking.endTime)
     }))
     
     console.log('📅 ЗАНЯТЫЕ СЛОТЫ:')
     master.bookings.forEach((booking, i) => {
-      console.log(`   ${i + 1}. ${formatTime(booking.startTime)}-${formatTime(booking.endTime)} (${booking.status})`)
+      console.log(`   ${i + 1}. ${formatTimeForSalon(booking.startTime)}-${formatTimeForSalon(booking.endTime)} (${booking.status})`)
     })
-
-    // Получаем текущее время в часовом поясе салона
-    const salonTimezone = master.team.timezone
-    const now = new Date()
-    const salonTime = getCurrentSalonTime(salonTimezone)
-    
-    // Определяем функцию форматирования времени для этого салона
-    formatTime = (date: Date) => formatSalonTime(date, salonTimezone)
     
     // Форматируем текущее время и дату для сравнения
     const currentTimeMinutes = getSalonTimeMinutes(now, salonTimezone)
@@ -342,5 +342,4 @@ function formatTimeFromMinutes(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
 }
 
-// Функция форматирования будет переопределена в контексте с salonTimezone
-let formatTime: (date: Date) => string
+// formatTimeForSalon определяется локально в контексте каждого запроса

@@ -890,65 +890,7 @@ export default function BookingWidget() {
         </div>
       </div>
       
-      {/* Telegram WebApp Debug Panel */}
-      {telegram.isReady && (
-        <div className="fixed bottom-4 right-4 max-w-sm">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4">
-            <h4 className="font-semibold text-sm mb-2 text-blue-600">
-              🤖 Telegram WebApp Debug
-            </h4>
-            
-            {telegram.isAvailable ? (
-              <div className="space-y-2 text-xs">
-                <div className="flex justify-between">
-                  <span>Status:</span>
-                  <span className="text-green-600 font-medium">✅ Connected</span>
-                </div>
-                
-                {telegram.user && (
-                  <div className="border-t pt-2">
-                    <div className="font-medium text-blue-600">User Info:</div>
-                    <div>ID: {telegram.user.id}</div>
-                    <div>Name: {telegram.user.first_name} {telegram.user.last_name || ''}</div>
-                    {telegram.user.username && <div>@{telegram.user.username}</div>}
-                    <div>Lang: {telegram.user.language_code}</div>
-                    {telegram.user.is_premium && <div className="text-yellow-600">⭐ Premium</div>}
-                  </div>
-                )}
-                
-                <div className="border-t pt-2">
-                  <div className="font-medium text-blue-600">Platform Info:</div>
-                  <div>Platform: {telegram.platform}</div>
-                  <div>Version: {telegram.version}</div>
-                  <div>Theme: {telegram.colorScheme}</div>
-                </div>
-                
-                {telegram.startParam && (
-                  <div className="border-t pt-2">
-                    <div className="font-medium text-blue-600">Start Param:</div>
-                    <div className="break-all">{telegram.startParam}</div>
-                  </div>
-                )}
-                
-                <div className="border-t pt-2">
-                  <div className="font-medium text-blue-600">Recent Logs:</div>
-                  <div className="max-h-32 overflow-y-auto text-xs">
-                    {telegram.logs.slice(-5).map((log, i) => (
-                      <div key={i} className="text-gray-600 break-all">
-                        {log.split('] ')[1]}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="text-red-600 text-xs">
-                ❌ Not running in Telegram
-              </div>
-            )}
-          </div>
-        </div>
-             )}
+
     </div>
   )
 }

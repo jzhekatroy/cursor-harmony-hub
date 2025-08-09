@@ -30,13 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html 
-      lang="en"
-      style={{
-        '--tg-viewport-height': 'var(--tg-viewport-height, 100vh)',
-        '--tg-viewport-stable-height': 'var(--tg-viewport-stable-height, 100vh)'
-      } as React.CSSProperties}
-    >
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

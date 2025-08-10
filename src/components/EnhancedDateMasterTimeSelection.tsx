@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Master, Service, TimeSlot } from '@/types/booking'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,12 +38,14 @@ export function EnhancedDateMasterTimeSelection({
   const { clientTimezone, loading: timezoneLoading } = useClientTimezone()
 
   // Отладочная информация для salonTimezone
-  console.log('🔍 EnhancedDateMasterTimeSelection: salonTimezone =', salonTimezone)
-  console.log('🔍 EnhancedDateMasterTimeSelection: selectedTimeSlot =', selectedTimeSlot?.time)
+  // console.log('🔍 EnhancedDateMasterTimeSelection: RENDER START - salonTimezone =', salonTimezone)
+  // console.log('🔍 EnhancedDateMasterTimeSelection: selectedTimeSlot =', selectedTimeSlot?.time)
+  // console.log('🔍 EnhancedDateMasterTimeSelection: masters count =', masters.length)
+  // console.log('🔍 EnhancedDateMasterTimeSelection: selectedServices count =', selectedServices.length)
 
   // Проверяем что все необходимые пропсы доступны
   if (!salonTimezone) {
-    console.log('🔍 EnhancedDateMasterTimeSelection: salonTimezone is missing, rendering loading state')
+    // console.log('🔍 EnhancedDateMasterTimeSelection: salonTimezone is missing, rendering loading state')
     return (
       <Card className={cn("w-full", className)}>
         <CardHeader>
@@ -64,84 +66,194 @@ export function EnhancedDateMasterTimeSelection({
 
   // Отслеживаем изменения salonTimezone
   useEffect(() => {
-    console.log('🔍 useEffect: salonTimezone changed to:', salonTimezone)
+    // console.log('🔍 useEffect: salonTimezone changed to:', salonTimezone)
   }, [salonTimezone])
 
   // Отслеживаем монтирование/размонтирование компонента
   useEffect(() => {
-    console.log('🔍 EnhancedDateMasterTimeSelection: Component mounted')
+    // console.log('🔍 EnhancedDateMasterTimeSelection: Component mounted')
     return () => {
-      console.log('🔍 EnhancedDateMasterTimeSelection: Component unmounted')
+      // console.log('🔍 EnhancedDateMasterTimeSelection: Component unmounted')
     }
   }, [])
 
-  // Генерируем даты на следующие 14 дней
+  // Загружаем доступные слоты при изменении даты, мастера или временной зоны клиента
+  useEffect(() => {
+    // console.log('🔍 useEffect: loadAvailableSlots triggered', {
+    //   selectedDate,
+    //   selectedMaster: selectedMaster?.id,
+    //   clientTimezone,
+    //   salonTimezone
+    // })
+    
+    if (selectedDate && selectedMaster && clientTimezone && salonTimezone) {
+      loadAvailableSlots()
+    } else {
+      // console.log('🔍 useEffect: missing required data for loadAvailableSlots', {
+      //   hasSelectedDate: !!selectedDate,
+      //   hasSelectedMaster: !!selectedMaster,
+      //   hasClientTimezone: !!clientTimezone,
+      //   hasSalonTimezone: !!salonTimezone
+      // })
+    }
+  }, [selectedDate, selectedMaster, clientTimezone, salonTimezone])
+
+  // Генерируем даты на следующие 14 дней (только рабочие дни)
   const generateDates = () => {
     const dates = []
-    const today = new Date()
-    for (let i = 0; i < 14; i++) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + i)
-      dates.push({
-        value: date.toISOString().split('T')[0],
-        label: date.toLocaleDateString('ru-RU', { 
-          weekday: 'short', 
-          month: 'short', 
-          day: 'numeric' 
-        })
+    
+    // Используем время салона для определения "сегодня"
+    // Создаем дату в временной зоне салона
+    const now = new Date()
+    const salonTime = new Date(now.toLocaleString("en-US", {timeZone: salonTimezone}))
+    
+    // Добавляем отладочную информацию
+    // console.log('🔍 generateDates: now (UTC) =', now.toISOString())
+    // console.log('🔍 generateDates: salonTimezone =', salonTimezone)
+    // console.log('🔍 generateDates: salonTime (local) =', salonTime.toLocaleString())
+    
+    let currentDate = new Date(salonTime)
+    let daysAdded = 0
+    let maxDays = 30 // Максимум дней для поиска, чтобы не зациклиться
+    
+    while (dates.length < 14 && daysAdded < maxDays) {
+      const dateValue = currentDate.toISOString().split('T')[0]
+      
+      // Форматируем день недели в временной зоне салона
+      const salonDate = new Date(dateValue + 'T00:00:00')
+      const weekday = salonDate.toLocaleDateString('ru-RU', { 
+        weekday: 'long', 
+        timeZone: salonTimezone
       })
+      const weekdayLabel = salonDate.toLocaleDateString('ru-RU', { 
+        weekday: 'short', 
+        timeZone: salonTimezone
+      })
+      
+      // Проверяем, что это не выходной (суббота = 6, воскресенье = 0)
+      const dayOfWeek = salonDate.getDay()
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      
+      if (!isWeekend) {
+        dates.push({
+          value: dateValue,
+          label: `${weekdayLabel} ${currentDate.getDate()} ${currentDate.toLocaleDateString('ru-RU', { 
+            month: 'short',
+            timeZone: salonTimezone
+          })}`
+        })
+        
+        // Логируем каждую дату для отладки
+        // if (dates.length <= 3) {
+        //   console.log(`🔍 generateDates: date ${dates.length - 1} = ${dateValue} (${weekday})`)
+        // }
+      } else {
+        // console.log(`🔍 generateDates: skipping weekend ${dateValue} (${weekday})`)
+      }
+      
+      // Переходим к следующему дню
+      currentDate.setDate(currentDate.getDate() + 1)
+      daysAdded++
     }
+    
+    // console.log(`🔍 generateDates: generated ${dates.length} working days`)
     return dates
   }
 
-  const dates = generateDates()
+  // Мемоизируем даты, чтобы избежать пересчета при каждом рендере
+  // console.log('🔍 BEFORE useMemo: salonTimezone =', salonTimezone)
+  const dates = useMemo(() => {
+    // console.log('🔍 useMemo: generating dates for timezone =', salonTimezone)
+    const result = generateDates()
+    // console.log('🔍 useMemo: generated dates count =', result.length)
+    return result
+  }, [salonTimezone])
+  // console.log('🔍 AFTER useMemo: dates count =', dates.length)
 
-  // Фильтруем мастеров по выбранным услугам
-  const availableMasters = masters.filter(master => {
-    if (selectedServices.length === 0) return true
-    
-    // Проверяем что мастер может выполнить все выбранные услуги
-    return selectedServices.every(service => 
-      master.services && master.services.includes(service.id)
-    )
-  })
+  // Мемоизируем доступных мастеров
+  const availableMasters = useMemo(() => {
+    // console.log('🔍 useMemo: filtering masters...')
+    return masters.filter(master => {
+      if (selectedServices.length === 0) return true
+      
+      // Проверяем что мастер может выполнить все выбранные услуги
+      return selectedServices.every(service => 
+        master.services && master.services.includes(service.id)
+      )
+    })
+  }, [masters, selectedServices])
 
-  // Автоматически выбираем сегодняшний день и первого мастера
+  // Автоматически выбираем первый рабочий день и первого мастера
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
+    // console.log('🔍 useEffect: auto-select TRIGGERED with salonTimezone =', salonTimezone)
     
-    // Автоматически выбираем сегодняшний день, если дата не выбрана
+    // Используем время салона для определения "сегодня"
+    const now = new Date()
+    const salonTime = new Date(now.toLocaleString("en-US", {timeZone: salonTimezone}))
+    const today = salonTime.toISOString().split('T')[0]
+    
+    // console.log('🔍 useEffect: auto-select - now (UTC) =', now.toISOString())
+    // console.log('🔍 useEffect: auto-select - salonTime =', salonTime.toLocaleString())
+    // console.log('🔍 useEffect: auto-select - today (salon) =', today)
+    
+    // Находим первый рабочий день (не выходной)
+    const findFirstWorkingDay = (startDate: Date) => {
+      let currentDate = new Date(startDate)
+      let daysChecked = 0
+      const maxDays = 10 // Максимум дней для поиска
+      
+      while (daysChecked < maxDays) {
+        const dayOfWeek = currentDate.getDay()
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+        
+        if (!isWeekend) {
+          return currentDate.toISOString().split('T')[0]
+        }
+        
+        currentDate.setDate(currentDate.getDate() + 1)
+        daysChecked++
+      }
+      
+      // Если не нашли рабочий день, возвращаем сегодня
+      return today
+    }
+    
+    const firstWorkingDay = findFirstWorkingDay(salonTime)
+    // console.log('🔍 useEffect: auto-select - firstWorkingDay =', firstWorkingDay)
+    
+    // Автоматически выбираем первый рабочий день, если дата не выбрана
     if (!selectedDate) {
-      onDateTimeSelect(today, selectedMaster, selectedTimeSlot)
+      onDateTimeSelect(firstWorkingDay, selectedMaster, selectedTimeSlot)
     }
     
     // Автоматически выбираем первого доступного мастера, если мастер не выбран и есть услуги
     if (!selectedMaster && availableMasters.length > 0 && selectedServices.length > 0) {
-      onDateTimeSelect(selectedDate || today, availableMasters[0], null)
+      onDateTimeSelect(selectedDate || firstWorkingDay, availableMasters[0], null)
     }
-  }, [selectedServices, availableMasters, selectedDate, selectedMaster, onDateTimeSelect])
+  }, [selectedServices, availableMasters, selectedDate, selectedMaster, onDateTimeSelect, salonTimezone])
 
-  // Загружаем доступные слоты при изменении даты или мастера
-  useEffect(() => {
-    if (selectedDate && selectedMaster && selectedServices.length > 0 && salonTimezone && clientTimezone) {
-      loadAvailableSlots()
-    }
-  }, [selectedDate, selectedMaster, selectedServices, clientTimezone, salonTimezone])
+
 
   const loadAvailableSlots = async () => {
     if (!selectedDate || !selectedMaster || !clientTimezone || !salonTimezone) return
 
-    console.log('🔍 loadAvailableSlots: loading slots for', selectedDate, selectedMaster.id)
+    // console.log('🔍 loadAvailableSlots: loading slots for', selectedDate, selectedMaster.id)
 
     setLoading(true)
     try {
       const totalDuration = selectedServices.reduce((sum, service) => sum + service.duration, 0)
       const url = `/api/masters/${selectedMaster.id}/available-slots?date=${selectedDate}&duration=${totalDuration}&clientTimezone=${clientTimezone}`
       
+      // console.log('🔍 loadAvailableSlots: API URL =', url)
+      // console.log('🔍 loadAvailableSlots: totalDuration =', totalDuration)
+      
       const response = await fetch(url)
+      
+      // console.log('🔍 loadAvailableSlots: response status =', response.status)
       
       if (response.ok) {
         const data = await response.json()
+        // console.log('🔍 loadAvailableSlots: API response data =', data)
         
         // Преобразуем ответ API в нужный формат
         if (data.availableSlots && Array.isArray(data.availableSlots)) {
@@ -150,18 +262,21 @@ export function EnhancedDateMasterTimeSelection({
             available: true,
             timezoneInfo: slot.timezoneInfo // сохраняем информацию о временной зоне
           }))
-          console.log('🔍 loadAvailableSlots: loaded', formattedSlots.length, 'slots')
+          // console.log('🔍 loadAvailableSlots: loaded', formattedSlots.length, 'slots')
+          // console.log('🔍 loadAvailableSlots: first slot =', formattedSlots[0])
           setAvailableSlots(formattedSlots)
         } else {
-          console.log('🔍 loadAvailableSlots: no availableSlots in response')
+          // console.log('🔍 loadAvailableSlots: no availableSlots in response')
           setAvailableSlots([])
         }
       } else {
-        console.error('API error:', response.status, response.statusText)
+        // console.error('🔍 loadAvailableSlots: API error', response.status, response.statusText)
+        const errorText = await response.text()
+        // console.error('🔍 loadAvailableSlots: error response body =', errorText)
         setAvailableSlots([])
       }
     } catch (error) {
-      console.error('Ошибка загрузки слотов:', error)
+      // console.error('🔍 loadAvailableSlots: fetch error', error)
       setAvailableSlots([])
     } finally {
       setLoading(false)
@@ -169,15 +284,17 @@ export function EnhancedDateMasterTimeSelection({
   }
 
   const handleDateSelect = (date: string) => {
+    // console.log('🔍 handleDateSelect: selecting date', date)
     onDateTimeSelect(date, selectedMaster, null)
   }
 
   const handleMasterSelect = (master: Master) => {
+    // console.log('🔍 handleMasterSelect: selecting master', master.id, master.firstName)
     onDateTimeSelect(selectedDate, master, null)
   }
 
   const handleTimeSlotSelect = (timeSlot: TimeSlot) => {
-    console.log('🔍 handleTimeSlotSelect: selecting', timeSlot.time)
+    // console.log('🔍 handleTimeSlotSelect: selecting', timeSlot.time)
     onDateTimeSelect(selectedDate, selectedMaster, timeSlot)
   }
 
@@ -348,4 +465,7 @@ export function EnhancedDateMasterTimeSelection({
       </CardContent>
     </Card>
   )
+  
+  // Логируем завершение рендера
+  // console.log('🔍 EnhancedDateMasterTimeSelection: RENDER END - salonTimezone =', salonTimezone)
 }

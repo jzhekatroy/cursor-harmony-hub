@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Search, Clock, DollarSign, Grid, List, Check, X, Star, Info, XCircle } from 'lucide-react'
+import { Search, Clock, DollarSign, Grid, List, Check, X, Star, Info, XCircle, ArrowRight } from 'lucide-react'
 import { Service, ServiceGroup } from '@/types/booking'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ interface EnhancedServiceSelectionProps {
   serviceGroups: ServiceGroup[];
   selectedServices: Service[];
   onServiceSelect: (services: Service[]) => void;
+  onNext?: () => void;
   className?: string;
 }
 
@@ -23,8 +24,15 @@ export function EnhancedServiceSelection({
   serviceGroups,
   selectedServices,
   onServiceSelect,
+  onNext,
   className = ''
 }: EnhancedServiceSelectionProps) {
+  console.log('🔍 EnhancedServiceSelection: render with props:', {
+    serviceGroups: serviceGroups?.length,
+    selectedServices: selectedServices?.length,
+    onNext: !!onNext
+  });
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
@@ -84,6 +92,7 @@ export function EnhancedServiceSelection({
 
   const toggleService = (service: Service) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
+    console.log('🔍 toggleService:', { service: service.name, isSelected });
     
     if (isSelected) {
       onServiceSelect(selectedServices.filter(s => s.id !== service.id));
@@ -304,6 +313,22 @@ export function EnhancedServiceSelection({
               <X className="w-5 h-5" />
             </button>
           </div>
+          
+          {/* Кнопка "Далее" */}
+          {onNext && (
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  console.log('🔍 EnhancedServiceSelection: onNext clicked');
+                  onNext();
+                }}
+                className="bg-[#00acf4] hover:bg-[#0095d9] text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <span>Продолжить</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -2,6 +2,44 @@
 
 import React, { useState, useEffect, useMemo } from 'react'
 import { Plus, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
+import MasterSchedule from '@/components/MasterSchedule'
+import MasterAbsencesManager from '@/components/MasterAbsencesManager'
+
+import { getCurrentTimeForAdmin, formatTimeForAdmin, isPastTimeInSalonTimezone } from '@/lib/timezone'
+
+// Локальные утилиты для работы с временем и датами
+const formatTime = (timeString: string) => {
+  // Если это уже время в формате HH:mm, возвращаем как есть
+  if (timeString.match(/^\d{2}:\d{2}$/)) {
+    return timeString
+  }
+  // Иначе пытаемся парсить как дату
+  const date = new Date(timeString)
+  if (isNaN(date.getTime())) {
+    return timeString // Возвращаем исходную строку если не удалось распарсить
+  }
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Функция для получения понедельника текущей недели
+const getMondayOfCurrentWeek = (date: Date) => {
+  const monday = new Date(date)
+  const dayOfWeek = date.getDay()
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Если воскресенье, то 6 дней назад
+  monday.setDate(date.getDate() - daysToMonday)
+  return monday
+}
+
+const getWeekDays = (startDate: Date) => {
+  const days = []
+  for (let i = 0; i < 7; i++) {
+    const day = new Date(startDate)
+    day.setDate(startDate.getDate() + i)
+    days.push(day)
+  }
+  return days
+}
 
 interface BookingService {
   name: string
@@ -104,19 +142,6 @@ const getStatusBorderColor = (status: string) => {
   }
 }
 
-const formatTime = (timeString: string) => {
-  // Если это уже время в формате HH:mm, возвращаем как есть
-  if (timeString.match(/^\d{2}:\d{2}$/)) {
-    return timeString
-  }
-  // Иначе пытаемся парсить как дату
-  const date = new Date(timeString)
-  if (isNaN(date.getTime())) {
-    return timeString // Возвращаем исходную строку если не удалось распарсить
-  }
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-}
-
 const formatDate = (date: Date) => {
   return date.toLocaleDateString('ru-RU', { 
     weekday: 'short', 
@@ -125,23 +150,8 @@ const formatDate = (date: Date) => {
   })
 }
 
-const getWeekDays = (startDate: Date) => {
-  const days = []
-  for (let i = 0; i < 7; i++) {
-    const day = new Date(startDate)
-    day.setDate(startDate.getDate() + i)
-    days.push(day)
-  }
-  return days
-}
-
 export default function AdminDashboard() {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => {
-    const now = new Date()
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - now.getDay() + 1)
-    return monday
-  })
+  const [currentWeekStart, setCurrentWeekStart] = useState(() => getMondayOfCurrentWeek(new Date()))
   const [selectedDay, setSelectedDay] = useState(new Date())
   const [view, setView] = useState<'calendar' | 'list'>('calendar')
   const [currentTime, setCurrentTime] = useState(() => new Date())
@@ -157,15 +167,19 @@ export default function AdminDashboard() {
   const [calendarMaster, setCalendarMaster] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [isAutoUpdating, setIsAutoUpdating] = useState(false)
+  
+  // Новое состояние для временной зоны салона
+  const [salonTimezone, setSalonTimezone] = useState<string>('Europe/Moscow')
 
   // Обновление времени каждую минуту
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentTime(new Date())
+      // Используем время в временной зоне салона
+      setCurrentTime(getCurrentTimeForAdmin(salonTimezone))
     }, 60000) // каждую минуту
 
     return () => clearInterval(interval)
-  }, [])
+  }, [salonTimezone])
 
   // Загрузка данных
   const loadData = async () => {
@@ -179,6 +193,16 @@ export default function AdminDashboard() {
         setError('Требуется авторизация')
         setLoading(false)
         return
+      }
+
+      // Загружаем настройки команды для получения временной зоны
+      const settingsResponse = await fetch('/api/team/settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json()
+        setSalonTimezone(settingsData.settings.timezone || 'Europe/Moscow')
       }
 
       // Загружаем бронирования
@@ -239,11 +263,12 @@ export default function AdminDashboard() {
   // Обновление текущего времени (каждые 10 секунд для плавности красной линии)
   useEffect(() => {
     const timeInterval = setInterval(() => {
-      setCurrentTime(new Date())
+      // Используем время в временной зоне салона
+      setCurrentTime(getCurrentTimeForAdmin(salonTimezone))
     }, 10000) // Обновляем каждые 10 секунд
 
     return () => clearInterval(timeInterval)
-  }, [])
+  }, [salonTimezone])
 
   // Автообновление данных календаря каждую минуту
   useEffect(() => {
@@ -305,8 +330,7 @@ export default function AdminDashboard() {
 
   const goToToday = () => {
     const now = new Date()
-    const monday = new Date(now)
-    monday.setDate(now.getDate() - now.getDay() + 1)
+    const monday = getMondayOfCurrentWeek(now)
     setCurrentWeekStart(monday)
     setSelectedDay(now)
   }
@@ -401,12 +425,8 @@ export default function AdminDashboard() {
 
   // Проверка, является ли время прошедшим
   const isPastTime = (date: Date, time: string) => {
-    const now = currentTime
-    const checkDateTime = new Date(date)
-    const [hours, minutes] = time.split(':').map(Number)
-    checkDateTime.setHours(hours, minutes, 0, 0)
-    
-    return checkDateTime < now
+    // Используем утилиту для проверки времени в временной зоне салона
+    return isPastTimeInSalonTimezone(date, time, salonTimezone)
   }
 
   // Получение бронирования для конкретного времени и мастера
@@ -609,7 +629,7 @@ export default function AdminDashboard() {
 
           {/* Day Tabs */}
           <div className="flex border-b border-gray-200 bg-white">
-            {weekDays.map((day, index) => (
+                            {weekDays.map((day: Date, index: number) => (
               <button
                 key={index}
                 onClick={() => setSelectedDay(day)}

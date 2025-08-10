@@ -80,8 +80,19 @@ export async function POST(request: NextRequest) {
     const totalPrice = services.reduce((sum, service) => sum + Number(service.price), 0)
 
     // Вычисляем время окончания
+    console.log('🔍 DEBUG startTime:', startTime)
     const startDateTime = new Date(startTime)
+    console.log('🔍 DEBUG startDateTime:', startDateTime)
+    
+    if (isNaN(startDateTime.getTime())) {
+      return NextResponse.json(
+        { error: `Некорректное время: ${startTime}` },
+        { status: 400 }
+      )
+    }
+    
     const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60 * 1000)
+    console.log('🔍 DEBUG endDateTime:', endDateTime)
 
     // Проверяем конфликты с существующими бронированиями
     const conflictingBooking = await prisma.booking.findFirst({

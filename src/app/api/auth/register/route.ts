@@ -6,7 +6,7 @@ import { UserRole } from '@prisma/client'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, teamName, contactPerson, slug } = body
+    const { email, password, teamName, contactPerson, slug, timezone } = body
 
     // Валидация
     if (!email || !password || !teamName || !contactPerson || !slug) {
@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
           slug,
           contactPerson,
           email,
+          timezone: timezone || 'Europe/Moscow', // используем переданную временную зону или дефолт
         }
       })
 

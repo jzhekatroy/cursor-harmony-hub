@@ -10,7 +10,8 @@ export default function HomePage() {
     password: '',
     teamName: '',
     contactPerson: '',
-    slug: ''
+    slug: '',
+    timezone: ''
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
@@ -38,9 +39,101 @@ export default function HomePage() {
     return text.split('').map(char => translitMap[char] || char).join('')
   }
 
-  // Устанавливаем домен после монтирования компонента
+  // Список популярных временных зон
+  const popularTimezones = [
+    // Россия
+    { value: 'Europe/Moscow', label: 'Москва (UTC+3)', region: 'Россия' },
+    { value: 'Europe/Kaliningrad', label: 'Калининград (UTC+2)', region: 'Россия' },
+    { value: 'Asia/Yekaterinburg', label: 'Екатеринбург (UTC+5)', region: 'Россия' },
+    { value: 'Asia/Novosibirsk', label: 'Новосибирск (UTC+7)', region: 'Россия' },
+    { value: 'Asia/Krasnoyarsk', label: 'Красноярск (UTC+8)', region: 'Россия' },
+    { value: 'Asia/Irkutsk', label: 'Иркутск (UTC+9)', region: 'Россия' },
+    { value: 'Asia/Vladivostok', label: 'Владивосток (UTC+11)', region: 'Россия' },
+    // Европа
+    { value: 'Europe/London', label: 'Лондон (UTC+0/+1)', region: 'Европа' },
+    { value: 'Europe/Paris', label: 'Париж (UTC+1/+2)', region: 'Европа' },
+    { value: 'Europe/Berlin', label: 'Берлин (UTC+1/+2)', region: 'Европа' },
+    { value: 'Europe/Istanbul', label: 'Стамбул (UTC+3)', region: 'Европа' },
+    // Азия
+    { value: 'Asia/Dubai', label: 'Дубай (UTC+4)', region: 'Азия' },
+    { value: 'Asia/Tashkent', label: 'Ташкент (UTC+5)', region: 'Азия' },
+    { value: 'Asia/Kolkata', label: 'Калькутта (UTC+5:30)', region: 'Азия' },
+    { value: 'Asia/Shanghai', label: 'Шанхай (UTC+8)', region: 'Азия' },
+    { value: 'Asia/Tokyo', label: 'Токио (UTC+9)', region: 'Азия' },
+    { value: 'Asia/Seoul', label: 'Сеул (UTC+9)', region: 'Азия' },
+    // Америка
+    { value: 'America/New_York', label: 'Нью-Йорк (UTC-5/-4)', region: 'Америка' },
+    { value: 'America/Chicago', label: 'Чикаго (UTC-6/-5)', region: 'Америка' },
+    { value: 'America/Denver', label: 'Денвер (UTC-7/-6)', region: 'Америка' },
+    { value: 'America/Los_Angeles', label: 'Лос-Анджелес (UTC-8/-7)', region: 'Америка' },
+    { value: 'America/Sao_Paulo', label: 'Сан-Паулу (UTC-3)', region: 'Америка' },
+    // Австралия/Океания
+    { value: 'Australia/Sydney', label: 'Сидней (UTC+10/+11)', region: 'Австралия/Океания' },
+    { value: 'Australia/Perth', label: 'Перт (UTC+8)', region: 'Австралия/Океания' },
+    { value: 'Pacific/Auckland', label: 'Окленд (UTC+12/+13)', region: 'Австралия/Океания' },
+    // Африка
+    { value: 'Africa/Cairo', label: 'Каир (UTC+2)', region: 'Африка' },
+    { value: 'Africa/Johannesburg', label: 'Йоханнесбург (UTC+2)', region: 'Африка' },
+    // Универсальные
+    { value: 'UTC', label: 'UTC (UTC+0)', region: 'Универсальные' }
+  ]
+
+  // Функция детекции временной зоны браузера
+  const getBrowserTimezone = (): string => {
+    try {
+      // Пытаемся получить временную зону из Intl API
+      if (Intl && Intl.DateTimeFormat && Intl.DateTimeFormat().resolvedOptions) {
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (timezone) return timezone
+      }
+      
+      // Fallback: получаем смещение в минутах
+      const offset = new Date().getTimezoneOffset()
+      const hours = Math.abs(Math.floor(offset / 60))
+      const minutes = Math.abs(offset % 60)
+      const sign = offset <= 0 ? '+' : '-'
+      
+      // Маппинг популярных смещений на временные зоны
+      const offsetMap: { [key: string]: string } = {
+        '-180': 'Europe/Moscow',      // UTC+3 (приоритет для России)
+        '-120': 'Europe/Kaliningrad', // UTC+2 (приоритет для России)
+        '-300': 'Asia/Yekaterinburg', // UTC+5
+        '-420': 'Asia/Novosibirsk',   // UTC+7
+        '-480': 'Asia/Krasnoyarsk',   // UTC+8
+        '-540': 'Asia/Irkutsk',       // UTC+9
+        '-600': 'Asia/Yakutsk',       // UTC+10
+        '-660': 'Asia/Vladivostok',   // UTC+11
+        '-720': 'Asia/Magadan',       // UTC+12
+        '-780': 'Asia/Kamchatka',     // UTC+13
+        '0': 'UTC',                   // UTC+0
+        '-60': 'Europe/London',       // UTC+1
+        '-240': 'Asia/Dubai',         // UTC+4
+        '-330': 'Asia/Kolkata',       // UTC+5:30
+        '300': 'America/New_York',    // UTC-5
+        '360': 'America/Chicago',     // UTC-6
+        '420': 'America/Denver',      // UTC-7
+        '480': 'America/Los_Angeles', // UTC-8
+        '180': 'America/Sao_Paulo'    // UTC-3
+      }
+      
+      const offsetKey = `${sign}${hours * 60 + minutes}`
+      return offsetMap[offsetKey] || 'Europe/Moscow' // дефолт
+    } catch (error) {
+      console.error('Ошибка детекции временной зоны:', error)
+      return 'Europe/Moscow' // дефолт при ошибке
+    }
+  }
+
+  // Устанавливаем домен и временную зону после монтирования компонента
   useEffect(() => {
     setDomain(window.location.origin)
+    
+    // Автоматически устанавливаем детектированную временную зону
+    const detectedTimezone = getBrowserTimezone()
+    setFormData(prev => ({
+      ...prev,
+      timezone: detectedTimezone
+    }))
   }, [])
 
   // Автоматически генерируем slug при изменении названия салона
@@ -105,7 +198,7 @@ export default function HomePage() {
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     
     if (name === 'teamName') {
@@ -251,6 +344,34 @@ export default function HomePage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Ваше имя"
               />
+            </div>
+
+            <div>
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 mb-2">
+                Часовой пояс салона
+              </label>
+              <select
+                id="timezone"
+                name="timezone"
+                required
+                value={formData.timezone}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {popularTimezones.map((tz, index) => (
+                  <optgroup key={`${tz.region}-${index}`} label={tz.region}>
+                    <option value={tz.value}>{tz.label}</option>
+                  </optgroup>
+                ))}
+              </select>
+              <p className="mt-1 text-sm text-gray-500">
+                Часовой пояс автоматически определен по вашему местоположению. Вы можете изменить его вручную.
+              </p>
+              {formData.timezone && (
+                <p className="mt-1 text-sm text-blue-600">
+                  🕐 Автоматически определен: {formData.timezone}
+                </p>
+              )}
             </div>
 
             <div>

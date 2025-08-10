@@ -68,9 +68,18 @@ export function EnhancedClientInfoAndConfirmation({
     if (!validateForm()) {
       return
     }
+    
+    // Дополнительная валидация
+    if (!bookingData.timeSlot?.time) {
+      alert('Пожалуйста, выберите время записи')
+      return
+    }
 
     setIsSubmitting(true)
     try {
+      const startTime = `${bookingData.date}T${bookingData.timeSlot.time}:00`
+      console.log('🔍 DEBUG startTime being sent:', startTime)
+      
       // Отправляем данные на сервер
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -81,7 +90,7 @@ export function EnhancedClientInfoAndConfirmation({
           teamSlug: window.location.pathname.split('/')[2], // Извлекаем slug из URL
           serviceIds: bookingData.services.map(s => s.id),
           masterId: bookingData.master?.id,
-          startTime: `${bookingData.date}T${bookingData.timeSlot?.time}:00`,
+          startTime: startTime,
           clientData: {
             name: bookingData.clientInfo.name,
             phone: bookingData.clientInfo.phone,
@@ -123,6 +132,13 @@ export function EnhancedClientInfoAndConfirmation({
     return `${hours} ч ${remainingMinutes} мин`
   }
 
+  // Добавляем отладочную информацию
+  console.log('🔍 EnhancedClientInfoAndConfirmation render:', {
+    timeSlot: bookingData.timeSlot,
+    timeSlotTime: bookingData.timeSlot?.time,
+    fullBookingData: bookingData
+  })
+
   return (
     <div className={cn("space-y-6", className)}>
       {/* Краткая сводка заказа */}
@@ -162,7 +178,7 @@ export function EnhancedClientInfoAndConfirmation({
               </div>
               <div>
                 <p className="font-medium text-gray-700">Время:</p>
-                <p>{bookingData.timeSlot?.time}</p>
+                <p>{bookingData.timeSlot?.time || 'Не выбрано'}</p>
               </div>
               {bookingData.master && (
                 <div className="sm:col-span-2">

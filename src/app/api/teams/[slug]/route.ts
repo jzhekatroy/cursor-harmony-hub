@@ -78,7 +78,8 @@ export async function GET(
         name: team.name,
         logoUrl: team.logoUrl,
         privacyPolicyUrl: team.privacyPolicyUrl,
-        bookingStep: team.bookingStep
+        bookingStep: team.bookingStep,
+        timezone: team.timezone || 'Europe/Moscow'
       },
       serviceGroups: team.serviceGroups.map(group => ({
         id: group.id,

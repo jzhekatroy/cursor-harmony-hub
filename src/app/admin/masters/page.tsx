@@ -665,10 +665,9 @@ export default function MastersPage() {
        {scheduleDialogMaster && (
          <MasterSchedule
            masterId={scheduleDialogMaster.id}
-           masterName={`${scheduleDialogMaster.firstName} ${scheduleDialogMaster.lastName}`}
            isOpen={true}
            onClose={() => setScheduleDialogMaster(null)}
-           onSave={() => {
+           onSave={(schedule) => {
              loadData() // Перезагружаем данные после сохранения
            }}
          />

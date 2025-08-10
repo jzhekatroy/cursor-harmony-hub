@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Calendar, Clock, User, Phone, Mail, MessageCircle, X, Check, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Calendar, Clock, User, Phone, Mail, AlertCircle, Search, Filter, Download, MessageCircle, X } from 'lucide-react'
+import Link from 'next/link'
+import { formatTimeForAdmin } from '@/lib/timezone'
 
 interface BookingService {
   name: string
@@ -31,6 +33,12 @@ interface Booking {
   services: BookingService[]
 }
 
+interface Master {
+  id: string
+  firstName: string
+  lastName: string
+}
+
 const statusColors = {
   'CREATED': 'bg-yellow-100 text-yellow-800',
   'CONFIRMED': 'bg-blue-100 text-blue-800',
@@ -51,33 +59,52 @@ const statusNames = {
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [masters, setMasters] = useState<Master[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState({
-    status: '',
-    date: '',
-    masterId: ''
-  })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [masterFilter, setMasterFilter] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<'date' | 'client' | 'master' | 'status'>('date')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  
+  // Новое состояние для временной зоны салона
+  const [salonTimezone, setSalonTimezone] = useState<string>('Europe/Moscow')
+  
+  // Состояние для отслеживания отмены бронирования
   const [cancellingBooking, setCancellingBooking] = useState<string | null>(null)
 
   useEffect(() => {
-    loadBookings()
-  }, [filter])
+    loadData()
+  }, [statusFilter, masterFilter, sortBy, sortOrder])
 
-  const loadBookings = async () => {
+  // Загрузка данных
+  const loadData = async () => {
     try {
       setLoading(true)
       setError(null)
-      
+
       const token = localStorage.getItem('token')
       if (!token) {
         throw new Error('Токен авторизации не найден')
       }
 
+      // Загружаем настройки команды для получения временной зоны
+      const settingsResponse = await fetch('/api/team/settings', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json()
+        setSalonTimezone(settingsData.settings.timezone || 'Europe/Moscow')
+      }
+
       const params = new URLSearchParams()
-      if (filter.status) params.append('status', filter.status)
-      if (filter.date) params.append('date', filter.date)
-      if (filter.masterId) params.append('masterId', filter.masterId)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (masterFilter !== 'all') params.append('masterId', masterFilter)
+      if (searchTerm) params.append('search', searchTerm)
+      if (sortBy) params.append('sortBy', sortBy)
+      if (sortOrder) params.append('sortOrder', sortOrder)
 
       const response = await fetch(`/api/bookings?${params.toString()}`, {
         headers: {
@@ -121,7 +148,7 @@ export default function BookingsPage() {
       }
 
       // Обновляем список бронирований
-      await loadBookings()
+      await loadData()
       
     } catch (err: any) {
       console.error('Ошибка отмены бронирования:', err)
@@ -135,7 +162,7 @@ export default function BookingsPage() {
     const date = new Date(dateTimeString)
     return {
       date: date.toLocaleDateString('ru-RU'),
-      time: date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      time: formatTimeForAdmin(dateTimeString, salonTimezone)
     }
   }
 
@@ -168,7 +195,7 @@ export default function BookingsPage() {
                 </div>
                 <div className="mt-4">
                   <button
-                    onClick={loadBookings}
+                    onClick={loadData}
                     className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
                   >
                     Попробовать снова
@@ -201,11 +228,11 @@ export default function BookingsPage() {
                 Статус
               </label>
               <select
-                value={filter.status}
-                onChange={(e) => setFilter({...filter, status: e.target.value})}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
               >
-                <option value="">Все статусы</option>
+                <option value="all">Все статусы</option>
                 <option value="CREATED">Создана</option>
                 <option value="CONFIRMED">Подтверждена</option>
                 <option value="COMPLETED">Завершена</option>
@@ -217,19 +244,29 @@ export default function BookingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Дата
+                Мастер
               </label>
-              <input
-                type="date"
-                value={filter.date}
-                onChange={(e) => setFilter({...filter, date: e.target.value})}
+              <select
+                value={masterFilter}
+                onChange={(e) => setMasterFilter(e.target.value)}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              />
+              >
+                <option value="all">Все мастера</option>
+                {masters.map(master => (
+                  <option key={master.id} value={master.id}>{master.firstName} {master.lastName}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-end">
               <button
-                onClick={() => setFilter({ status: '', date: '', masterId: '' })}
+                onClick={() => {
+                  setStatusFilter('all');
+                  setMasterFilter('all');
+                  setSearchTerm('');
+                  setSortBy('date');
+                  setSortOrder('desc');
+                }}
                 className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
               >
                 Сбросить

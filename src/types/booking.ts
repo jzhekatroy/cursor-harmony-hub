@@ -32,6 +32,11 @@ export interface Master {
 export interface TimeSlot {
   time: string; // формат "HH:MM"
   available: boolean;
+  timezoneInfo?: {
+    salonTime: string;
+    clientTime: string;
+    timezoneInfo: string;
+  };
 }
 
 export interface ClientInfo {

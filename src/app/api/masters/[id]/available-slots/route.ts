@@ -6,7 +6,9 @@ import {
   formatSalonTime, 
   getSalonTimeMinutes, 
   isTodayInSalonTimezone, 
-  getCurrentSalonTime 
+  getCurrentSalonTime,
+  formatTimeForClient,
+  getTimezoneDifference
 } from '@/lib/timezone'
 
 interface TimeSlot {
@@ -22,11 +24,13 @@ export async function GET(
   let masterId = ''
   let date = ''
   let serviceDuration = 60
+  let clientTimezone = 'UTC' // Добавляем временную зону клиента
   
   try {
     const { searchParams } = new URL(request.url)
     date = searchParams.get('date') || '' // YYYY-MM-DD format
     serviceDuration = parseInt(searchParams.get('duration') || '60') // минуты
+    clientTimezone = searchParams.get('clientTimezone') || 'UTC' // временная зона клиента
 
     if (!date) {
       return NextResponse.json(
@@ -123,10 +127,12 @@ export async function GET(
     // Генерируем все возможные слоты
     const bookingStep = master.team.bookingStep
     // Получаем текущее время в часовом поясе салона
-    const salonTimezone = master.team.timezone
+    const salonTimezone = master.team.timezone || 'Europe/Moscow' // Используем значение по умолчанию
     const now = new Date()
     const salonTime = getCurrentSalonTime(salonTimezone)
     
+    
+
     // Определяем функцию форматирования времени для этого салона
     const formatTimeForSalon = (date: Date) => formatSalonTime(date, salonTimezone)
 
@@ -223,6 +229,28 @@ export async function GET(
     console.log('📊 Занятых слотов:', occupiedSlots.length)
     console.log('📊 Доступных слотов:', availableSlots.length)
 
+    // Модифицируем возвращаемые слоты для клиента
+    const availableSlotsForClient = availableSlots.map(slot => {
+      // slot.start - это время в формате салона (например, "14:30")
+      // formatTimeForClient принимает время салона и возвращает время клиента
+      const timezoneInfo = formatTimeForClient(
+        slot.start, // время салона
+        salonTimezone,
+        clientTimezone,
+        date
+      )
+      
+      return {
+        time: timezoneInfo.clientTime, // показываем время клиента
+        available: true,
+        timezoneInfo: {
+          salonTime: slot.start, // оригинальное время салона
+          clientTime: timezoneInfo.clientTime, // конвертированное время клиента
+          timezoneInfo: timezoneInfo.timezoneInfo // информация о разнице
+        }
+      }
+    })
+
     return NextResponse.json({
       date,
       masterId,
@@ -235,8 +263,13 @@ export async function GET(
         breakStart: daySchedule.breakStart,
         breakEnd: daySchedule.breakEnd
       },
-      availableSlots,
-      occupiedSlots
+      availableSlots: availableSlotsForClient, // возвращаем слоты с временными зонами
+      occupiedSlots,
+      timezoneInfo: {
+        salon: salonTimezone,
+        client: clientTimezone,
+        difference: getTimezoneDifference(salonTimezone, clientTimezone)
+      }
     })
 
   } catch (error) {

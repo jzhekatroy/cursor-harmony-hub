@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Clock, Plus, X, Save, RotateCcw } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { X, Plus, Trash2, Clock, Calendar } from 'lucide-react'
+import { formatTimeForAdmin } from '@/lib/timezone'
 
 interface ScheduleItem {
   dayOfWeek: number
@@ -23,12 +24,23 @@ interface DaySchedule {
   breaks: Break[]
 }
 
+interface MasterSchedule {
+  day: string;
+  isWorkingDay: boolean;
+  startTime: string;
+  endTime: string;
+  breakStart: string;
+  breakEnd: string;
+  breaks: Break[];
+}
+
 interface MasterScheduleProps {
   masterId: string
-  masterName: string
   isOpen: boolean
   onClose: () => void
-  onSave: () => void
+  onSave: (schedule: MasterSchedule[]) => void
+  initialSchedule?: MasterSchedule[]
+  salonTimezone?: string // Добавляем временную зону салона
 }
 
 const DAYS_OF_WEEK = [
@@ -41,22 +53,38 @@ const DAYS_OF_WEEK = [
   { id: 0, name: 'Воскресенье', short: 'Вс' }
 ]
 
-export default function MasterSchedule({ masterId, masterName, isOpen, onClose, onSave }: MasterScheduleProps) {
-  const [schedule, setSchedule] = useState<Record<number, DaySchedule>>({})
-  const [isLoading, setIsLoading] = useState(false)
+export default function MasterSchedule({ 
+  masterId, 
+  isOpen, 
+  onClose, 
+  onSave, 
+  initialSchedule = [],
+  salonTimezone = 'Europe/Moscow' // По умолчанию Москва
+}: MasterScheduleProps) {
+  const [schedule, setSchedule] = useState<MasterSchedule[]>(initialSchedule)
+  const [selectedDay, setSelectedDay] = useState<string>('monday')
+  const [startTime, setStartTime] = useState<string>('09:00')
+  const [endTime, setEndTime] = useState<string>('18:00')
+  const [breakStart, setBreakStart] = useState<string>('13:00')
+  const [breakEnd, setBreakEnd] = useState<string>('14:00')
+  const [isBreakEnabled, setIsBreakEnabled] = useState<boolean>(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
   // Инициализация расписания по умолчанию
   const initializeDefaultSchedule = () => {
-    const defaultSchedule: Record<number, DaySchedule> = {}
+    const defaultSchedule: MasterSchedule[] = []
     DAYS_OF_WEEK.forEach(day => {
-      defaultSchedule[day.id] = {
+      defaultSchedule.push({
+        day: day.name.toLowerCase().substring(0, 3),
         isWorkingDay: day.id >= 1 && day.id <= 5, // Пн-Пт рабочие дни
         startTime: '09:00',
         endTime: '18:00',
-        breaks: [{ startTime: '13:00', endTime: '14:00' }] // Обеденный перерыв
-      }
+        breakStart: '13:00',
+        breakEnd: '14:00',
+        breaks: [{ startTime: '13:00', endTime: '14:00' }]
+      })
     })
     setSchedule(defaultSchedule)
   }
@@ -65,7 +93,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
   const loadSchedule = async () => {
     if (!masterId) return
     
-    setIsLoading(true)
+    setLoading(true)
     setError(null)
     
     try {
@@ -80,16 +108,19 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
         const data = await response.json()
         if (data.schedules && data.schedules.length > 0) {
           // Преобразуем API данные в формат компонента
-          const apiSchedule: Record<number, DaySchedule> = {}
+          const apiSchedule: MasterSchedule[] = []
           
           // Инициализируем все дни как выходные
           DAYS_OF_WEEK.forEach(day => {
-            apiSchedule[day.id] = {
-              isWorkingDay: false,
-              startTime: '09:00',
-              endTime: '18:00',
-              breaks: []
-            }
+                         apiSchedule.push({
+               day: day.name.toLowerCase().substring(0, 3),
+               isWorkingDay: false,
+               startTime: '09:00',
+               endTime: '18:00',
+               breakStart: '13:00',
+               breakEnd: '14:00',
+               breaks: []
+             })
           })
 
           // Заполняем данные из API
@@ -102,12 +133,15 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
               })
             }
 
-            apiSchedule[item.dayOfWeek] = {
-              isWorkingDay: true,
-              startTime: item.startTime,
-              endTime: item.endTime,
-              breaks
-            }
+                          apiSchedule[item.dayOfWeek] = {
+                day: DAYS_OF_WEEK[item.dayOfWeek].name.toLowerCase().substring(0, 3),
+                isWorkingDay: true,
+                startTime: item.startTime,
+                endTime: item.endTime,
+                breakStart: item.breakStart || '13:00',
+                breakEnd: item.breakEnd || '14:00',
+                breaks: item.breakStart && item.breakEnd ? [{ startTime: item.breakStart, endTime: item.breakEnd }] : []
+              }
           })
 
           setSchedule(apiSchedule)
@@ -125,7 +159,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
       setError('Ошибка соединения с сервером')
       initializeDefaultSchedule()
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -138,22 +172,20 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
       // Преобразуем данные компонента в формат API
       const schedules: ScheduleItem[] = []
       
-      Object.entries(schedule).forEach(([dayOfWeek, daySchedule]) => {
-        if (daySchedule.isWorkingDay) {
-          const scheduleItem: ScheduleItem = {
-            dayOfWeek: parseInt(dayOfWeek),
-            startTime: daySchedule.startTime,
-            endTime: daySchedule.endTime
-          }
-
-          // Добавляем первый перерыв если есть
-          if (daySchedule.breaks.length > 0) {
-            scheduleItem.breakStart = daySchedule.breaks[0].startTime
-            scheduleItem.breakEnd = daySchedule.breaks[0].endTime
-          }
-
-          schedules.push(scheduleItem)
+      schedule.forEach((item, index) => {
+        const daySchedule: ScheduleItem = {
+          dayOfWeek: index, // Assuming index corresponds to dayOfWeek
+          startTime: item.startTime,
+          endTime: item.endTime
         }
+
+        // Добавляем первый перерыв если есть
+        if (item.breakStart && item.breakEnd) {
+          daySchedule.breakStart = item.breakStart
+          daySchedule.breakEnd = item.breakEnd
+        }
+
+        schedules.push(daySchedule)
       })
 
       const token = localStorage.getItem('token')
@@ -167,7 +199,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
       })
 
       if (response.ok) {
-        onSave()
+        onSave(schedule)
         onClose()
       } else {
         const errorData = await response.json()
@@ -182,21 +214,23 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
   }
 
   // Обновление дня расписания
-  const updateDaySchedule = (dayId: number, updates: Partial<DaySchedule>) => {
-    setSchedule(prev => ({
-      ...prev,
-      [dayId]: {
-        ...prev[dayId],
-        ...updates
+  const updateDaySchedule = (dayIndex: number, updates: Partial<MasterSchedule>) => {
+    setSchedule(prev => prev.map((item, index) => {
+      if (index === dayIndex) {
+        return {
+          ...item,
+          ...updates
+        }
       }
+      return item
     }))
   }
 
   // Добавление перерыва
-  const addBreak = (dayId: number) => {
-    const daySchedule = schedule[dayId]
+  const addBreak = (dayIndex: number) => {
+    const daySchedule = schedule[dayIndex]
     if (daySchedule && daySchedule.breaks.length < 3) { // Максимум 3 перерыва
-      updateDaySchedule(dayId, {
+      updateDaySchedule(dayIndex, {
         breaks: [
           ...daySchedule.breaks,
           { startTime: '12:00', endTime: '13:00' }
@@ -206,25 +240,25 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
   }
 
   // Удаление перерыва
-  const removeBreak = (dayId: number, breakIndex: number) => {
-    const daySchedule = schedule[dayId]
+  const removeBreak = (dayIndex: number, breakIndex: number) => {
+    const daySchedule = schedule[dayIndex]
     if (daySchedule) {
-      updateDaySchedule(dayId, {
+      updateDaySchedule(dayIndex, {
         breaks: daySchedule.breaks.filter((_, index) => index !== breakIndex)
       })
     }
   }
 
   // Обновление перерыва
-  const updateBreak = (dayId: number, breakIndex: number, field: 'startTime' | 'endTime', value: string) => {
-    const daySchedule = schedule[dayId]
+  const updateBreak = (dayIndex: number, breakIndex: number, field: 'startTime' | 'endTime', value: string) => {
+    const daySchedule = schedule[dayIndex]
     if (daySchedule) {
       const updatedBreaks = [...daySchedule.breaks]
       updatedBreaks[breakIndex] = {
         ...updatedBreaks[breakIndex],
         [field]: value
       }
-      updateDaySchedule(dayId, { breaks: updatedBreaks })
+      updateDaySchedule(dayIndex, { breaks: updatedBreaks })
     }
   }
 
@@ -236,48 +270,59 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
 
   if (!isOpen) return null
 
+  const formatTimeForDisplay = (time: string) => {
+    // Форматируем время для отображения в админке (без смещений)
+    return formatTimeForAdmin(`2000-01-01T${time}:00`, salonTimezone)
+  }
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Заголовок */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div className="flex items-center gap-3">
-            <Clock className="w-6 h-6 text-blue-600" />
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                Рабочее время
-              </h2>
-              <p className="text-sm text-gray-600">{masterName}</p>
-            </div>
-          </div>
+    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isOpen ? '' : 'hidden'}`}>
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Расписание мастера</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* Контент */}
         <div className="p-6">
+          {/* Информация о временной зоне */}
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center text-blue-800">
+              <Clock className="w-5 h-5 mr-2" />
+              <span className="text-sm font-medium">
+                Временная зона салона: {salonTimezone}
+              </span>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Все времена отображаются в выбранной временной зоне салона
+            </p>
+          </div>
+
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
               {error}
             </div>
           )}
 
-          {isLoading ? (
+          {loading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
               <p className="mt-2 text-gray-600">Загрузка расписания...</p>
             </div>
           ) : (
             <div className="space-y-6">
-              {DAYS_OF_WEEK.map(day => {
-                const daySchedule = schedule[day.id] || {
+              {DAYS_OF_WEEK.map((day, dayIndex) => {
+                const daySchedule = schedule[dayIndex] || {
+                  day: day.name.toLowerCase().substring(0, 3),
                   isWorkingDay: false,
                   startTime: '09:00',
                   endTime: '18:00',
+                  breakStart: '13:00',
+                  breakEnd: '14:00',
                   breaks: []
                 }
 
@@ -290,7 +335,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
                         <input
                           type="checkbox"
                           checked={daySchedule.isWorkingDay}
-                          onChange={(e) => updateDaySchedule(day.id, { isWorkingDay: e.target.checked })}
+                          onChange={(e) => updateDaySchedule(dayIndex, { isWorkingDay: e.target.checked })}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-600">Рабочий день</span>
@@ -308,7 +353,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
                             <input
                               type="time"
                               value={daySchedule.startTime}
-                              onChange={(e) => updateDaySchedule(day.id, { startTime: e.target.value })}
+                              onChange={(e) => updateDaySchedule(dayIndex, { startTime: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -319,7 +364,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
                             <input
                               type="time"
                               value={daySchedule.endTime}
-                              onChange={(e) => updateDaySchedule(day.id, { endTime: e.target.value })}
+                              onChange={(e) => updateDaySchedule(dayIndex, { endTime: e.target.value })}
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                           </div>
@@ -333,7 +378,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
                             </label>
                             {daySchedule.breaks.length < 3 && (
                               <button
-                                onClick={() => addBreak(day.id)}
+                                onClick={() => addBreak(dayIndex)}
                                 className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
                               >
                                 <Plus className="w-4 h-4" />
@@ -348,21 +393,21 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
                                 <input
                                   type="time"
                                   value={breakItem.startTime}
-                                  onChange={(e) => updateBreak(day.id, index, 'startTime', e.target.value)}
+                                  onChange={(e) => updateBreak(dayIndex, index, 'startTime', e.target.value)}
                                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <span className="text-gray-400">—</span>
                                 <input
                                   type="time"
                                   value={breakItem.endTime}
-                                  onChange={(e) => updateBreak(day.id, index, 'endTime', e.target.value)}
+                                  onChange={(e) => updateBreak(dayIndex, index, 'endTime', e.target.value)}
                                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
                                 <button
-                                  onClick={() => removeBreak(day.id, index)}
+                                  onClick={() => removeBreak(dayIndex, index)}
                                   className="text-red-600 hover:text-red-800 p-1"
                                 >
-                                  <X className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             ))}
@@ -390,7 +435,7 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
             onClick={initializeDefaultSchedule}
             className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
           >
-            <RotateCcw className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" />
             Сбросить к умолчанию
           </button>
           <button
@@ -401,10 +446,10 @@ export default function MasterSchedule({ masterId, masterName, isOpen, onClose, 
           </button>
           <button
             onClick={handleSave}
-            disabled={isSaving || isLoading}
+            disabled={isSaving || loading}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
-            <Save className="w-4 h-4" />
+            <Plus className="w-4 h-4" />
             {isSaving ? 'Сохранение...' : 'Сохранить'}
           </button>
         </div>

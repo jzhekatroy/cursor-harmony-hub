@@ -455,22 +455,6 @@ export default function MastersPage() {
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    URL фото (альтернатива)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.photoUrl}
-                    onChange={(e) => setFormData({...formData, photoUrl: e.target.value})}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://example.com/photo.jpg"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Можно указать URL фото вместо загрузки файла
-                  </p>
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Услуги мастера
                   </label>

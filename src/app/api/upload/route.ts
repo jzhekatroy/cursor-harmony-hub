@@ -36,10 +36,10 @@ export async function POST(request: NextRequest) {
     // Создаем уникальное имя файла
     const timestamp = Date.now()
     const extension = file.name.split('.').pop()
-    const fileName = `master_${timestamp}.${extension}`
+    const fileName = `photo_${timestamp}.${extension}`
 
     // Создаем директорию для загрузок, если её нет
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'masters')
+    const uploadsDir = join(process.cwd(), 'public', 'uploads')
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true })
     }
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer)
 
     // Возвращаем URL файла
-    const fileUrl = `/uploads/masters/${fileName}`
+    const fileUrl = `/uploads/${fileName}`
 
     return NextResponse.json({
       success: true,

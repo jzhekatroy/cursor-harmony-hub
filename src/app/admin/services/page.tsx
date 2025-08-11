@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Archive, ArchiveRestore, Save, X, Upload, Eye, EyeOff } from 'lucide-react'
+import PhotoUpload from '@/components/PhotoUpload'
 
 interface ServiceGroup {
   id: string
@@ -488,15 +489,10 @@ export default function ServicesPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                URL фотографии
-              </label>
-              <input
-                type="url"
-                value={serviceForm.photoUrl}
-                onChange={(e) => setServiceForm({...serviceForm, photoUrl: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-                placeholder="https://example.com/photo.jpg"
+              <PhotoUpload
+                currentPhotoUrl={serviceForm.photoUrl}
+                onPhotoChange={(photoUrl) => setServiceForm({...serviceForm, photoUrl})}
+                onPhotoRemove={() => setServiceForm({...serviceForm, photoUrl: ''})}
               />
             </div>
             <div className="md:col-span-2">

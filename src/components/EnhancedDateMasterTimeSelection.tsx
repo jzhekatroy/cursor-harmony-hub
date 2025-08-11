@@ -389,18 +389,36 @@ export function EnhancedDateMasterTimeSelection({
                     )}
                     onClick={() => handleMasterSelect(master)}
                   >
-                    <div className="flex items-center gap-3">
-                      {master.photoUrl && (
-                        <img
-                          src={master.photoUrl}
-                          alt={`${master.firstName} ${master.lastName}`}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      )}
-                      <div>
-                        <h3 className="font-medium">{master.firstName} {master.lastName}</h3>
+                    <div className="flex items-center gap-4">
+                      {/* Фото мастера */}
+                      <div className="flex-shrink-0">
+                        {master.photoUrl ? (
+                          <img
+                            src={master.photoUrl}
+                            alt={`${master.firstName} ${master.lastName}`}
+                            className="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
+                            <User className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Информация о мастере */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-lg text-gray-900 truncate">
+                          {master.firstName} {master.lastName}
+                        </h3>
+                        {master.description && (
+                          <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                            {master.description}
+                          </p>
+                        )}
                         {master.specialization && (
-                          <p className="text-sm text-gray-600">{master.specialization}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {master.specialization}
+                          </p>
                         )}
                       </div>
                     </div>

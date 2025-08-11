@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Filter, Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import MasterSchedule from '@/components/MasterSchedule'
-import MasterAbsencesManager from '@/components/MasterAbsencesManager'
+import FullCalendarComponent from '@/components/FullCalendar'
 
-import { getCurrentTimeForAdmin, formatTimeForAdmin, isPastTimeInSalonTimezone } from '@/lib/timezone'
+import { getCurrentTimeInTimezone, isPastTimeInSalonTimezone, createDateInSalonTimezone } from '@/lib/timezone'
 
 // Локальные утилиты для работы с временем и датами
 const formatTime = (timeString: string) => {
@@ -20,6 +19,16 @@ const formatTime = (timeString: string) => {
     return timeString // Возвращаем исходную строку если не удалось распарсить
   }
   return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Формат для input[type="datetime-local"] без UTC-сдвига
+const toLocalDateTimeInputValue = (date: Date) => {
+  const yyyy = date.getFullYear()
+  const mm = String(date.getMonth() + 1).padStart(2, '0')
+  const dd = String(date.getDate()).padStart(2, '0')
+  const hh = String(date.getHours()).padStart(2, '0')
+  const mi = String(date.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
 }
 
 // Функция для получения понедельника текущей недели
@@ -77,823 +86,492 @@ interface Master {
   isActive: boolean
 }
 
+// Новые интерфейсы для расписания и отсутствий
 interface MasterSchedule {
-  id: string
-  dayOfWeek: number
-  startTime: string
-  endTime: string
-  breakStart?: string
-  breakEnd?: string
+  masterId: string
+  dayOfWeek: number // 0-6 (воскресенье-суббота)
+  startTime: string // "09:00"
+  endTime: string // "18:00"
+  breakStart?: string // "13:00"
+  breakEnd?: string // "14:00"
 }
 
 interface MasterAbsence {
-  id: string
-  startDate: string
-  endDate: string
-  reason?: string
+  masterId: string
+  startDate: string // ISO date string
+  endDate: string // ISO date string
+  reason: string
   description?: string
 }
 
+// Функция для получения цвета статуса
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'NEW': return 'bg-red-100 text-red-800' // 🔴 Красный - требует внимания
-    case 'CONFIRMED': return 'bg-blue-100 text-blue-800' // 🔵 Синий - подтверждено
-    case 'COMPLETED': return 'bg-green-100 text-green-800' // 🟢 Зеленый - выполнено
-    case 'CANCELLED_BY_CLIENT': return 'bg-gray-100 text-gray-800' // ⚫ Серый - отменено клиентом
-    case 'CANCELLED_BY_SALON': return 'bg-gray-100 text-gray-800' // ⚫ Серый - отменено салоном
-    case 'NO_SHOW': return 'bg-orange-100 text-orange-800' // 🟠 Оранжевый - не пришел (требует внимания)
-    default: return 'bg-gray-100 text-gray-800'
+    case 'CONFIRMED':
+      return 'bg-green-100 text-green-800'
+    case 'PENDING':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'CANCELLED':
+      return 'bg-red-100 text-red-800'
+    case 'COMPLETED':
+      return 'bg-blue-100 text-blue-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
 const getStatusText = (status: string) => {
   switch (status) {
-    case 'NEW': return 'Новая'
-    case 'CONFIRMED': return 'Подтверждена'
-    case 'COMPLETED': return 'Выполнена'
-    case 'CANCELLED_BY_CLIENT': return 'Отменена клиентом'
-    case 'CANCELLED_BY_SALON': return 'Отменена салоном'
-    case 'NO_SHOW': return 'Не пришел'
-    default: return status
+    case 'CONFIRMED':
+      return 'Подтверждено'
+    case 'PENDING':
+      return 'Ожидает'
+    case 'CANCELLED':
+      return 'Отменено'
+    case 'COMPLETED':
+      return 'Завершено'
+    default:
+      return status
   }
 }
 
 const getStatusBgColor = (status: string) => {
   switch (status) {
-    case 'NEW': return '#ef4444' // Красный
-    case 'CONFIRMED': return '#3b82f6' // Синий
-    case 'COMPLETED': return '#10b981' // Зеленый
-    case 'CANCELLED_BY_CLIENT': return '#6b7280' // Серый
-    case 'CANCELLED_BY_SALON': return '#6b7280' // Серый
-    case 'NO_SHOW': return '#f97316' // Оранжевый
-    default: return '#6b7280'
+    case 'CONFIRMED':
+      return 'bg-green-500'
+    case 'PENDING':
+      return 'bg-yellow-500'
+    case 'CANCELLED':
+      return 'bg-red-500'
+    case 'COMPLETED':
+      return 'bg-blue-500'
+    default:
+      return 'bg-gray-500'
   }
 }
 
 const getStatusBorderColor = (status: string) => {
   switch (status) {
-    case 'NEW': return '#dc2626'
-    case 'CONFIRMED': return '#2563eb'
-    case 'COMPLETED': return '#059669'
-    case 'CANCELLED_BY_CLIENT': return '#4b5563'
-    case 'CANCELLED_BY_SALON': return '#4b5563'
-    case 'NO_SHOW': return '#ea580c'
-    default: return '#4b5563'
+    case 'CONFIRMED':
+      return 'border-green-500'
+    case 'PENDING':
+      return 'border-yellow-500'
+    case 'CANCELLED':
+      return 'border-red-500'
+    case 'COMPLETED':
+      return 'border-blue-500'
+    default:
+      return 'border-gray-500'
   }
 }
 
 const formatDate = (date: Date) => {
   return date.toLocaleDateString('ru-RU', { 
-    weekday: 'short', 
     day: 'numeric', 
-    month: 'short' 
+    month: 'long' 
   })
 }
 
 export default function AdminDashboard() {
-  const [currentWeekStart, setCurrentWeekStart] = useState(() => getMondayOfCurrentWeek(new Date()))
-  const [selectedDay, setSelectedDay] = useState(new Date())
-  const [view, setView] = useState<'calendar' | 'list'>('calendar')
-  const [currentTime, setCurrentTime] = useState(() => new Date())
-  
-  // Состояние для живых данных
+
   const [bookings, setBookings] = useState<Booking[]>([])
   const [masters, setMasters] = useState<Master[]>([])
-  const [masterSchedules, setMasterSchedules] = useState<Record<string, MasterSchedule[]>>({})
-  const [masterAbsences, setMasterAbsences] = useState<Record<string, MasterAbsence[]>>({})
+  const [masterSchedules, setMasterSchedules] = useState<MasterSchedule[]>([])
+  const [masterAbsences, setMasterAbsences] = useState<MasterAbsence[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedMaster, setSelectedMaster] = useState<string>('all')
-  const [calendarMaster, setCalendarMaster] = useState<string | null>(null)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [isAutoUpdating, setIsAutoUpdating] = useState(false)
-  
-  // Новое состояние для временной зоны салона
-  const [salonTimezone, setSalonTimezone] = useState<string>('Europe/Moscow')
+  const [team, setTeam] = useState<any>(null)
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null)
+  const [editForm, setEditForm] = useState({
+    startTime: '',
+    masterId: '',
+    totalPrice: 0,
+    notes: ''
+  })
+  const [isSaving, setIsSaving] = useState(false)
 
-  // Обновление времени каждую минуту
+  // Генерируем дни недели
+  // const weekDays = getWeekDays(new Date())
+
+  // Обновляем текущее время каждую минуту
   useEffect(() => {
     const interval = setInterval(() => {
-      // Используем время в временной зоне салона
-      setCurrentTime(getCurrentTimeForAdmin(salonTimezone))
-    }, 60000) // каждую минуту
+      // setCurrentTime(new Date())
+    }, 60000)
 
     return () => clearInterval(interval)
-  }, [salonTimezone])
+  }, [])
 
-  // Загрузка данных
   const loadData = async () => {
-    setLoading(true)
-    setError(null)
+    if (typeof window === 'undefined') return
     
     try {
-      const token = localStorage.getItem('token')
+      setLoading(true)
+      setError(null)
       
+      const token = localStorage.getItem('token')
       if (!token) {
         setError('Требуется авторизация')
-        setLoading(false)
         return
       }
 
-      // Загружаем настройки команды для получения временной зоны
-      const settingsResponse = await fetch('/api/team/settings', {
+      // Загружаем данные параллельно
+      const [teamResponse, bookingsResponse, mastersResponse] = await Promise.all([
+        fetch('/api/team/settings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/bookings', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/masters-list', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
-      
-      if (settingsResponse.ok) {
-        const settingsData = await settingsResponse.json()
-        setSalonTimezone(settingsData.settings.timezone || 'Europe/Moscow')
-      }
+      ])
 
-      // Загружаем бронирования
-      const bookingsResponse = await fetch('/api/bookings', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      if (!teamResponse.ok) throw new Error('Ошибка загрузки настроек команды')
       if (!bookingsResponse.ok) throw new Error('Ошибка загрузки бронирований')
-      const bookingsData = await bookingsResponse.json()
-      setBookings(Array.isArray(bookingsData) ? bookingsData : (bookingsData.bookings || []))
-
-      // Загружаем мастеров
-      const mastersResponse = await fetch('/api/masters-list', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
       if (!mastersResponse.ok) throw new Error('Ошибка загрузки мастеров')
-      const mastersData = await mastersResponse.json()
-      setMasters(Array.isArray(mastersData) ? mastersData : (mastersData.masters || []))
 
-      // Загружаем расписания и отсутствия для каждого мастера
-      const schedulesData: Record<string, MasterSchedule[]> = {}
-      const absencesData: Record<string, MasterAbsence[]> = {}
+      const [teamData, bookingsData, mastersData] = await Promise.all([
+        teamResponse.json(),
+        bookingsResponse.json(),
+        mastersResponse.json()
+      ])
 
-      const actualMasters = Array.isArray(mastersData) ? mastersData : (mastersData.masters || [])
-      for (const master of actualMasters) {
-        // Расписание
-        const scheduleResponse = await fetch(`/api/masters/${master.id}/schedule`, {
+      setTeam(teamData)
+      setBookings(bookingsData.bookings || [])
+      setMasters(mastersData.masters || [])
+      
+      // Загружаем расписание и отсутствия для всех мастеров
+      if (mastersData.masters && mastersData.masters.length > 0) {
+        const schedulesPromises = mastersData.masters.map((master: Master) =>
+          fetch(`/api/masters/${master.id}/schedule`, {
           headers: { 'Authorization': `Bearer ${token}` }
-        })
-        if (scheduleResponse.ok) {
-          const scheduleData = await scheduleResponse.json()
-          const actualSchedule = Array.isArray(scheduleData.schedules) ? scheduleData.schedules : []
-          schedulesData[master.id] = actualSchedule
-        }
-
-        // Отсутствия
-        const absencesResponse = await fetch(`/api/masters/${master.id}/absences`, {
+          }).then(res => res.json()).then(data => data.schedules || [])
+        )
+        
+        const absencesPromises = mastersData.masters.map((master: Master) =>
+          fetch(`/api/masters/${master.id}/absences`, {
           headers: { 'Authorization': `Bearer ${token}` }
-        })
-        if (absencesResponse.ok) {
-          const absenceData = await absencesResponse.json()
-          const actualAbsences = Array.isArray(absenceData.absences) ? absenceData.absences : []
-          absencesData[master.id] = actualAbsences
-        }
+          }).then(res => res.json()).then(data => data.absences || [])
+        )
+        
+        const [schedulesResults, absencesResults] = await Promise.all([
+          Promise.all(schedulesPromises),
+          Promise.all(absencesPromises)
+        ])
+        
+        // Объединяем все расписания и отсутствия
+        const allSchedules = schedulesResults.flat().map((schedule: any) => ({
+          masterId: schedule.masterId,
+          dayOfWeek: schedule.dayOfWeek,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          breakStart: schedule.breakStart,
+          breakEnd: schedule.breakEnd
+        }))
+        
+        const allAbsences = absencesResults.flat().map((absence: any) => ({
+          masterId: absence.masterId,
+          startDate: absence.startDate,
+          endDate: absence.endDate,
+          reason: absence.reason,
+          description: absence.description
+        }))
+        
+        setMasterSchedules(allSchedules)
+        setMasterAbsences(allAbsences)
       }
-
-      setMasterSchedules(schedulesData)
-      setMasterAbsences(absencesData)
-      setLastUpdated(new Date())
-
-    } catch (error) {
-      console.error('Ошибка загрузки данных:', error)
-      setError(error instanceof Error ? error.message : 'Неизвестная ошибка')
+      
+    } catch (err: any) {
+      console.error('Ошибка загрузки данных:', err)
+      setError(err.message || 'Произошла ошибка при загрузке данных')
     } finally {
       setLoading(false)
     }
   }
 
-  // Обновление текущего времени (каждые 10 секунд для плавности красной линии)
-  useEffect(() => {
-    const timeInterval = setInterval(() => {
-      // Используем время в временной зоне салона
-      setCurrentTime(getCurrentTimeForAdmin(salonTimezone))
-    }, 10000) // Обновляем каждые 10 секунд
-
-    return () => clearInterval(timeInterval)
-  }, [salonTimezone])
-
-  // Автообновление данных календаря каждую минуту
-  useEffect(() => {
-    const dataInterval = setInterval(async () => {
-      console.log('🔄 Автообновление данных календаря...')
-      setIsAutoUpdating(true)
-      try {
-        await loadData()
-        setLastUpdated(new Date())
-      } catch (error) {
-        console.error('Ошибка автообновления:', error)
-      } finally {
-        setIsAutoUpdating(false)
-      }
-    }, 60000) // Обновляем данные каждую минуту
-
-    return () => clearInterval(dataInterval)
-  }, [])
-
-  // Загрузка данных при монтировании
   useEffect(() => {
     loadData()
   }, [])
 
-  // Определяем, какой мастер показывать в календаре
-  const displayMaster = calendarMaster || selectedMaster
-
-  // Фильтрация бронирований
-  const filteredBookings = (Array.isArray(bookings) ? bookings : []).filter(booking => {
-    const bookingDate = new Date(booking.startTime).toDateString()
-    const selectedDateStr = selectedDay.toDateString()
-    
-    if (displayMaster !== 'all' && booking.master.id !== displayMaster) {
-      return false
-    }
-    
-    return bookingDate === selectedDateStr
-  })
-
-  // Фильтрация мастеров для отображения в календаре
-  const displayMasters = displayMaster === 'all' 
-    ? (Array.isArray(masters) ? masters : [])
-    : (Array.isArray(masters) ? masters : []).filter(master => master.id === displayMaster)
+  // Фильтруем брони по выбранной дате в календаре
+  const filteredBookings = useMemo(() => {
+    // Получаем выбранную дату из FullCalendar через ref или state
+    // Пока что возвращаем все брони, но в будущем можно добавить фильтрацию
+    return [...bookings]
+  }, [bookings])
 
 
 
-  // Навигация по неделям
-  const goToPreviousWeek = () => {
-    const newWeekStart = new Date(currentWeekStart)
-    newWeekStart.setDate(currentWeekStart.getDate() - 7)
-    setCurrentWeekStart(newWeekStart)
-  }
-
-  const goToNextWeek = () => {
-    const newWeekStart = new Date(currentWeekStart)
-    newWeekStart.setDate(currentWeekStart.getDate() + 7)
-    setCurrentWeekStart(newWeekStart)
-  }
-
-  const goToToday = () => {
-    const now = new Date()
-    const monday = getMondayOfCurrentWeek(now)
-    setCurrentWeekStart(monday)
-    setSelectedDay(now)
-  }
-
-  const resetMasterSelection = () => {
-    setCalendarMaster(null)
-    setSelectedMaster('all')
-  }
-
-  // Генерация временных слотов на основе рабочего времени мастеров
-  const generateTimeSlots = () => {
-    const slots = []
-    
-    // Определяем общий диапазон времени работы всех мастеров
-    let earliestStart = 9 * 60 // 09:00 по умолчанию (в минутах)
-    let latestEnd = 18 * 60    // 18:00 по умолчанию (в минутах)
-    
-    // Если есть расписания мастеров, вычисляем реальный диапазон
-    const allSchedules = Object.values(masterSchedules).flat()
-    if (allSchedules.length > 0) {
-      earliestStart = Math.min(...allSchedules.map(schedule => {
-        const [hour, minute] = schedule.startTime.split(':').map(Number)
-        return hour * 60 + minute
-      }))
-      
-      latestEnd = Math.max(...allSchedules.map(schedule => {
-        const [hour, minute] = schedule.endTime.split(':').map(Number)
-        return hour * 60 + minute
-      }))
-      
-      // Округляем до получаса для удобства
-      earliestStart = Math.floor(earliestStart / 30) * 30
-      latestEnd = Math.ceil(latestEnd / 30) * 30
-    }
-    
-    // Генерируем слоты с шагом 30 минут
-    for (let minutes = earliestStart; minutes < latestEnd; minutes += 30) {
-      const hour = Math.floor(minutes / 60)
-      const minute = minutes % 60
-      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-      slots.push(time)
-    }
-    
-    return slots
-  }
-
-  const timeSlots = useMemo(() => generateTimeSlots(), [masterSchedules])
-  const weekDays = getWeekDays(currentWeekStart)
-
-
-
-  // Проверка, является ли время рабочим для мастера
-  const isWorkingTime = (masterId: string, date: Date, time: string) => {
-    const dayOfWeek = date.getDay() === 0 ? 7 : date.getDay() // 1 = понедельник, 7 = воскресенье
-    const schedule = masterSchedules[masterId]?.find(s => s.dayOfWeek === dayOfWeek)
-    
-    if (!schedule) {
-      return false
-    }
-    
-    const timeMinutes = parseInt(time.split(':')[0]) * 60 + parseInt(time.split(':')[1])
-    const startMinutes = parseInt(schedule.startTime.split(':')[0]) * 60 + parseInt(schedule.startTime.split(':')[1])
-    const endMinutes = parseInt(schedule.endTime.split(':')[0]) * 60 + parseInt(schedule.endTime.split(':')[1])
-    
-    // Проверяем перерыв
-    if (schedule.breakStart && schedule.breakEnd) {
-      const breakStartMinutes = parseInt(schedule.breakStart.split(':')[0]) * 60 + parseInt(schedule.breakStart.split(':')[1])
-      const breakEndMinutes = parseInt(schedule.breakEnd.split(':')[0]) * 60 + parseInt(schedule.breakEnd.split(':')[1])
-      
-              if (timeMinutes >= breakStartMinutes && timeMinutes < breakEndMinutes) {
-          return false
-        }
-    }
-    
-    const isWorking = timeMinutes >= startMinutes && timeMinutes < endMinutes
-    return isWorking
-  }
-
-  // Проверка отсутствия мастера
-  const isMasterAbsent = (masterId: string, date: Date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    const absences = masterAbsences[masterId] || []
-    
-    return absences.some(absence => {
-      const absenceStart = new Date(absence.startDate)
-      const absenceEnd = new Date(absence.endDate)
-      const checkDate = new Date(dateStr)
-      
-      return checkDate >= absenceStart && checkDate < absenceEnd
+  // Функции для редактирования брони в календаре
+  const startEditingBooking = (booking: Booking) => {
+    setEditingBooking(booking)
+    setEditForm({
+      // ВАЖНО: для datetime-local используем локальное время, а не toISOString()
+      startTime: toLocalDateTimeInputValue(new Date(booking.startTime)),
+      masterId: booking.master.id,
+      totalPrice: booking.totalPrice,
+      notes: booking.notes || ''
     })
   }
 
-  // Проверка, является ли время прошедшим
-  const isPastTime = (date: Date, time: string) => {
-    // Используем утилиту для проверки времени в временной зоне салона
-    return isPastTimeInSalonTimezone(date, time, salonTimezone)
+  const cancelEditing = () => {
+    setEditingBooking(null)
+    setEditForm({
+      startTime: '',
+      masterId: '',
+      totalPrice: 0,
+      notes: ''
+    })
   }
 
-  // Получение бронирования для конкретного времени и мастера
-  const getBookingAtTime = (masterId: string, date: Date, time: string) => {
-    const dateStr = date.toISOString().split('T')[0]
-    const timeStr = `${dateStr}T${time}:00`
-    
-    const booking = bookings.find(booking => {
-      const bookingStart = new Date(booking.startTime)
-      const bookingEnd = new Date(booking.endTime)
-      const checkTime = new Date(timeStr)
+  const saveBookingChanges = async () => {
+    if (!editingBooking) return
+
+    try {
+      setIsSaving(true)
+      const token = localStorage.getItem('token')
       
-      return booking.master.id === masterId && 
-             checkTime >= bookingStart && 
-             checkTime < bookingEnd
-    })
-    
-    return booking
+      const response = await fetch(`/api/bookings/${editingBooking.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(editForm)
+      })
+
+      if (response.ok) {
+        // Обновляем список бронирований
+        await loadData()
+        // Закрываем модальное окно
+        cancelEditing()
+      } else {
+        const errorData = await response.json()
+        alert(`Ошибка сохранения: ${errorData.error || 'Неизвестная ошибка'}`)
+      }
+    } catch (error) {
+      console.error('Ошибка сохранения:', error)
+      alert('Произошла ошибка при сохранении')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  // Проверка, является ли это началом бронирования
-  const isBookingStart = (masterId: string, date: Date, time: string) => {
-    const dateStr = date.toISOString().split('T')[0]
-    const timeStr = `${dateStr}T${time}:00`
-    
-    const booking = bookings.find(booking => {
-      const bookingStart = new Date(booking.startTime)
-      const checkTime = new Date(timeStr)
-      
-      return booking.master.id === masterId && 
-             Math.abs(checkTime.getTime() - bookingStart.getTime()) < 60000 // в пределах 1 минуты
-    })
-    
-
-    
-    return booking
+  const updateEditForm = (field: string, value: any) => {
+    setEditForm(prev => ({ ...prev, [field]: value }))
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-gray-600">Загружаем календарь...</span>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка...</p>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-md p-4">
-        <h3 className="text-lg font-medium text-red-800 mb-2">
-          Ошибка загрузки данных
-        </h3>
-        <p className="text-red-700">{error}</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-600 text-xl mb-4">Ошибка</div>
+          <p className="text-gray-600 mb-4">{error}</p>
         <button
           onClick={loadData}
-          className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           Попробовать снова
         </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Календарь
-              {calendarMaster && (
-                <span className="text-lg font-normal text-blue-600 ml-2">
-                  - {displayMasters.find(m => m.id === calendarMaster)?.firstName} {displayMasters.find(m => m.id === calendarMaster)?.lastName}
-                </span>
-              )}
-            </h1>
+              <h1 className="text-2xl font-bold text-gray-900">Панель администратора</h1>
+            </div>
             
-            {/* Live status indicator */}
-            <div className="flex items-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${isAutoUpdating ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-                <span className="text-xs text-gray-500">
-                  {isAutoUpdating ? 'Обновление...' : `Обновлено ${lastUpdated.toLocaleTimeString()}`}
-                </span>
-              </div>
-              
-              {/* Manual refresh button */}
-              <button
-                onClick={() => {
-                  setIsAutoUpdating(true)
-                  loadData().finally(() => setIsAutoUpdating(false))
-                }}
-                disabled={isAutoUpdating}
-                className="text-xs text-blue-600 hover:text-blue-800 disabled:text-gray-400 disabled:cursor-not-allowed"
-                title="Обновить вручную"
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/admin/masters"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
-                🔄
-              </button>
+                <Plus className="w-4 h-4 mr-2" />
+                Мастера
+              </Link>
             </div>
           </div>
-          <p className="text-gray-600">Управление бронированиями и расписанием</p>
-        </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-            <Filter className="w-4 h-4 mr-2" />
-            Фильтры
-          </button>
-          <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Новая запись
-          </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 space-y-4 sm:space-y-0">
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Мастер:</label>
-            <select
-              value={selectedMaster}
-              onChange={(e) => setSelectedMaster(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-1 text-sm"
-            >
-              <option value="all">Все мастера</option>
-              {(Array.isArray(masters) ? masters : []).map(master => (
-                <option key={master.id} value={master.id}>
-                  {master.firstName} {master.lastName}
-                </option>
-              ))}
-            </select>
-            {calendarMaster && (
-              <button
-                onClick={resetMasterSelection}
-                className="ml-2 px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition-colors"
-              >
-                Показать всех
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <label className="text-sm font-medium text-gray-700">Вид:</label>
-            <div className="flex border border-gray-300 rounded-md overflow-hidden">
-              <button
-                onClick={() => setView('calendar')}
-                className={`px-3 py-1 text-sm ${view === 'calendar' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
-              >
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* View Toggle */}
+        <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+          <div className="px-3 py-1 text-sm bg-blue-50 text-blue-600">
+            <CalendarIcon className="w-4 h-4 inline mr-2" />
                 Календарь
-              </button>
-              <button
-                onClick={() => setView('list')}
-                className={`px-3 py-1 text-sm border-l border-gray-300 ${view === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'}`}
-              >
-                Список
-              </button>
-            </div>
           </div>
         </div>
-      </div>
+
+
 
       {/* Content */}
-      {view === 'calendar' ? (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          {/* Week Navigation */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50">
-            <button
-              onClick={goToPreviousWeek}
-              className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            
-            <div className="flex items-center space-x-6">
-              <div className="text-center">
-                <h2 className="text-xl font-bold text-gray-900">
-                  {formatDate(currentWeekStart)} - {formatDate(new Date(currentWeekStart.getTime() + 6 * 24 * 60 * 60 * 1000))}
-                </h2>
-                <div className="text-sm text-gray-500 mt-1">
-                  {Array.isArray(masters) ? masters.length : 0} мастеров
-                </div>
-              </div>
-              <button
-                onClick={goToToday}
-                className="px-6 py-2 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all duration-200"
-              >
-                Сегодня
-              </button>
+          {/* FullCalendar Component */}
+          <div className="p-6">
+            <FullCalendarComponent
+              bookings={bookings}
+              masters={masters}
+              masterSchedules={masterSchedules}
+              masterAbsences={masterAbsences}
+              onBookingClick={startEditingBooking}
+            />
+          </div>
+        </div>
+
+        {/* Модальное окно редактирования брони */}
+        {editingBooking && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Редактирование брони #{editingBooking.bookingNumber}
+                </h3>
             </div>
             
-            <button
-              onClick={goToNextWeek}
-              className="p-3 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
+              <div className="p-6 space-y-6">
+                {/* Информация о клиенте (только для чтения) */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Клиент</h4>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Имя:</span> {editingBooking.client.firstName} {editingBooking.client.lastName}
           </div>
-
-          {/* Day Tabs */}
-          <div className="flex border-b border-gray-200 bg-white">
-                            {weekDays.map((day: Date, index: number) => (
-              <button
-                key={index}
-                onClick={() => setSelectedDay(day)}
-                className={`flex-1 px-4 py-4 text-sm font-medium border-b-2 transition-all duration-200 cursor-pointer ${
-                  selectedDay.toDateString() === day.toDateString()
-                    ? 'border-blue-500 text-blue-600 bg-blue-50 shadow-sm'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-xs text-gray-400 mb-1 font-medium">
-                  {day.toLocaleDateString('ru-RU', { weekday: 'short' })}
+                      <div>
+                        <span className="font-medium">Email:</span> {editingBooking.client.email}
                 </div>
-                <div className={`text-lg font-bold ${
-                  selectedDay.toDateString() === day.toDateString() ? 'text-blue-600' : 'text-gray-700'
-                }`}>
-                  {day.getDate()}
+                      {editingBooking.client.phone && (
+                        <div>
+                          <span className="font-medium">Телефон:</span> {editingBooking.client.phone}
                 </div>
-              </button>
-            ))}
-          </div>
-
-          {/* Calendar Grid */}
-          <div className="overflow-x-auto">
-            <div className="min-w-max">
-              {/* Time slots and masters grid */}
-              <div className="grid relative" style={{ 
-                gridTemplateColumns: `80px repeat(${displayMasters.length}, 1fr)`,
-                gridTemplateRows: `40px repeat(${timeSlots.length}, 50px)`
-              }}>
-
-                
-                {/* Current time indicator - внутри grid-контейнера */}
-                {selectedDay.toDateString() === currentTime.toDateString() && (() => {
-                  const currentHour = currentTime.getHours()
-                  const currentMinute = currentTime.getMinutes()
-                  const currentTimeMinutes = currentHour * 60 + currentMinute
-                  
-                  // Находим первый и последний временной слот
-                  if (timeSlots.length > 0) {
-                    const firstSlot = timeSlots[0]
-                    const lastSlot = timeSlots[timeSlots.length - 1]
-                    const [firstHour, firstMin] = firstSlot.split(':').map(Number)
-                    const [lastHour, lastMin] = lastSlot.split(':').map(Number)
-                    const firstSlotMinutes = firstHour * 60 + firstMin
-                    const lastSlotMinutes = lastHour * 60 + lastMin + 30 // +30 для конца последнего слота
-                    
-                    // Проверяем, что время в рабочем диапазоне
-                    if (currentTimeMinutes >= firstSlotMinutes && currentTimeMinutes < lastSlotMinutes) {
-                      // Находим индекс текущего временного слота
-                      const timeSlotIndex = Math.floor((currentTimeMinutes - firstSlotMinutes) / 30)
-                      
-                      // Вычисляем позицию: заголовок (40px) + слоты до текущего времени (timeSlotIndex * 50px) + точная позиция внутри слота
-                      const minutesInSlot = (currentTimeMinutes - firstSlotMinutes) % 30
-                      const positionInSlot = (minutesInSlot / 30) * 50 // пропорция внутри 30-минутного слота
-                      const topPosition = 40 + (timeSlotIndex * 50) + positionInSlot
-                    
-                      return (
-                        <div 
-                          className="absolute bg-red-500 h-2 z-35 pointer-events-none shadow-lg"
-                          style={{
-                            top: `${topPosition}px`,
-                            left: '0px',
-                            right: '0px',
-                            border: '2px solid red'
-                          }}
-                          title={`Текущее время: ${currentTime.toLocaleTimeString()}`}
-                        />
-                      )
-                    }
-                  }
-                  return null
-                })()}
-                {/* Header row with master names */}
-                <div className="bg-gradient-to-b from-gray-50 to-gray-100 border-r border-b border-gray-200 flex items-center justify-center text-sm font-bold text-gray-700">
-                  Время
+                      )}
+                      {editingBooking.client.telegram && (
+                        <div>
+                          <span className="font-medium">Telegram:</span> {editingBooking.client.telegram}
                 </div>
-                {displayMasters.map(master => (
-                  <button
-                    key={master.id}
-                    onClick={() => {
-                      if (calendarMaster === master.id) {
-                        resetMasterSelection()
-                      } else {
-                        setCalendarMaster(master.id)
-                        setSelectedMaster(master.id)
-                      }
-                    }}
-                    className={`bg-gradient-to-b from-gray-50 to-gray-100 border-b border-gray-200 flex items-center justify-center text-sm font-bold text-gray-700 px-3 text-center cursor-pointer transition-all duration-200 hover:from-blue-50 hover:to-blue-100 hover:text-blue-700 ${
-                      calendarMaster === master.id ? 'from-blue-100 to-blue-200 text-blue-800 shadow-sm' : ''
-                    }`}
-                  >
-                    <div>
-                      <div className="font-semibold">{master.firstName}</div>
-                      <div className="text-xs text-gray-500">{master.lastName}</div>
-                      {calendarMaster === master.id && (
-                        <div className="text-xs text-blue-600 mt-1">✓ Выбран</div>
                       )}
                     </div>
-                  </button>
-                ))}
-
-                {/* Time slots and booking cells */}
-                {timeSlots.map((time, timeIndex) => (
-                  <React.Fragment key={`time-slot-${time}`}>
-                    {/* Time label */}
-                    <div className="border-r border-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 bg-gray-50">
-                      <div className="text-center">
-                        <div className="font-bold">{formatTime(time)}</div>
                       </div>
                     </div>
                     
-                    {/* Master columns */}
-                    {displayMasters.map(master => {
-                      const isAbsent = isMasterAbsent(master.id, selectedDay)
-                      const isWorking = isWorkingTime(master.id, selectedDay, time)
-                      const isPastTimeSlot = isPastTime(selectedDay, time)
-                      const booking = getBookingAtTime(master.id, selectedDay, time)
-                      
-                      let cellClass = 'border-r border-gray-200 relative'
-                      let cellContent = null
-                      
-                      if (isAbsent) {
-                        cellClass += ' bg-red-50 border-red-200'
-                        cellContent = (
-                          <div className="flex items-center justify-center h-full">
-                            <div className="text-xs text-red-600 text-center font-medium">
-                              <div className="w-2 h-2 bg-red-400 rounded-full mx-auto mb-1"></div>
-                              Отсутствует
-                            </div>
-                          </div>
-                        )
-                      } else if (isPastTimeSlot) {
-                        cellClass += ' bg-gray-100'
-                      } else if (!isWorking) {
-                        cellClass += ' bg-gray-50'
-                      } else {
-                        cellClass += ' bg-white'
-                      }
-                      
-                      // Добавляем горизонтальные линии
-                      cellClass += ' border-b border-gray-100'
-                      
-                      if (isBookingStart(master.id, selectedDay, time) && booking) {
-                        
-                        // Вычисляем длительность бронирования в ячейках
-                        const startTime = new Date(booking.startTime)
-                        const endTime = new Date(booking.endTime)
-                        const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60)
-                        const durationSlots = Math.ceil(durationMinutes / 30)
-                        
-                        // Проверяем, является ли бронь прошедшей или текущей
-                        const now = currentTime
-                        const isPast = endTime < now
-                        const isCurrent = startTime <= now && endTime > now
-                        
-
-                        
-
-                        
-                        cellContent = (
-                          <div 
-                            className={`absolute rounded-lg text-xs text-white p-2 overflow-hidden shadow-lg ${
-                              isCurrent ? 'shadow-xl ring-2 ring-yellow-300' : ''
-                            }`}
-                            style={{
-                              backgroundColor: getStatusBgColor(booking.status),
-                              border: isCurrent ? '2px solid #fbbf24' : 'none',
-                              inset: '2px',
-                              height: `${durationSlots * 50 - 4}px`, // Растягиваем на всю длительность
-                              zIndex: isCurrent ? 40 : 10, // Текущие брони над красной линией
-                              opacity: isPast ? 0.05 : isCurrent ? 1 : 0.9
-                            }}
-                          >
-                            <div style={{ 
-                              fontWeight: 'bold', 
-                              overflow: 'hidden', 
-                              textOverflow: 'ellipsis', 
-                              marginBottom: '4px', 
-                              fontSize: '18px', 
-                              lineHeight: '1.2', 
-                              color: 'white', 
-                              textShadow: '0 3px 6px rgba(0,0,0,0.8)'
-                            }}>
-                              {booking.services.map((s: any) => s.service.name).join(', ')}
-                            </div>
-                            <div style={{ 
-                              overflow: 'hidden', 
-                              textOverflow: 'ellipsis', 
-                              marginBottom: '4px', 
-                              fontSize: '14px', 
-                              color: 'white', 
-                              fontWeight: '700',
-                              textShadow: '0 2px 4px rgba(0,0,0,0.8)'
-                            }}>
-                              {booking.client.firstName} {booking.client.lastName}
-                            </div>
-                            <div style={{ 
-                              fontSize: '14px', 
-                              color: 'white', 
-                              fontWeight: '700',
-                              textShadow: '0 2px 4px rgba(0,0,0,0.8)'
-                            }}>
-                              {booking.master.firstName} • {formatTime(booking.startTime)}-{formatTime(booking.endTime)}
-                            </div>
-                          </div>
-                        )
-                      }
-                      
-                      return (
-                        <div key={`${master.id}-${time}`} className={cellClass}>
-                          {cellContent}
+                {/* Услуги (только для чтения) */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Услуги</h4>
+                  <div className="bg-gray-50 p-3 rounded-md">
+                    {editingBooking.services.map((service, index) => (
+                      <div key={index} className="flex justify-between text-sm mb-1">
+                        <span>{service.name} ({service.duration} мин)</span>
+                        <span className="font-medium">{service.price} ₽</span>
                         </div>
-                      )
-                    })}
-                  </React.Fragment>
                 ))}
                               </div>
             </div>
+
+                {/* Форма редактирования */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Время начала
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={editForm.startTime}
+                      onChange={(e) => updateEditForm('startTime', e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
           </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Мастер
+                    </label>
+                    <select
+                      value={editForm.masterId}
+                      onChange={(e) => updateEditForm('masterId', e.target.value)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    >
+                      {masters.map(master => (
+                        <option key={master.id} value={master.id}>
+                          {master.firstName} {master.lastName}
+                        </option>
+                      ))}
+                    </select>
         </div>
-      ) : (
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">
-              Записи на {selectedDay.toLocaleDateString('ru-RU')}
-            </h3>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {filteredBookings.map((booking) => (
-              <div key={booking.id} className="p-6 hover:bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {booking.client.firstName} {booking.client.lastName}
-                        </p>
-                        <p className="text-sm text-gray-500 truncate">
-                          {booking.services.map(s => s.name).join(', ')} • {booking.master.firstName} {booking.master.lastName}
-                        </p>
-                      </div>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Общая цена (₽)
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.totalPrice}
+                      onChange={(e) => updateEditForm('totalPrice', parseFloat(e.target.value))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      min="0"
+                      step="100"
+                    />
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                      {getStatusText(booking.status)}
-                    </span>
-                    <button className="text-gray-400 hover:text-gray-500">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                      </svg>
-                    </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Комментарий
+                    </label>
+                    <textarea
+                      value={editForm.notes}
+                      onChange={(e) => updateEditForm('notes', e.target.value)}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      placeholder="Причина изменения..."
+                    />
                   </div>
                 </div>
               </div>
-            ))}
+
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button
+                  onClick={cancelEditing}
+                  className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={saveBookingChanges}
+                  disabled={isSaving}
+                  className="px-4 py-2 text-sm text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline-block"></div>
+                      Сохраняем...
+                    </>
+                  ) : (
+                    'Сохранить'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
+        )}
         </div>
-      )}
     </div>
   )
 }

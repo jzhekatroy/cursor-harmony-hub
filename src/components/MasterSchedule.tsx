@@ -123,25 +123,25 @@ export default function MasterSchedule({
              })
           })
 
-          // Заполняем данные из API
+          // Заполняем данные из API с корректным маппингом дня недели
           data.schedules.forEach((item: ScheduleItem) => {
+            const targetIndex = DAYS_OF_WEEK.findIndex(d => d.id === item.dayOfWeek)
+            if (targetIndex === -1) return
+
             const breaks: Break[] = []
             if (item.breakStart && item.breakEnd) {
-              breaks.push({
-                startTime: item.breakStart,
-                endTime: item.breakEnd
-              })
+              breaks.push({ startTime: item.breakStart, endTime: item.breakEnd })
             }
 
-                          apiSchedule[item.dayOfWeek] = {
-                day: DAYS_OF_WEEK[item.dayOfWeek].name.toLowerCase().substring(0, 3),
-                isWorkingDay: true,
-                startTime: item.startTime,
-                endTime: item.endTime,
-                breakStart: item.breakStart || '13:00',
-                breakEnd: item.breakEnd || '14:00',
-                breaks: item.breakStart && item.breakEnd ? [{ startTime: item.breakStart, endTime: item.breakEnd }] : []
-              }
+            apiSchedule[targetIndex] = {
+              day: DAYS_OF_WEEK[targetIndex].name.toLowerCase().substring(0, 3),
+              isWorkingDay: true,
+              startTime: item.startTime,
+              endTime: item.endTime,
+              breakStart: item.breakStart || '13:00',
+              breakEnd: item.breakEnd || '14:00',
+              breaks
+            }
           })
 
           setSchedule(apiSchedule)
@@ -173,16 +173,21 @@ export default function MasterSchedule({
       const schedules: ScheduleItem[] = []
       
       schedule.forEach((item, index) => {
+        // Если день НЕ рабочий, не отправляем его в API — это выходной
+        if (!item.isWorkingDay) return
+
         const daySchedule: ScheduleItem = {
-          dayOfWeek: index, // Assuming index corresponds to dayOfWeek
+          // Маппинг индекса UI (Пн..Вс) к dayOfWeek API (0..6, Вс=0)
+          dayOfWeek: DAYS_OF_WEEK[index].id,
           startTime: item.startTime,
           endTime: item.endTime
         }
 
-        // Добавляем первый перерыв если есть
-        if (item.breakStart && item.breakEnd) {
-          daySchedule.breakStart = item.breakStart
-          daySchedule.breakEnd = item.breakEnd
+        // Сохраняем перерыв из UI: берем первый из массива breaks
+        const firstBreak = item.breaks && item.breaks.length > 0 ? item.breaks[0] : null
+        if (firstBreak) {
+          daySchedule.breakStart = firstBreak.startTime
+          daySchedule.breakEnd = firstBreak.endTime
         }
 
         schedules.push(daySchedule)

@@ -182,8 +182,26 @@ export function EnhancedClientInfoAndConfirmation({
               </div>
               {bookingData.master && (
                 <div className="sm:col-span-2">
-                  <p className="font-medium text-gray-700">Мастер:</p>
-                  <p>{bookingData.master.firstName} {bookingData.master.lastName}</p>
+                  <p className="font-medium text-gray-700 mb-2">Мастер:</p>
+                  <div className="flex items-center gap-3">
+                    {bookingData.master.photoUrl ? (
+                      <img
+                        src={bookingData.master.photoUrl}
+                        alt={`${bookingData.master.firstName} ${bookingData.master.lastName}`}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-200">
+                        <User className="w-6 h-6 text-gray-400" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium">{bookingData.master.firstName} {bookingData.master.lastName}</p>
+                      {bookingData.master.description && (
+                        <p className="text-xs text-gray-600">{bookingData.master.description}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

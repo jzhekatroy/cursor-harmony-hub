@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { generateBookingNumber } from '@/lib/auth'
 import { BookingStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
+import { utcToSalonTime, salonTimeToUtc } from '@/lib/timezone'
 
 // Создание нового бронирования
 export async function POST(request: NextRequest) {
@@ -91,8 +92,13 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    const endDateTime = new Date(startDateTime.getTime() + totalDuration * 60 * 1000)
-    console.log('🔍 DEBUG endDateTime:', endDateTime)
+    // Конвертируем время из салона в UTC для сохранения в БД
+    const salonTimezone = team.timezone || 'Europe/Moscow'
+    const utcStartDateTime = salonTimeToUtc(startDateTime, salonTimezone)
+    const utcEndDateTime = new Date(utcStartDateTime.getTime() + totalDuration * 60 * 1000)
+    
+    console.log('🔍 DEBUG utcStartDateTime:', utcStartDateTime)
+    console.log('🔍 DEBUG utcEndDateTime:', utcEndDateTime)
 
     // Проверяем конфликты с существующими бронированиями
     const conflictingBooking = await prisma.booking.findFirst({
@@ -101,16 +107,16 @@ export async function POST(request: NextRequest) {
         status: { in: ['NEW', 'CONFIRMED'] },
         OR: [
           {
-            startTime: { lte: startDateTime },
-            endTime: { gt: startDateTime }
+            startTime: { lte: utcStartDateTime },
+            endTime: { gt: utcStartDateTime }
           },
           {
-            startTime: { lt: endDateTime },
-            endTime: { gte: endDateTime }
+            startTime: { lt: utcEndDateTime },
+            endTime: { gte: utcEndDateTime }
           },
           {
-            startTime: { gte: startDateTime },
-            endTime: { lte: endDateTime }
+            startTime: { gte: utcStartDateTime },
+            endTime: { lte: utcEndDateTime }
           }
         ]
       }
@@ -154,8 +160,8 @@ export async function POST(request: NextRequest) {
       const booking = await tx.booking.create({
         data: {
           bookingNumber: generateBookingNumber(),
-          startTime: startDateTime,
-          endTime: endDateTime,
+          startTime: utcStartDateTime,
+          endTime: utcEndDateTime,
           totalPrice: totalPrice,
           notes: clientData.notes,
           status: hasServicesRequiringConfirmation ? BookingStatus.NEW : BookingStatus.CONFIRMED,
@@ -305,7 +311,15 @@ export async function GET(request: NextRequest) {
       orderBy: { startTime: 'asc' }
     })
 
-    return NextResponse.json({ bookings })
+    // Конвертируем время из UTC в время салона
+    const salonTimezone = user.team.timezone || 'Europe/Moscow'
+    const convertedBookings = bookings.map(booking => ({
+      ...booking,
+      startTime: utcToSalonTime(booking.startTime, salonTimezone).toISOString(),
+      endTime: utcToSalonTime(booking.endTime, salonTimezone).toISOString()
+    }))
+
+    return NextResponse.json({ bookings: convertedBookings })
 
   } catch (error) {
     console.error('Get bookings error:', error)

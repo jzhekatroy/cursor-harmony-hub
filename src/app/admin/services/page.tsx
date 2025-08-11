@@ -548,8 +548,12 @@ export default function ServicesPage() {
                   <div key={service.id} className={`flex items-center justify-between p-4 border border-gray-200 rounded-lg ${service.isArchived ? 'bg-gray-50 opacity-75' : ''}`}>
                     <div className="flex-1">
                       <div className="flex items-center">
-                        {service.photoUrl && (
+                        {service.photoUrl ? (
                           <img src={service.photoUrl} alt={service.name} className="w-12 h-12 rounded-lg object-cover mr-4" />
+                        ) : (
+                          <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center mr-4">
+                            <Upload className="w-6 h-6 text-gray-400" />
+                          </div>
                         )}
                         <div>
                           <h4 className={`font-medium ${service.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>
@@ -619,8 +623,12 @@ export default function ServicesPage() {
                     <div key={service.id} className={`flex items-center justify-between p-4 border border-gray-200 rounded-lg ${service.isArchived ? 'bg-gray-50 opacity-75' : ''}`}>
                       <div className="flex-1">
                         <div className="flex items-center">
-                          {service.photoUrl && (
+                          {service.photoUrl ? (
                             <img src={service.photoUrl} alt={service.name} className="w-12 h-12 rounded-lg object-cover mr-4" />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center mr-4">
+                              <Upload className="w-6 h-6 text-gray-400" />
+                            </div>
                           )}
                           <div>
                             <h4 className={`font-medium ${service.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>

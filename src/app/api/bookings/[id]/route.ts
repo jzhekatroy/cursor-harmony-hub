@@ -7,10 +7,10 @@ import { utcToSalonTime, salonTimeToUtc } from '@/lib/timezone'
 // Обновление бронирования
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await params
     
     // Проверяем авторизацию
     const authHeader = request.headers.get('authorization')
@@ -34,7 +34,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
     }
 
-    const bookingId = params.id
+    const bookingId = id
     const body = await request.json()
     const { startTime, masterId, totalPrice, notes } = body
 
@@ -237,10 +237,10 @@ export async function PUT(
 // Получение информации о бронировании
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { params } = context
+    const { id } = await params
     // Проверяем авторизацию
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
@@ -263,7 +263,7 @@ export async function GET(
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
     }
 
-    const bookingId = params.id
+    const bookingId = id
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },

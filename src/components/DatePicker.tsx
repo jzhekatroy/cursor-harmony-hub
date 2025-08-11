@@ -1,10 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import FullCalendar from '@fullcalendar/react'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import type { CalendarOptions } from '@fullcalendar/core'
+import { useState } from 'react'
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface DatePickerProps {
@@ -14,164 +10,62 @@ interface DatePickerProps {
 }
 
 export default function DatePicker({ selectedDate, onDateSelect, className = '' }: DatePickerProps) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [showCalendar, setShowCalendar] = useState(true) // Всегда показываем календарь
+  const initial = selectedDate ? new Date(selectedDate) : new Date()
+  const [currentDate, setCurrentDate] = useState<Date>(new Date(initial.getFullYear(), initial.getMonth(), initial.getDate()))
 
-  // Форматируем дату для отображения
-  const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return 'Выберите дату'
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('ru-RU', { 
-      day: 'numeric', 
-      month: 'long',
-      year: 'numeric',
-      weekday: 'long'
-    })
+  const toInputValue = (date: Date) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
   }
 
-  // Обработка клика по дате в календаре
-  const handleDateClick = (dateClickInfo: any) => {
-    const selectedDateStr = dateClickInfo.dateStr
-    console.log('📅 Выбрана дата:', selectedDateStr)
-    onDateSelect(selectedDateStr)
+  const formatDisplayDate = (date: Date) =>
+    date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', weekday: 'long' })
+
+  const applyDate = (date: Date) => {
+    setCurrentDate(date)
+    onDateSelect(toInputValue(date))
   }
 
-  // Проверяем, можно ли выбрать дату (не в прошлом)
-  const isDateSelectable = (date: Date) => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    return date >= today
+  const goPrevDay = () => {
+    const d = new Date(currentDate)
+    d.setDate(d.getDate() - 1)
+    applyDate(d)
   }
 
-  // Настройки календаря
-  const calendarOptions: CalendarOptions = {
-    plugins: [dayGridPlugin, interactionPlugin],
-    initialView: 'dayGridMonth',
-    headerToolbar: {
-      left: 'prev',
-      center: 'title',
-      right: 'next'
-    },
-    height: 'auto',
-    contentHeight: 'auto',
-    selectable: true,
-    selectMirror: true,
-    dayMaxEvents: false,
-    weekends: true,
-    locale: 'ru',
-    firstDay: 1, // Понедельник первый день недели
-    dateClick: handleDateClick,
-    selectConstraint: {
-      start: new Date().toISOString().split('T')[0] // Не позволяем выбирать прошлые даты
-    },
-    dayCellClassNames: (arg: any) => {
-      const date = new Date(arg.date)
-      const today = new Date()
-      today.setHours(0, 0, 0, 0)
-      
-      if (date < today) {
-        return ['fc-day-disabled']
-      }
-      
-      if (arg.dateStr === selectedDate) {
-        return ['fc-day-selected']
-      }
-      
-      return []
-    },
-    titleFormat: { year: 'numeric' as const, month: 'long' as const }
+  const goNextDay = () => {
+    const d = new Date(currentDate)
+    d.setDate(d.getDate() + 1)
+    applyDate(d)
   }
 
   return (
-    <div className={`${className}`}>
-      {/* Выбранная дата */}
+    <div className={className}>
       <div className="mb-4 text-center">
         <h3 className="text-lg font-medium text-gray-900 mb-2">Выберите дату</h3>
-        {selectedDate && (
-          <p className="text-sm text-blue-600 font-medium">
-            Выбрано: {formatDisplayDate(selectedDate)}
-          </p>
-        )}
+        <p className="text-sm text-blue-600 font-medium">{formatDisplayDate(currentDate)}</p>
       </div>
-
-      {/* Календарь (всегда показан) */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <style jsx global>{`
-              .fc {
-                font-family: inherit;
-              }
-              .fc-header-toolbar {
-                margin-bottom: 1rem;
-              }
-              .fc-toolbar-title {
-                font-size: 1.125rem;
-                font-weight: 600;
-                color: #1f2937;
-              }
-              .fc-button {
-                background: #f3f4f6 !important;
-                border: 1px solid #d1d5db !important;
-                color: #374151 !important;
-                font-weight: 500;
-                padding: 0.5rem 0.75rem;
-                border-radius: 0.5rem;
-              }
-              .fc-button:hover {
-                background: #e5e7eb !important;
-                border-color: #9ca3af !important;
-              }
-              .fc-button:focus {
-                box-shadow: 0 0 0 2px #3b82f6 !important;
-              }
-              .fc-day {
-                cursor: pointer;
-                transition: background-color 0.2s;
-              }
-              .fc-day:hover {
-                background-color: #eff6ff;
-              }
-              .fc-day-selected {
-                background-color: #dbeafe !important;
-                color: #1d4ed8 !important;
-                font-weight: 600;
-              }
-              .fc-day-disabled {
-                background-color: #f9fafb !important;
-                color: #9ca3af !important;
-                cursor: not-allowed !important;
-              }
-              .fc-day-disabled:hover {
-                background-color: #f9fafb !important;
-              }
-              .fc-daygrid-day-number {
-                padding: 0.5rem;
-                font-weight: 500;
-              }
-              .fc-col-header-cell {
-                background-color: #f8fafc;
-                border-bottom: 2px solid #e2e8f0;
-                font-weight: 600;
-                color: #64748b;
-                text-transform: uppercase;
-                font-size: 0.75rem;
-                letter-spacing: 0.05em;
-              }
-              .fc-scrollgrid {
-                border: 1px solid #e5e7eb;
-                border-radius: 0.5rem;
-                overflow: hidden;
-              }
-              .fc-theme-standard td, .fc-theme-standard th {
-                border: 1px solid #f3f4f6;
-              }
-            `}</style>
-            
-            <FullCalendar {...calendarOptions} />
-            
-            <div className="mt-4 text-center text-sm text-gray-500">
-              <span>Кликните на дату для выбора</span>
-            </div>
-          </div>
+        <div className="flex items-center justify-between gap-2">
+          <button onClick={goPrevDay} className="p-2 rounded-lg hover:bg-gray-100">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <input
+            type="date"
+            value={toInputValue(currentDate)}
+            onChange={(e) => {
+              const [y, m, d] = e.target.value.split('-').map(Number)
+              const nd = new Date(y, (m || 1) - 1, d || 1)
+              applyDate(nd)
+            }}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <button onClick={goNextDay} className="p-2 rounded-lg hover:bg-gray-100">
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
+      </div>
+    </div>
   )
 }

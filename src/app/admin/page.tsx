@@ -399,30 +399,16 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-4">
               <h1 className="text-2xl font-bold text-gray-900">Панель администратора</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <Link
-                href="/admin/masters"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Мастера
-              </Link>
-            </div>
+      </div>
+
+            {/* Убрали кнопку "+ мастер" по запросу */}
           </div>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* View Toggle */}
-        <div className="flex bg-white rounded-lg border border-gray-200 p-1">
-          <div className="px-3 py-1 text-sm bg-blue-50 text-blue-600">
-            <CalendarIcon className="w-4 h-4 inline mr-2" />
-                Календарь
-          </div>
-        </div>
+        {/* Убрали заголовок "Календарь" по запросу */}
 
 
 

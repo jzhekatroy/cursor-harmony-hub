@@ -591,7 +591,7 @@ export default function FullCalendar({
                 return (
                   <div
                     key={booking.id}
-                    className={`absolute bg-blue-500 text-white text-xs p-2 rounded cursor-pointer hover:bg-blue-600 transition-colors z-10 ${
+                    className={`absolute bg-blue-500 text-white text-xs p-2 rounded cursor-pointer hover:bg-blue-600 transition-colors z-10 relative ${
                       isPastBooking ? 'opacity-50' : ''
                     } ${isCurrentBooking ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
                     style={{
@@ -605,21 +605,20 @@ export default function FullCalendar({
                     onClick={() => onBookingClick?.(booking)}
                     title={`${primaryService}${extraSuffix} | Мастер: ${booking.master.firstName} ${booking.master.lastName} | Клиент: ${booking.client.firstName} ${booking.client.lastName}`}
                   >
+                    <button
+                      type="button"
+                      className="absolute top-1 right-1 rounded px-1 leading-none text-[12px] text-white/90 hover:text-white bg-red-600/70 hover:bg-red-600"
+                      onClick={(e) => { e.stopPropagation(); cancelBooking(booking.id) }}
+                      disabled={cancellingId === booking.id}
+                      title="Отменить запись"
+                    >
+                      {cancellingId === booking.id ? '…' : '×'}
+                    </button>
                     <div className="font-semibold truncate">{primaryService}{extraSuffix}</div>
                     {showMasterLine && (
                       <div className="text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
                     )}
-                    <div className="text-xs opacity-75 flex items-center justify-between gap-2">
-                      <span>Клиент: {booking.client.firstName} {booking.client.lastName}</span>
-                      <button
-                        type="button"
-                        className="text-red-200 hover:text-white underline disabled:opacity-50"
-                        onClick={(e) => { e.stopPropagation(); cancelBooking(booking.id) }}
-                        disabled={cancellingId === booking.id}
-                      >
-                        {cancellingId === booking.id ? 'Отмена…' : 'Отменить'}
-                      </button>
-                    </div>
+                    <div className="text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
                   </div>
                 )
               })

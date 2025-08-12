@@ -173,42 +173,31 @@ export default function FullCalendar({
   }
 
   const getWorkingTimeRange = () => {
-    if (activeMasters.length === 0) {
-      // Если нет мастеров, показываем стандартное время 09:00-18:00
-      return { startHour: 9, endHour: 18 }
+    const toMinutes = (hhmm: string) => {
+      const [h, m] = hhmm.split(':').map(Number)
+      return h * 60 + m
     }
 
-    let earliestStart = 23
+    if (activeMasters.length === 0) {
+      return { startMinutes: 9 * 60, endMinutes: 18 * 60 }
+    }
+
+    let earliestStart = Number.POSITIVE_INFINITY
     let latestEnd = 0
-
-
 
     activeMasters.forEach(master => {
       const schedule = getMasterSchedule(master.id, selectedDate)
-      
-      
       if (schedule) {
-        const startHour = parseInt(schedule.startTime.split(':')[0])
-        const endHour = parseInt(schedule.endTime.split(':')[0])
-        
-        
-        
-        earliestStart = Math.min(earliestStart, startHour)
-        latestEnd = Math.max(latestEnd, endHour)
-      } else {
-
+        earliestStart = Math.min(earliestStart, toMinutes(schedule.startTime))
+        latestEnd = Math.max(latestEnd, toMinutes(schedule.endTime))
       }
     })
 
-    
-
-    // Если никто не работает сегодня, показываем стандартное время
-    if (earliestStart === 23 || latestEnd === 0) {
-
-      return { startHour: 9, endHour: 18 }
+    if (!isFinite(earliestStart) || latestEnd === 0) {
+      return { startMinutes: 9 * 60, endMinutes: 18 * 60 }
     }
 
-    return { startHour: earliestStart, endHour: latestEnd }
+    return { startMinutes: earliestStart, endMinutes: latestEnd }
   }
 
   // Форматирование времени и дат
@@ -223,14 +212,12 @@ export default function FullCalendar({
   // Генерация временных слотов
   const generateTimeSlots = (date: Date) => {
     const slots = []
-    const { startHour, endHour } = getWorkingTimeRange()
-    
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const time = new Date(date)
-        time.setHours(hour, minute, 0, 0)
-        slots.push(time)
-      }
+    const { startMinutes, endMinutes } = getWorkingTimeRange()
+
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += 30) {
+      const time = new Date(date)
+      time.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0)
+      slots.push(time)
     }
     
     return slots
@@ -240,6 +227,7 @@ export default function FullCalendar({
 
   // ПРОСТАЯ функция позиционирования броней (время салона)
   const getBookingPosition = (startTime: string, endTime: string) => {
+    const SLOT_PX = 33 // 30 минут визуально: 32px высота + 1px нижняя граница ряда
     // Получаем метки времени в часовом поясе салона
     const startLabel = new Date(startTime).toLocaleTimeString('ru-RU', {
       timeZone: salonTimezone, hour: '2-digit', minute: '2-digit', hour12: false
@@ -251,14 +239,13 @@ export default function FullCalendar({
     const [sh, sm] = startLabel.split(':').map(Number)
     const [eh, em] = endLabel.split(':').map(Number)
 
-    const { startHour } = getWorkingTimeRange()
-    const baselineMinutes = startHour * 60
+    const { startMinutes: baselineMinutes } = getWorkingTimeRange()
     const startMinutes = sh * 60 + sm
     const endMinutes = eh * 60 + em
 
-    const top = ((startMinutes - baselineMinutes) / 30) * 32 + 1
+    const top = ((startMinutes - baselineMinutes) / 30) * SLOT_PX
     const durationMinutes = Math.max(0, endMinutes - startMinutes)
-    const height = (durationMinutes / 30) * 32 - 2
+    const height = (durationMinutes / 30) * SLOT_PX - 2
 
     return { top, height }
   }
@@ -273,8 +260,9 @@ export default function FullCalendar({
       
       const isSameDate = isSameDay(bookingDateOnly, selectedDateOnly)
       const isSameMaster = booking.master.id === masterId
+      const isCancelled = booking.status === 'CANCELLED_BY_CLIENT' || booking.status === 'CANCELLED_BY_SALON'
       
-      return isSameDate && isSameMaster
+      return isSameDate && isSameMaster && !isCancelled
     })
     
     return filteredBookings
@@ -532,10 +520,8 @@ export default function FullCalendar({
 
                 {/* Красная линия текущего времени */}
                 {isSameDay(selectedDate, now) && (() => {
-                  const { startHour, endHour } = getWorkingTimeRange()
-                  const baselineMinutes = startHour * 60
-                  const endMinutes = endHour * 60
-                  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+                  const { startMinutes: baselineMinutes, endMinutes } = getWorkingTimeRange()
+                  const nowMinutes = getSalonNowMinutes()
                   if (nowMinutes < baselineMinutes || nowMinutes > endMinutes) return null
                   const top = ((nowMinutes - baselineMinutes) / 30) * 32 + 1
                   return (
@@ -568,6 +554,15 @@ export default function FullCalendar({
                 const isPastBooking = isToday && end.getTime() <= now.getTime()
                 const isCurrentBooking = isToday && start.getTime() <= now.getTime() && end.getTime() > now.getTime()
 
+                // Текст карточки по требованию: Услуга, Мастер, Клиент (без времени)
+                const serviceCount = booking.services ? booking.services.length : 0
+                const primaryService = serviceCount > 0 ? booking.services[0].name : 'Услуга'
+                const extraSuffix = serviceCount > 1 ? ` +${serviceCount - 1}` : ''
+
+                // Для очень коротких бронирований показываем хотя бы услугу
+                const showMasterLine = height >= 28
+                const showClientLine = true
+
                 return (
                   <div
                     key={booking.id}
@@ -583,20 +578,15 @@ export default function FullCalendar({
                       height: `${height}px`
                     }}
                     onClick={() => onBookingClick?.(booking)}
-                    title={`${format(new Date(booking.startTime), 'HH:mm')} - ${format(new Date(booking.endTime), 'HH:mm')} | ${booking.client.firstName} ${booking.client.lastName}`}
+                    title={`${primaryService}${extraSuffix} | Мастер: ${booking.master.firstName} ${booking.master.lastName} | Клиент: ${booking.client.firstName} ${booking.client.lastName}`}
                   >
-                    <div className="font-medium truncate">
-                      {booking.client.firstName} {booking.client.lastName}
-                    </div>
-                    <div className="text-xs opacity-90">
-                      {format(new Date(booking.startTime), 'HH:mm')} - {format(new Date(booking.endTime), 'HH:mm')}
-                    </div>
-                    <div className="text-xs opacity-75">
-                      {booking.services.map(s => s.name).join(', ')}
-                    </div>
-                    <div className="text-xs opacity-75">
-                      Статус: {booking.status}
-                    </div>
+                    <div className="font-semibold truncate">{primaryService}{extraSuffix}</div>
+                    {showMasterLine && (
+                      <div className="text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
+                    )}
+                    {showClientLine && (
+                      <div className="text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
+                    )}
                   </div>
                 )
               })

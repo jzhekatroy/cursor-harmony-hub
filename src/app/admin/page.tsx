@@ -205,11 +205,11 @@ export default function AdminDashboard() {
     return () => clearInterval(interval)
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (silent: boolean = false) => {
     if (typeof window === 'undefined') return
     
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError(null)
       
       const token = localStorage.getItem('token')
@@ -304,12 +304,20 @@ export default function AdminDashboard() {
       console.error('Ошибка загрузки данных:', err)
       setError(err.message || 'Произошла ошибка при загрузке данных')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  // Автообновление раз в минуту (тихий режим без спиннера)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      loadData(true)
+    }, 60_000)
+    return () => clearInterval(intervalId)
   }, [])
 
   // Фильтруем брони по выбранной дате в календаре
@@ -454,7 +462,7 @@ export default function AdminDashboard() {
           <div className="text-red-600 text-xl mb-4">Ошибка</div>
           <p className="text-gray-600 mb-4">{error}</p>
         <button
-          onClick={loadData}
+          onClick={() => loadData()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
           Попробовать снова

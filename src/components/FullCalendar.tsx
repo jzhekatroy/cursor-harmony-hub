@@ -591,7 +591,7 @@ export default function FullCalendar({
                 return (
                   <div
                     key={booking.id}
-                    className={`absolute bg-blue-500 text-white text-xs p-2 rounded cursor-pointer hover:bg-blue-600 transition-colors z-10 relative ${
+                    className={`absolute bg-blue-500 text-white text-xs p-2 rounded cursor-pointer hover:bg-blue-600 transition-colors z-10 ${
                       isPastBooking ? 'opacity-50' : ''
                     } ${isCurrentBooking ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
                     style={{

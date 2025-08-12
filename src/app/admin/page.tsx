@@ -191,6 +191,7 @@ export default function AdminDashboard() {
   })
   const [hasOverlap, setHasOverlap] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isCancelling, setIsCancelling] = useState(false)
 
   // Генерируем дни недели
   // const weekDays = getWeekDays(new Date())
@@ -379,6 +380,30 @@ export default function AdminDashboard() {
     }
   }
 
+  const cancelCurrentBooking = async () => {
+    if (!editingBooking) return
+    if (!confirm('Отменить эту запись?')) return
+    try {
+      setIsCancelling(true)
+      const token = localStorage.getItem('token')
+      const res = await fetch(`/api/bookings/${editingBooking.id}/cancel`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(`Ошибка отмены: ${data.error || res.statusText}`)
+        return
+      }
+      await loadData()
+      cancelEditing()
+    } catch (e) {
+      alert('Не удалось отменить запись')
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   const updateEditForm = (field: string, value: any) => {
     setEditForm(prev => ({ ...prev, [field]: value }))
   }
@@ -480,10 +505,17 @@ export default function AdminDashboard() {
         {editingBooking && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="text-lg font-medium text-gray-900">
                   Редактирование брони #{editingBooking.bookingNumber}
                 </h3>
+              <button
+                  onClick={cancelCurrentBooking}
+                  disabled={isCancelling}
+                  className="px-3 py-1.5 rounded-md text-sm font-medium border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                  {isCancelling ? 'Отмена…' : 'Отменить'}
+              </button>
             </div>
             
               <div className="p-6 space-y-6">

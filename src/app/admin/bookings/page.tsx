@@ -5,7 +5,7 @@ import { createDateInSalonTimezone } from '@/lib/timezone'
 import { Calendar, Clock, User, Phone, Mail, AlertCircle, Search, Filter, Download, MessageCircle, X, Edit, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import Link from 'next/link'
 import { formatTimeForAdmin } from '@/lib/timezone'
-import FullCalendar from '@/components/FullCalendar'
+// Removed calendar view on bookings page
 
 interface BookingService {
   name: string
@@ -83,8 +83,7 @@ export default function BookingsPage() {
   const [editForms, setEditForms] = useState<Record<string, any>>({})
   const [overlaps, setOverlaps] = useState<Record<string, boolean>>({})
 
-  // Состояние для переключения между списком и календарем
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  // На странице бронирований оставляем только список (календарь убран)
 
   useEffect(() => {
     loadData()
@@ -302,13 +301,7 @@ export default function BookingsPage() {
     setOverlaps(newOverlaps)
   }, [editForms, editingBookings, bookings, salonTimezone])
 
-  // Обработка клика по брони в календаре
-  const handleBookingClick = (booking: Booking) => {
-    // Раскрываем детали брони
-    setExpandedBookings(prev => new Set([...prev, booking.id]))
-    // Переключаемся на список для просмотра деталей
-    setViewMode('list')
-  }
+  // Удалён обработчик клика календаря (календарь скрыт)
 
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString)
@@ -402,29 +395,7 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        {/* Переключение между видами */}
-        <div className="mt-4 flex space-x-2">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === 'list'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-            }`}
-          >
-            Список
-          </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              viewMode === 'calendar'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-            }`}
-          >
-            Календарь
-          </button>
-        </div>
+        {/* Переключение видов убрано — здесь всегда список */}
 
         {/* Фильтры */}
         <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -483,8 +454,7 @@ export default function BookingsPage() {
 
         {/* Список бронирований */}
         <div className="mt-6">
-          {viewMode === 'list' ? (
-            sortedBookings.length === 0 ? (
+          {sortedBookings.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <Calendar className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">Нет записей</h3>
@@ -761,13 +731,6 @@ export default function BookingsPage() {
                 })}
               </div>
             </div>
-            )
-          ) : (
-            <FullCalendar
-              bookings={bookings}
-              masters={masters}
-              onBookingClick={handleBookingClick}
-            />
           )}
         </div>
       </div>

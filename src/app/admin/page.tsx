@@ -471,6 +471,7 @@ export default function AdminDashboard() {
               masterAbsences={masterAbsences}
               onBookingClick={startEditingBooking}
               salonTimezone={team?.settings?.timezone || team?.timezone || 'Europe/Moscow'}
+              onBookingCancelled={loadData}
             />
                 </div>
               </div>

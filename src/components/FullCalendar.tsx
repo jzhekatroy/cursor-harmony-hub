@@ -63,6 +63,7 @@ interface FullCalendarProps {
   masterAbsences?: MasterAbsence[]
   onBookingClick?: (booking: Booking) => void
   salonTimezone?: string
+  onBookingCancelled?: () => void
 }
 
 export default function FullCalendar({ 
@@ -71,7 +72,8 @@ export default function FullCalendar({
   masterSchedules = [], 
   masterAbsences = [],
   onBookingClick,
-  salonTimezone = 'Europe/Moscow'
+  salonTimezone = 'Europe/Moscow',
+  onBookingCancelled
 }: FullCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
@@ -84,6 +86,7 @@ export default function FullCalendar({
   
   const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
   const [now, setNow] = useState<Date>(new Date())
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
 
   // Обновляем текущее время каждую минуту, чтобы линия и состояния брони обновлялись автоматически
   useEffect(() => {
@@ -146,6 +149,28 @@ export default function FullCalendar({
         endStr >= target
       )
     })
+  }
+
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      if (!confirm('Отменить эту запись?')) return
+      setCancellingId(bookingId)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const res = await fetch(`/api/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(`Ошибка отмены: ${data.error || res.statusText}`)
+        return
+      }
+      if (onBookingCancelled) onBookingCancelled()
+    } catch (e) {
+      alert('Не удалось отменить запись')
+    } finally {
+      setCancellingId(null)
+    }
   }
 
   const isWorkingTime = (masterId: string, time: Date, date: Date) => {
@@ -584,9 +609,17 @@ export default function FullCalendar({
                     {showMasterLine && (
                       <div className="text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
                     )}
-                    {showClientLine && (
-                      <div className="text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
-                    )}
+                    <div className="text-xs opacity-75 flex items-center justify-between gap-2">
+                      <span>Клиент: {booking.client.firstName} {booking.client.lastName}</span>
+                      <button
+                        type="button"
+                        className="text-red-200 hover:text-white underline disabled:opacity-50"
+                        onClick={(e) => { e.stopPropagation(); cancelBooking(booking.id) }}
+                        disabled={cancellingId === booking.id}
+                      >
+                        {cancellingId === booking.id ? 'Отмена…' : 'Отменить'}
+                      </button>
+                    </div>
                   </div>
                 )
               })

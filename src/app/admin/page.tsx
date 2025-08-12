@@ -436,9 +436,10 @@ export default function AdminDashboard() {
               masterSchedules={masterSchedules}
               masterAbsences={masterAbsences}
               onBookingClick={startEditingBooking}
+              salonTimezone={team?.settings?.timezone || team?.timezone || 'Europe/Moscow'}
             />
-          </div>
-        </div>
+                </div>
+              </div>
 
         {/* Модальное окно редактирования брони */}
         {editingBooking && (

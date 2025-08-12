@@ -62,6 +62,7 @@ interface FullCalendarProps {
   masterSchedules?: MasterSchedule[]
   masterAbsences?: MasterAbsence[]
   onBookingClick?: (booking: Booking) => void
+  salonTimezone?: string
 }
 
 export default function FullCalendar({ 
@@ -69,7 +70,8 @@ export default function FullCalendar({
   masters, 
   masterSchedules = [], 
   masterAbsences = [],
-  onBookingClick 
+  onBookingClick,
+  salonTimezone = 'Europe/Moscow'
 }: FullCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
@@ -98,6 +100,27 @@ export default function FullCalendar({
 
 
 
+  // Вспомогательные форматтеры времени/даты для часового пояса салона
+  const formatHHmmInSalon = (date: Date) => {
+    return date.toLocaleTimeString('ru-RU', {
+      timeZone: salonTimezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+  }
+
+  const getSalonDateYYYYMMDD = (date: Date) => {
+    // en-CA даёт формат YYYY-MM-DD
+    return date.toLocaleDateString('en-CA', { timeZone: salonTimezone })
+  }
+
+  const getSalonNowMinutes = () => {
+    const nowLabel = formatHHmmInSalon(now)
+    const [h, m] = nowLabel.split(':').map(Number)
+    return h * 60 + m
+  }
+
   // Функции для работы с расписанием и отсутствиями
   const getMasterSchedule = (masterId: string, date: Date) => {
     const dayOfWeek = date.getDay() // 0-6 (воскресенье-суббота)
@@ -110,15 +133,17 @@ export default function FullCalendar({
   }
 
   const getMasterAbsence = (masterId: string, date: Date) => {
-    // Сравниваем ЛОКАЛЬНЫЕ даты, чтобы избежать смещения по UTC
-    const target = format(date, 'yyyy-MM-dd')
+    // Сравнение дат в часовом поясе салона (YYYY-MM-DD)
+    const target = getSalonDateYYYYMMDD(date)
     return absences.find(absence => {
-      const start = format(new Date(absence.startDate), 'yyyy-MM-dd')
-      const end = format(new Date(absence.endDate), 'yyyy-MM-dd')
+      const start = new Date(absence.startDate)
+      const end = new Date(absence.endDate)
+      const startStr = getSalonDateYYYYMMDD(start)
+      const endStr = getSalonDateYYYYMMDD(end)
       return (
         absence.masterId === masterId &&
-        start <= target &&
-        end >= target
+        startStr <= target &&
+        endStr >= target
       )
     })
   }
@@ -127,7 +152,7 @@ export default function FullCalendar({
     const schedule = getMasterSchedule(masterId, date)
     if (!schedule) return false
 
-    const timeString = format(time, 'HH:mm')
+    const timeString = formatHHmmInSalon(time)
     const isInWorkHours = timeString >= schedule.startTime && timeString < schedule.endTime
     
     // Проверяем, не попадает ли время в перерыв
@@ -143,7 +168,7 @@ export default function FullCalendar({
     const schedule = getMasterSchedule(masterId, date)
     if (!schedule || !schedule.breakStart || !schedule.breakEnd) return false
 
-    const timeString = format(time, 'HH:mm')
+    const timeString = formatHHmmInSalon(time)
     return timeString >= schedule.breakStart && timeString < schedule.breakEnd
   }
 
@@ -188,7 +213,7 @@ export default function FullCalendar({
 
   // Форматирование времени и дат
   const formatTime = (time: Date) => {
-    return format(time, 'HH:mm')
+    return formatHHmmInSalon(time)
   }
 
   const formatDate = (date: Date) => {
@@ -213,32 +238,28 @@ export default function FullCalendar({
 
   const timeSlots = generateTimeSlots(selectedDate)
 
-  // ПРОСТАЯ функция позиционирования броней
+  // ПРОСТАЯ функция позиционирования броней (время салона)
   const getBookingPosition = (startTime: string, endTime: string) => {
-    // Создаем объекты Date из строк
-    const start = new Date(startTime)
-    const end = new Date(endTime)
-    
+    // Получаем метки времени в часовом поясе салона
+    const startLabel = new Date(startTime).toLocaleTimeString('ru-RU', {
+      timeZone: salonTimezone, hour: '2-digit', minute: '2-digit', hour12: false
+    })
+    const endLabel = new Date(endTime).toLocaleTimeString('ru-RU', {
+      timeZone: salonTimezone, hour: '2-digit', minute: '2-digit', hour12: false
+    })
 
-    
-    // ПРОСТОЙ ПОДХОД: используем локальное время
-    const localStart = new Date(start.getTime())
-    const localEnd = new Date(end.getTime())
-    
-          // Позиция от верха: считаем относительно первого слота (самого раннего начала)
-          const { startHour } = getWorkingTimeRange()
-          const baselineMinutes = startHour * 60
-          const startMinutes = localStart.getHours() * 60 + localStart.getMinutes()
-          const top = ((startMinutes - baselineMinutes) / 30) * 32 + 1 // 32px на каждые 30 минут + 1px отступ
+    const [sh, sm] = startLabel.split(':').map(Number)
+    const [eh, em] = endLabel.split(':').map(Number)
 
-          // Высота на основе реальной длительности (в минутах)
-          const durationMinutes = (localEnd.getTime() - localStart.getTime()) / (1000 * 60)
-          const height = (durationMinutes / 30) * 32 - 2 // 32px на каждые 30 минут - 2px для отступов
-    
+    const { startHour } = getWorkingTimeRange()
+    const baselineMinutes = startHour * 60
+    const startMinutes = sh * 60 + sm
+    const endMinutes = eh * 60 + em
 
-    
+    const top = ((startMinutes - baselineMinutes) / 30) * 32 + 1
+    const durationMinutes = Math.max(0, endMinutes - startMinutes)
+    const height = (durationMinutes / 30) * 32 - 2
 
-    
     return { top, height }
   }
 

@@ -157,27 +157,30 @@ export default function BookingsPage() {
     }
   }
 
-  // Отмена бронирования
+  // Отмена/"Не пришёл" с подтверждением
   const cancelBooking = async (bookingId: string) => {
     try {
+      const booking = bookings.find(b => b.id === bookingId)
+      if (!booking) return
+      const isFinished = new Date(booking.endTime).getTime() <= Date.now()
+      const confirmText = isFinished ? 'Отметить запись как «Не пришёл»?' : 'Отменить эту запись?'
+      if (!confirm(confirmText)) return
+
       setCancellingBooking(bookingId)
       const token = localStorage.getItem('token')
-
-      const response = await fetch(`/api/bookings/${bookingId}/cancel`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+      const endpoint = isFinished ? `/api/bookings/${bookingId}/no-show` : `/api/bookings/${bookingId}/cancel`
+      const response = await fetch(endpoint, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } })
 
       if (response.ok) {
         // Обновляем список бронирований
         await loadData()
       } else {
         const errorData = await response.json()
-        alert(`Ошибка отмены: ${errorData.error || 'Неизвестная ошибка'}`)
+        alert(`Ошибка: ${errorData.error || 'Неизвестная ошибка'}`)
       }
     } catch (error) {
-      console.error('Ошибка отмены бронирования:', error)
-      alert('Произошла ошибка при отмене бронирования')
+      console.error('Ошибка изменения статуса:', error)
+      alert('Произошла ошибка при изменении статуса')
     } finally {
       setCancellingBooking(null)
     }

@@ -241,7 +241,21 @@ export default function AdminDashboard() {
       ])
 
       setTeam(teamData)
-      setBookings(bookingsData.bookings || [])
+      // Нормализуем услуги/клиента в бронированиях, чтобы в UI были имя/услуги/длительность
+      const normalizedBookings = (bookingsData.bookings || []).map((b: any) => ({
+        ...b,
+        services: (b.services || []).map((bs: any) => ({
+          name: bs.service?.name ?? bs.name,
+          duration: bs.service?.duration ?? bs.duration ?? 0,
+          price: bs.service?.price ?? bs.price ?? 0
+        })),
+        client: {
+          ...b.client,
+          firstName: b.client?.firstName || b.client?.name || '',
+          lastName: b.client?.lastName || ''
+        }
+      }))
+      setBookings(normalizedBookings)
       setMasters(mastersData.masters || [])
       
       // Загружаем расписание и отсутствия для всех мастеров

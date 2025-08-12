@@ -123,7 +123,20 @@ export default function BookingsPage() {
 
       if (bookingsResponse.ok) {
         const bookingsData = await bookingsResponse.json()
-        setBookings(bookingsData.bookings || [])
+        const normalized = (bookingsData.bookings || []).map((b: any) => ({
+          ...b,
+          services: (b.services || []).map((bs: any) => ({
+            name: bs.service?.name ?? bs.name,
+            duration: bs.service?.duration ?? bs.duration ?? 0,
+            price: bs.service?.price ?? bs.price ?? 0
+          })),
+          client: {
+            ...b.client,
+            firstName: b.client?.firstName || b.client?.name || '',
+            lastName: b.client?.lastName || ''
+          }
+        }))
+        setBookings(normalized)
       } else {
         const errorData = await bookingsResponse.json()
         setError(`Ошибка загрузки бронирований: ${errorData.error || 'Неизвестная ошибка'}`)

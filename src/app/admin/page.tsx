@@ -185,9 +185,11 @@ export default function AdminDashboard() {
   const [editForm, setEditForm] = useState({
     startTime: '',
     masterId: '',
+    duration: 0,
     totalPrice: 0,
     notes: ''
   })
+  const [hasOverlap, setHasOverlap] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   // Генерируем дни недели
@@ -307,10 +309,12 @@ export default function AdminDashboard() {
   // Функции для редактирования брони в календаре
   const startEditingBooking = (booking: Booking) => {
     setEditingBooking(booking)
+    const durationSum = booking.services?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0
     setEditForm({
       // ВАЖНО: для datetime-local используем локальное время, а не toISOString()
       startTime: toLocalDateTimeInputValue(new Date(booking.startTime)),
       masterId: booking.master.id,
+      duration: durationSum,
       totalPrice: booking.totalPrice,
       notes: booking.notes || ''
     })
@@ -321,9 +325,11 @@ export default function AdminDashboard() {
     setEditForm({
       startTime: '',
       masterId: '',
+      duration: 0,
       totalPrice: 0,
       notes: ''
     })
+    setHasOverlap(false)
   }
 
   const saveBookingChanges = async () => {
@@ -362,6 +368,34 @@ export default function AdminDashboard() {
   const updateEditForm = (field: string, value: any) => {
     setEditForm(prev => ({ ...prev, [field]: value }))
   }
+
+  // Проверка пересечения при изменении времени/мастера/длительности
+  useEffect(() => {
+    if (!editingBooking || !editForm.startTime || !editForm.masterId || !team) {
+      setHasOverlap(false)
+      return
+    }
+    try {
+      const tz = team?.settings?.timezone || team?.timezone || 'Europe/Moscow'
+      const [datePart, timePart] = editForm.startTime.split('T')
+      const [y, m, d] = datePart.split('-').map(Number)
+      const [hh, mm] = timePart.split(':').map(Number)
+      const utcStart = createDateInSalonTimezone(y, m, d, hh, mm, tz)
+      const utcEnd = new Date(utcStart.getTime() + (Number(editForm.duration) || 0) * 60 * 1000)
+
+      const overlap = bookings.some(b => {
+        if (b.id === editingBooking.id) return false
+        if (b.master.id !== editForm.masterId) return false
+        if (!['NEW', 'CONFIRMED'].includes(b.status)) return false
+        const bStart = new Date(b.startTime)
+        const bEnd = new Date(b.endTime)
+        return utcStart < bEnd && utcEnd > bStart
+      })
+      setHasOverlap(overlap)
+    } catch {
+      setHasOverlap(false)
+    }
+  }, [editingBooking, editForm.startTime, editForm.masterId, editForm.duration, bookings, team])
 
   if (loading) {
     return (
@@ -473,6 +507,10 @@ export default function AdminDashboard() {
                         <span className="font-medium">{service.price} ₽</span>
                         </div>
                 ))}
+                    <div className="mt-2 text-sm text-gray-600">
+                      <span className="font-medium">Длительность:</span>{' '}
+                      {editForm.duration} мин
+                    </div>
                               </div>
             </div>
 
@@ -505,6 +543,24 @@ export default function AdminDashboard() {
                       ))}
                     </select>
         </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Длительность (мин)
+                    </label>
+                    <input
+                      type="number"
+                      min={15}
+                      step={15}
+                      value={editForm.duration}
+                      onChange={(e) => updateEditForm('duration', parseInt(e.target.value) || 0)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                    {hasOverlap && (
+                      <p className="mt-1 text-xs text-orange-600">
+                        Внимание: новая длительность пересекается с другой записью. Сохранение возможно, но учтите конфликт.
+                      </p>
+                    )}
+                      </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Общая цена (₽)

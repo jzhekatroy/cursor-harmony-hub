@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { createDateInSalonTimezone } from '@/lib/timezone'
 import { Calendar, Clock, User, Phone, Mail, AlertCircle, Search, Filter, Download, MessageCircle, X, Edit, ChevronDown, ChevronUp, Save } from 'lucide-react'
 import Link from 'next/link'
 import { formatTimeForAdmin } from '@/lib/timezone'
@@ -80,6 +81,7 @@ export default function BookingsPage() {
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set())
   const [editingBookings, setEditingBookings] = useState<Set<string>>(new Set())
   const [editForms, setEditForms] = useState<Record<string, any>>({})
+  const [overlaps, setOverlaps] = useState<Record<string, boolean>>({})
 
   // Состояние для переключения между списком и календарем
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
@@ -197,6 +199,7 @@ export default function BookingsPage() {
       [booking.id]: {
         startTime: toLocalDateTimeInputValue(new Date(booking.startTime)),
         masterId: booking.master.id,
+        duration: booking.services?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0,
         totalPrice: booking.totalPrice,
         notes: booking.notes || ''
       }
@@ -254,6 +257,37 @@ export default function BookingsPage() {
       [bookingId]: { ...prev[bookingId], [field]: value }
     }))
   }
+
+  // Проверка пересечений при изменении startTime/masterId/duration
+  useEffect(() => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    const newOverlaps: Record<string, boolean> = {}
+    bookings.forEach(b => {
+      if (!editingBookings.has(b.id)) return
+      const form = editForms[b.id]
+      if (!form?.startTime || !form?.masterId) return
+      try {
+        const [datePart, timePart] = form.startTime.split('T')
+        const [y, m, d] = datePart.split('-').map(Number)
+        const [hh, mm] = timePart.split(':').map(Number)
+        const utcStart = createDateInSalonTimezone(y, m, d, hh, mm, tz)
+        const duration = Number(form.duration) || 0
+        const utcEnd = new Date(utcStart.getTime() + duration * 60 * 1000)
+        const conflict = bookings.some(other => {
+          if (other.id === b.id) return false
+          if (other.master.id !== form.masterId) return false
+          if (!['NEW', 'CONFIRMED'].includes(other.status)) return false
+          const oStart = new Date(other.startTime)
+          const oEnd = new Date(other.endTime)
+          return utcStart < oEnd && utcEnd > oStart
+        })
+        newOverlaps[b.id] = conflict
+      } catch {
+        newOverlaps[b.id] = false
+      }
+    })
+    setOverlaps(newOverlaps)
+  }, [editForms, editingBookings, bookings, salonTimezone])
 
   // Обработка клика по брони в календаре
   const handleBookingClick = (booking: Booking) => {
@@ -592,6 +626,24 @@ export default function BookingsPage() {
                                   </div>
                                   <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Длительность (мин)
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min={15}
+                                      step={15}
+                                      value={editForm.duration || 0}
+                                      onChange={(e) => updateEditForm(booking.id, 'duration', parseInt(e.target.value) || 0)}
+                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                                    />
+                                    {overlaps[booking.id] && (
+                                      <p className="mt-1 text-xs text-orange-600">
+                                        Внимание: новая длительность пересекается с другой записью. Сохранение возможно, но учтите конфликт.
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
                                       Общая цена (₽)
                                     </label>
                                     <input
@@ -670,7 +722,7 @@ export default function BookingsPage() {
                                     <div className="flex justify-between font-medium">
                                       <span>Мастер:</span>
                                       <span>{booking.master.firstName} {booking.master.lastName}</span>
-                                    </div>
+                                  </div>
                                     <div className="flex justify-between font-medium text-lg text-blue-600">
                                       <span>Итого:</span>
                                       <span>{booking.totalPrice} ₽</span>

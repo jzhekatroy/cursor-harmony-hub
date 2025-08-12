@@ -77,8 +77,10 @@ export function EnhancedClientInfoAndConfirmation({
 
     setIsSubmitting(true)
     try {
-      const startTime = `${bookingData.date}T${bookingData.timeSlot.time}:00`
-      console.log('🔍 DEBUG startTime being sent:', startTime)
+      // На сервер нужно отправлять время САЛОНА, иначе появится конфликт
+      const salonTime = bookingData.timeSlot?.timezoneInfo?.salonTime || bookingData.timeSlot!.time
+      const startTime = `${bookingData.date}T${salonTime}:00`
+      console.log('🔍 DEBUG startTime (salon) being sent:', startTime)
       
       // Отправляем данные на сервер
       const response = await fetch('/api/bookings', {

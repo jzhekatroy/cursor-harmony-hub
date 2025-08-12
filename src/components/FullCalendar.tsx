@@ -173,6 +173,28 @@ export default function FullCalendar({
     }
   }
 
+  const markNoShow = async (bookingId: string) => {
+    try {
+      if (!confirm('Отметить как «Не пришёл»?')) return
+      setCancellingId(bookingId)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null
+      const res = await fetch(`/api/bookings/${bookingId}/no-show`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        alert(`Ошибка изменения статуса: ${data.error || res.statusText}`)
+        return
+      }
+      if (onBookingCancelled) onBookingCancelled()
+    } catch (e) {
+      alert('Не удалось отметить как «Не пришёл»')
+    } finally {
+      setCancellingId(null)
+    }
+  }
+
   const isWorkingTime = (masterId: string, time: Date, date: Date) => {
     const schedule = getMasterSchedule(masterId, date)
     if (!schedule) return false
@@ -577,6 +599,7 @@ export default function FullCalendar({
                 const end = new Date(booking.endTime)
                 const isToday = isSameDay(selectedDate, now) && isSameDay(start, now)
                 const isPastBooking = isToday && end.getTime() <= now.getTime()
+                const isFinished = end.getTime() <= Date.now()
                 const isCurrentBooking = isToday && start.getTime() <= now.getTime() && end.getTime() > now.getTime()
 
                 // Текст карточки по требованию: Услуга, Мастер, Клиент (без времени)
@@ -608,9 +631,12 @@ export default function FullCalendar({
                     <button
                       type="button"
                       className="absolute top-1 right-1 rounded px-1 leading-none text-[12px] text-white/90 hover:text-white bg-red-600/70 hover:bg-red-600"
-                      onClick={(e) => { e.stopPropagation(); cancelBooking(booking.id) }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isFinished) { markNoShow(booking.id) } else { cancelBooking(booking.id) }
+                      }}
                       disabled={cancellingId === booking.id}
-                      title="Отменить запись"
+                      title={isFinished ? 'Отметить как «Не пришёл»' : 'Отменить запись'}
                     >
                       {cancellingId === booking.id ? '…' : '×'}
                     </button>

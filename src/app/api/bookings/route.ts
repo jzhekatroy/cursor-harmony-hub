@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { generateBookingNumber } from '@/lib/auth'
 import { BookingStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
-import { utcToSalonTime, salonTimeToUtc } from '@/lib/timezone'
+import { utcToSalonTime, createDateInSalonTimezone } from '@/lib/timezone'
 
 // Создание нового бронирования
 export async function POST(request: NextRequest) {
@@ -81,20 +81,22 @@ export async function POST(request: NextRequest) {
     const totalPrice = services.reduce((sum, service) => sum + Number(service.price), 0)
 
     // Вычисляем время окончания
-    console.log('🔍 DEBUG startTime:', startTime)
-    const startDateTime = new Date(startTime)
-    console.log('🔍 DEBUG startDateTime:', startDateTime)
+    console.log('🔍 DEBUG startTime (salon string):', startTime)
+    // Парсим строку времени как время САЛОНА, а не локальное время сервера
+    const [datePart, timePart] = startTime.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute] = timePart.split(':').map(Number)
     
-    if (isNaN(startDateTime.getTime())) {
+    if (!year || !month || !day || isNaN(hour) || isNaN(minute)) {
       return NextResponse.json(
         { error: `Некорректное время: ${startTime}` },
         { status: 400 }
       )
     }
     
-    // Конвертируем время из салона в UTC для сохранения в БД
+    // Создаем UTC-время из локального времени салона для сохранения в БД
     const salonTimezone = team.timezone || 'Europe/Moscow'
-    const utcStartDateTime = salonTimeToUtc(startDateTime, salonTimezone)
+    const utcStartDateTime = createDateInSalonTimezone(year, month, day, hour, minute, salonTimezone)
     const utcEndDateTime = new Date(utcStartDateTime.getTime() + totalDuration * 60 * 1000)
     
     console.log('🔍 DEBUG utcStartDateTime:', utcStartDateTime)
@@ -311,15 +313,8 @@ export async function GET(request: NextRequest) {
       orderBy: { startTime: 'asc' }
     })
 
-    // Конвертируем время из UTC в время салона
-    const salonTimezone = user.team.timezone || 'Europe/Moscow'
-    const convertedBookings = bookings.map(booking => ({
-      ...booking,
-      startTime: utcToSalonTime(booking.startTime, salonTimezone).toISOString(),
-      endTime: utcToSalonTime(booking.endTime, salonTimezone).toISOString()
-    }))
-
-    return NextResponse.json({ bookings: convertedBookings })
+    // Возвращаем время как есть (UTC). Клиент сам отображает в TZ салона
+    return NextResponse.json({ bookings })
 
   } catch (error) {
     console.error('Get bookings error:', error)

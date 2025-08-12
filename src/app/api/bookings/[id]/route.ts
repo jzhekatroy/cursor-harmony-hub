@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { BookingStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
-import { utcToSalonTime, salonTimeToUtc } from '@/lib/timezone'
+import { utcToSalonTime, salonTimeToUtc, createDateInSalonTimezone } from '@/lib/timezone'
 
 // Обновление бронирования
 export async function PUT(
@@ -36,7 +36,7 @@ export async function PUT(
 
     const bookingId = id
     const body = await request.json()
-    const { startTime, masterId, totalPrice, notes } = body
+    const { startTime, masterId, totalPrice, notes, duration } = body
 
     // Находим бронирование
     const existingBooking = await prisma.booking.findUnique({
@@ -64,19 +64,28 @@ export async function PUT(
     // Подготавливаем данные для обновления
     const updateData: any = {}
 
-    // Обновление времени
-    if (startTime) {
-      const newStartTime = new Date(startTime)
-      if (isNaN(newStartTime.getTime())) {
-        return NextResponse.json({ error: 'Некорректное время начала' }, { status: 400 })
+    // Обновление времени и/или длительности
+    if (startTime || duration) {
+      const salonTimezone = user.team.timezone || 'Europe/Moscow'
+      let utcStartTime: Date
+      if (startTime) {
+        // Парсим локальную строку datetime-local как время салона
+        const [datePart, timePart] = String(startTime).split('T')
+        const [y, m, d] = datePart.split('-').map(Number)
+        const [hh, mm] = timePart.split(':').map(Number)
+        if (!y || !m || !d || isNaN(hh) || isNaN(mm)) {
+          return NextResponse.json({ error: 'Некорректное время начала' }, { status: 400 })
+        }
+        utcStartTime = createDateInSalonTimezone(y, m, d, hh, mm, salonTimezone)
+      } else {
+        // Если меняем только длительность — старт берем из текущего значения
+        utcStartTime = new Date(existingBooking.startTime)
       }
 
-      // Конвертируем время из салона в UTC для сохранения в БД
-      const salonTimezone = user.team.timezone || 'Europe/Moscow'
-      const utcStartTime = salonTimeToUtc(newStartTime, salonTimezone)
-      
-      // Вычисляем новое время окончания на основе услуг
-      const totalDuration = existingBooking.services.reduce((sum, bs) => sum + bs.service.duration, 0)
+      // Длительность: либо из запроса, либо суммой услуг
+      const totalDuration = Number(duration) > 0
+        ? Number(duration)
+        : existingBooking.services.reduce((sum, bs) => sum + bs.service.duration, 0)
       const utcEndTime = new Date(utcStartTime.getTime() + totalDuration * 60 * 1000)
 
       // Проверяем конфликты с другими бронированиями (исключая текущее)

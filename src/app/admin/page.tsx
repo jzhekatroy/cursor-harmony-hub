@@ -518,11 +518,10 @@ export default function AdminDashboard() {
                   Редактирование брони #{editingBooking.bookingNumber}
                 </h3>
               <button
-                  onClick={cancelCurrentBooking}
-                  disabled={isCancelling}
-                  className="px-3 py-1.5 rounded-md text-sm font-medium border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  onClick={cancelEditing}
+                  className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
-                  {isCancelling ? 'Отмена…' : 'Отменить'}
+                  Закрыть
               </button>
             </div>
             

@@ -73,6 +73,8 @@ async function ensureMasters(team, count = 9) {
   if (masters.length >= count) return masters
   const list = [...masters]
   for (let i = 0; i < count - masters.length; i++) {
+    const firstName = pick(RUS_FIRST)
+    const lastName = pick(RUS_LAST)
     const user = await prisma.user.create({
       data: {
         email: `master_demo_${Date.now()}_${i}@example.com`,
@@ -80,8 +82,8 @@ async function ensureMasters(team, count = 9) {
         role: 'ADMIN', // чтобы можно было заходить под мастером
         teamId: team.id,
         isActive: true,
-        firstName: pick(RUS_FIRST),
-        lastName: pick(RUS_LAST)
+        firstName,
+        lastName
       }
     })
     const master = await prisma.master.create({
@@ -89,12 +91,29 @@ async function ensureMasters(team, count = 9) {
         userId: user.id,
         teamId: team.id,
         isActive: true,
-        firstName: user.firstName || pick(RUS_FIRST),
-        lastName: user.lastName || pick(RUS_LAST)
+        firstName,
+        lastName
       },
       include: { user: true }
     })
     list.push(master)
+  }
+  return list
+}
+
+async function ensureClients(team, count = 120) {
+  const existing = await prisma.client.findMany({ where: { teamId: team.id } })
+  if (existing.length >= count) return existing
+  const list = [...existing]
+  for (let i = 0; i < count - existing.length; i++) {
+    list.push(await prisma.client.create({
+      data: {
+        teamId: team.id,
+        email: `client_demo_${Date.now()}_${i}@example.com`,
+        firstName: pick(RUS_FIRST),
+        lastName: pick(RUS_LAST)
+      }
+    }))
   }
   return list
 }
@@ -179,7 +198,7 @@ function pickSlotsWithinSchedule(date, schedule, stepMin = 15) {
   return slots
 }
 
-async function seedBookings(team, masters, services) {
+async function seedBookings(team, masters, services, clients) {
   const statusesPast = ['COMPLETED', 'NO_SHOW', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON']
   const statusesFuture = ['NEW', 'CONFIRMED', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON']
   const schedulesMap = await getSchedulesByMaster(masters)
@@ -229,7 +248,7 @@ async function seedBookings(team, masters, services) {
             totalPrice: price,
             status,
             teamId: team.id,
-            clientId: (await prisma.client.findFirst({ where: { teamId: team.id } })).id,
+            clientId: pick(clients).id,
             masterId: master.id,
             services: { create: selected.map(s => ({ serviceId: s.id, price: s.price })) }
           }
@@ -247,9 +266,10 @@ async function main() {
   await ensureAdmin(team)
   const services = await ensureServices(team)
   const masters = await ensureMasters(team, Number(process.env.SEED_MASTERS || 9))
+  const clients = await ensureClients(team, Number(process.env.SEED_CLIENTS || 120))
   await seedSchedules(team, masters)
   await seedAbsences(team, masters)
-  await seedBookings(team, masters, services)
+  await seedBookings(team, masters, services, clients)
   console.log('✅ Realistic demo seed completed for team:', team.slug || team.id)
 }
 

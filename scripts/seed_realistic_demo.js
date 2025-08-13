@@ -84,7 +84,16 @@ async function ensureMasters(team, count = 9) {
         lastName: pick(RUS_LAST)
       }
     })
-    const master = await prisma.master.create({ data: { userId: user.id, teamId: team.id, isActive: true } , include: { user: true }})
+    const master = await prisma.master.create({
+      data: {
+        userId: user.id,
+        teamId: team.id,
+        isActive: true,
+        firstName: user.firstName || pick(RUS_FIRST),
+        lastName: user.lastName || pick(RUS_LAST)
+      },
+      include: { user: true }
+    })
     list.push(master)
   }
   return list

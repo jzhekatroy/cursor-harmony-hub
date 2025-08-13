@@ -41,6 +41,7 @@ interface MasterScheduleProps {
   onSave: (schedule: MasterSchedule[]) => void
   initialSchedule?: MasterSchedule[]
   salonTimezone?: string // Добавляем временную зону салона
+  embedded?: boolean
 }
 
 const DAYS_OF_WEEK = [
@@ -59,9 +60,11 @@ export default function MasterSchedule({
   onClose, 
   onSave, 
   initialSchedule = [],
-  salonTimezone = 'Europe/Moscow' // По умолчанию Москва
+  salonTimezone = 'Europe/Moscow', // По умолчанию Москва
+  embedded = false
 }: MasterScheduleProps) {
   const [schedule, setSchedule] = useState<MasterSchedule[]>(initialSchedule)
+  const [openDayIndex, setOpenDayIndex] = useState<number | null>(null)
   const [selectedDay, setSelectedDay] = useState<string>('monday')
   const [startTime, setStartTime] = useState<string>('09:00')
   const [endTime, setEndTime] = useState<string>('18:00')
@@ -268,44 +271,45 @@ export default function MasterSchedule({
   }
 
   useEffect(() => {
-    if (isOpen && masterId) {
+    if ((embedded || isOpen) && masterId) {
       loadSchedule()
     }
-  }, [isOpen, masterId])
+  }, [isOpen, embedded, masterId])
 
-  if (!isOpen) return null
+  if (!embedded && !isOpen) return null
 
   const formatTimeForDisplay = (time: string) => {
     // Форматируем время для отображения в админке (без смещений)
     return formatTimeForAdmin(`2000-01-01T${time}:00`, salonTimezone)
   }
 
-  return (
-    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isOpen ? '' : 'hidden'}`}>
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+  const card = (
+    <div className={`${embedded ? 'bg-transparent shadow-none max-w-none w-full mx-0' : 'bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4'} ${embedded ? '' : 'max-h-[90vh] overflow-y-auto'}`}>
+      {/* Заголовок только в модалке */}
+      {!embedded && (
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Расписание мастера</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X className="h-6 w-6" />
           </button>
         </div>
+      )}
 
-        <div className="p-6">
-          {/* Информация о временной зоне */}
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center text-blue-800">
-              <Clock className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium">
-                Временная зона салона: {salonTimezone}
-              </span>
+      <div className={`${embedded ? 'p-0' : 'p-6'}`}>
+          {/* Информация о временной зоне: скрываем в embedded для компактности */}
+          {!embedded && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center text-blue-800">
+                <Clock className="w-5 h-5 mr-2" />
+                <span className="text-sm font-medium">
+                  Временная зона салона: {salonTimezone}
+                </span>
+              </div>
+              <p className="text-sm text-blue-700 mt-1">
+                Все времена отображаются в выбранной временной зоне салона
+              </p>
             </div>
-            <p className="text-sm text-blue-700 mt-1">
-              Все времена отображаются в выбранной временной зоне салона
-            </p>
-          </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -319,7 +323,7 @@ export default function MasterSchedule({
               <p className="mt-2 text-gray-600">Загрузка расписания...</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-2">
               {DAYS_OF_WEEK.map((day, dayIndex) => {
                 const daySchedule = schedule[dayIndex] || {
                   day: day.name.toLowerCase().substring(0, 3),
@@ -331,134 +335,155 @@ export default function MasterSchedule({
                   breaks: []
                 }
 
+                const isOpen = openDayIndex === dayIndex
+                const breaksCount = daySchedule.breaks.length
+                const summaryText = daySchedule.isWorkingDay
+                  ? `${daySchedule.startTime} — ${daySchedule.endTime}${breaksCount > 0 ? ` · перерывов: ${breaksCount}` : ''}`
+                  : 'Выходной'
+
                 return (
-                  <div key={day.id} className="border border-gray-200 rounded-lg p-4">
-                    {/* Название дня и переключатель */}
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-medium text-gray-900">{day.name}</h3>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={daySchedule.isWorkingDay}
-                          onChange={(e) => updateDaySchedule(dayIndex, { isWorkingDay: e.target.checked })}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-gray-600">Рабочий день</span>
-                      </label>
+                  <div key={day.id} className={`border border-gray-200 rounded-md ${embedded ? 'p-3' : 'p-4'}`}>
+                    {/* Строка-сводка дня */}
+                    <div className="flex items-center justify-between gap-3" onClick={() => setOpenDayIndex(isOpen ? null : dayIndex)}>
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-medium text-gray-900 whitespace-nowrap">{day.name}</h3>
+                        <span className={`text-xs ${daySchedule.isWorkingDay ? 'text-gray-700' : 'text-gray-500 italic'}`}>{summaryText}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={daySchedule.isWorkingDay}
+                            onChange={(e) => updateDaySchedule(dayIndex, { isWorkingDay: e.target.checked })}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-xs text-gray-600">Рабочий день</span>
+                        </label>
+                        <button
+                          type="button"
+                          className="text-gray-400 hover:text-gray-600"
+                          aria-label={isOpen ? 'Свернуть' : 'Развернуть'}
+                          onClick={(e) => { e.stopPropagation(); setOpenDayIndex(isOpen ? null : dayIndex) }}
+                        >
+                          {isOpen ? '▾' : '▸'}
+                        </button>
+                      </div>
                     </div>
 
-                    {daySchedule.isWorkingDay && (
-                      <div className="space-y-4">
-                        {/* Рабочие часы */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Начало работы
-                            </label>
-                            <input
-                              type="time"
-                              value={daySchedule.startTime}
-                              onChange={(e) => updateDaySchedule(dayIndex, { startTime: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Окончание работы
-                            </label>
-                            <input
-                              type="time"
-                              value={daySchedule.endTime}
-                              onChange={(e) => updateDaySchedule(dayIndex, { endTime: e.target.value })}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Перерывы */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700">
-                              Перерывы
-                            </label>
-                            {daySchedule.breaks.length < 3 && (
-                              <button
-                                onClick={() => addBreak(dayIndex)}
-                                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                              >
-                                <Plus className="w-4 h-4" />
-                                Добавить перерыв
-                              </button>
-                            )}
-                          </div>
-
-                          <div className="space-y-2">
-                            {daySchedule.breaks.map((breakItem, index) => (
-                              <div key={index} className="flex items-center gap-2">
+                    {/* Детали дня */}
+                    {isOpen && (
+                      <div className="mt-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+                        {daySchedule.isWorkingDay ? (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Начало работы</label>
                                 <input
                                   type="time"
-                                  value={breakItem.startTime}
-                                  onChange={(e) => updateBreak(dayIndex, index, 'startTime', e.target.value)}
-                                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  value={daySchedule.startTime}
+                                  onChange={(e) => updateDaySchedule(dayIndex, { startTime: e.target.value })}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <span className="text-gray-400">—</span>
-                                <input
-                                  type="time"
-                                  value={breakItem.endTime}
-                                  onChange={(e) => updateBreak(dayIndex, index, 'endTime', e.target.value)}
-                                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <button
-                                  onClick={() => removeBreak(dayIndex, index)}
-                                  className="text-red-600 hover:text-red-800 p-1"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
                               </div>
-                            ))}
-                            {daySchedule.breaks.length === 0 && (
-                              <p className="text-sm text-gray-500 italic">Нет перерывов</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Окончание работы</label>
+                                <input
+                                  type="time"
+                                  value={daySchedule.endTime}
+                                  onChange={(e) => updateDaySchedule(dayIndex, { endTime: e.target.value })}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                />
+                              </div>
+                            </div>
 
-                    {!daySchedule.isWorkingDay && (
-                      <p className="text-gray-500 italic">Выходной день</p>
+                            <div>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <label className="text-xs font-medium text-gray-700">Перерывы</label>
+                                {daySchedule.breaks.length < 3 && (
+                                  <button
+                                    onClick={() => addBreak(dayIndex)}
+                                    className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    Добавить перерыв
+                                  </button>
+                                )}
+                              </div>
+                              <div className="space-y-1.5">
+                                {daySchedule.breaks.map((breakItem, index) => (
+                                  <div key={index} className="flex items-center gap-2">
+                                    <input
+                                      type="time"
+                                      value={breakItem.startTime}
+                                      onChange={(e) => updateBreak(dayIndex, index, 'startTime', e.target.value)}
+                                      className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <span className="text-gray-400">—</span>
+                                    <input
+                                      type="time"
+                                      value={breakItem.endTime}
+                                      onChange={(e) => updateBreak(dayIndex, index, 'endTime', e.target.value)}
+                                      className="px-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <button
+                                      onClick={() => removeBreak(dayIndex, index)}
+                                      className="text-red-600 hover:text-red-800 p-1"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {daySchedule.breaks.length === 0 && (
+                                  <p className="text-xs text-gray-500 italic">Нет перерывов</p>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-500 italic">Выходной день</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )
               })}
             </div>
           )}
-        </div>
+      </div>
 
-        {/* Футер */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t bg-gray-50">
-          <button
-            onClick={initializeDefaultSchedule}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            Сбросить к умолчанию
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
+      {/* Футер */}
+      <div className={`flex items-center justify-end gap-3 ${embedded ? 'p-3 border-t border-gray-100 bg-transparent' : 'p-6 border-t bg-gray-50'}`}>
+        <button
+          onClick={initializeDefaultSchedule}
+          className="px-3 py-1.5 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 flex items-center gap-2 text-sm"
+        >
+          <Trash2 className="w-4 h-4" />
+          Сбросить к умолчанию
+        </button>
+        {!embedded && (
+          <button onClick={onClose} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
             Отменить
           </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {isSaving ? 'Сохранение...' : 'Сохранить'}
-          </button>
-        </div>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={isSaving || loading}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          {isSaving ? 'Сохранение...' : 'Сохранить'}
+        </button>
       </div>
+    </div>
+  )
+
+  if (embedded) {
+    return card
+  }
+
+  return (
+    <div className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 ${isOpen ? '' : 'hidden'}`}>
+      {card}
     </div>
   )
 }

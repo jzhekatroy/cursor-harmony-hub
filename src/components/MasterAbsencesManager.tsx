@@ -18,6 +18,7 @@ interface MasterAbsencesManagerProps {
   masterId: string
   masterName: string
   onClose: () => void
+  embedded?: boolean
 }
 
 const ABSENCE_REASONS = [
@@ -31,7 +32,8 @@ const ABSENCE_REASONS = [
 const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
   masterId,
   masterName,
-  onClose
+  onClose,
+  embedded = false
 }) => {
   const [absences, setAbsences] = useState<Absence[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -278,20 +280,28 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
 
   if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      embedded ? (
+        <div className="p-6">
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Загружаем отсутствия...</span>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Загружаем отсутствия...</span>
+            </div>
+          </div>
+        </div>
+      )
     )
   }
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+  const card = (
+    <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Заголовок */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -301,12 +311,9 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
             </h2>
             <p className="text-gray-600 mt-1">Управление для: {masterName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            ✕
-          </button>
+          {!embedded && (
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
+          )}
         </div>
 
         {/* Кнопка добавления */}
@@ -502,16 +509,19 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
           )}
         </div>
 
-        {/* Кнопка закрытия */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Закрыть
-          </button>
-        </div>
+        {!embedded && (
+          <div className="mt-6 flex justify-end">
+            <button onClick={onClose} className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">Закрыть</button>
+          </div>
+        )}
       </div>
+  )
+
+  if (embedded) return card
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {card}
     </div>
   )
 }

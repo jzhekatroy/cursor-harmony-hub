@@ -76,7 +76,7 @@ export default function MasterLimitSettings({
         )}
       </div>
 
-      {isEditing ? (
+      {isEditing && !disabled ? (
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">

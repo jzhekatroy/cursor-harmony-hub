@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Plus, Edit, UserMinus, UserCheck, Eye, EyeOff, Camera, Clock, Calendar, X } from 'lucide-react'
 import MasterSchedule from '@/components/MasterSchedule'
 import PhotoUpload from '@/components/PhotoUpload'
@@ -35,6 +35,7 @@ interface Master {
 interface Service {
   id: string
   name: string
+  isArchived?: boolean
 }
 
 interface ScheduleItem {
@@ -63,26 +64,21 @@ export default function MastersPage() {
   const [isCreatingMaster, setIsCreatingMaster] = useState(false)
   const [showInactive, setShowInactive] = useState(false)
   
-  // Состояния для управления расписанием
-  const [scheduleDialogMaster, setScheduleDialogMaster] = useState<Master | null>(null)
-  const [absenceDialogMaster, setAbsenceDialogMaster] = useState<Master | null>(null)
-  const [masterSchedules, setMasterSchedules] = useState<ScheduleItem[]>([])
-  const [masterAbsences, setMasterAbsences] = useState<Absence[]>([])
-  const [isScheduleLoading, setIsScheduleLoading] = useState(false)
+  // Табы внутри редактирования мастера
+  const [activeEditTab, setActiveEditTab] = useState<'profile' | 'schedule' | 'absences'>('profile')
   
   // Состояния формы
   const [formData, setFormData] = useState({
-    email: '',
     firstName: '',
     lastName: '',
     description: '',
     photoUrl: '',
-    password: '',
     serviceIds: [] as string[]
   })
 
   const [masterLimit, setMasterLimit] = useState(2)
   const [activeMastersCount, setActiveMastersCount] = useState(0)
+  const formRef = useRef<HTMLFormElement>(null)
 
   // Функция для сохранения лимита мастеров
   const handleLimitChange = async (newLimit: number) => {
@@ -130,7 +126,7 @@ export default function MastersPage() {
         fetch('/api/masters', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('/api/services', {
+        fetch('/api/services?includeArchived=true', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ])
@@ -149,7 +145,7 @@ export default function MastersPage() {
       const servicesData = await servicesResponse.json()
       
       setMasters(mastersData.masters || [])
-      setServices(servicesData.services || [])
+      setServices((servicesData.services || servicesData || []).map((s: any) => ({ id: s.id, name: s.name, isArchived: Boolean(s.isArchived) })))
       setActiveMastersCount(mastersData.masters?.filter((m: Master) => m.isActive).length || 0)
 
     } catch (error) {
@@ -173,15 +169,7 @@ export default function MastersPage() {
       return
     }
 
-    if (!editingMaster && !formData.email.trim()) {
-      setError('Email обязателен для заполнения')
-      return
-    }
-
-    if (!editingMaster && !formData.password.trim()) {
-      setError('Пароль обязателен для заполнения')
-      return
-    }
+    // Email/пароль больше не обязательны: сервер сгенерирует при необходимости
 
     try {
       setError(null)
@@ -197,12 +185,10 @@ export default function MastersPage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          email: formData.email.trim(),
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           description: formData.description.trim() || null,
           photoUrl: formData.photoUrl.trim() || null,
-          ...(formData.password.trim() && { password: formData.password.trim() }),
           serviceIds: formData.serviceIds
         })
       })
@@ -258,13 +244,12 @@ export default function MastersPage() {
   // Управление формой
   const startEditingMaster = (master: Master) => {
     setEditingMaster(master)
+    setActiveEditTab('profile')
     setFormData({
-      email: master.user.email,
       firstName: master.firstName,
       lastName: master.lastName,
       description: master.description || '',
       photoUrl: master.photoUrl || '',
-      password: '',
       serviceIds: master.services.map(s => s.id)
     })
     setIsCreatingMaster(false)
@@ -279,30 +264,15 @@ export default function MastersPage() {
     
     setIsCreatingMaster(true)
     setEditingMaster(null)
-    setFormData({
-      email: '',
-      firstName: '',
-      lastName: '',
-      description: '',
-      photoUrl: '',
-      password: '',
-      serviceIds: []
-    })
+    setActiveEditTab('profile')
+    setFormData({ firstName: '', lastName: '', description: '', photoUrl: '', serviceIds: [] })
     setError(null)
   }
 
   const cancelEditing = () => {
     setEditingMaster(null)
     setIsCreatingMaster(false)
-    setFormData({
-      email: '',
-      firstName: '',
-      lastName: '',
-      description: '',
-      photoUrl: '',
-      password: '',
-      serviceIds: []
-    })
+    setFormData({ firstName: '', lastName: '', description: '', photoUrl: '', serviceIds: [] })
     setError(null)
   }
 
@@ -360,6 +330,7 @@ export default function MastersPage() {
             currentLimit={masterLimit}
             activeMastersCount={activeMastersCount}
             onLimitChange={handleLimitChange}
+            disabled
           />
         </div>
 
@@ -377,130 +348,166 @@ export default function MastersPage() {
               <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
                 {editingMaster ? 'Редактировать мастера' : 'Добавить мастера'}
               </h3>
-              
-              <form onSubmit={handleSaveMaster} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      disabled={!!editingMaster}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Пароль {!editingMaster && '*'}
-                    </label>
-                    <input
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => setFormData({...formData, password: e.target.value})}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      required={!editingMaster}
-                      placeholder={editingMaster ? "Оставьте пустым, чтобы не менять" : ""}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Имя *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">
-                      Фамилия *
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Описание
-                  </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    rows={3}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Опыт работы, специализация, достижения..."
-                  />
-                </div>
-
-                <PhotoUpload
-                  currentPhotoUrl={formData.photoUrl}
-                  onPhotoChange={(photoUrl) => setFormData({...formData, photoUrl})}
-                  onPhotoRemove={() => setFormData({...formData, photoUrl: ''})}
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Услуги мастера
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
-                    {services.map((service) => (
-                      <label key={service.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.serviceIds.includes(service.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setFormData({
-                                ...formData,
-                                serviceIds: [...formData.serviceIds, service.id]
-                              })
-                            } else {
-                              setFormData({
-                                ...formData,
-                                serviceIds: formData.serviceIds.filter(id => id !== service.id)
-                              })
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">{service.name}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-3">
+              {editingMaster && (
+                <div className="mb-4 flex gap-2">
                   <button
                     type="button"
-                    onClick={cancelEditing}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    onClick={() => setActiveEditTab('profile')}
+                    className={`px-3 py-1.5 rounded-md text-sm ${activeEditTab === 'profile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
-                    Отмена
+                    Профиль
                   </button>
                   <button
-                    type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                    type="button"
+                    onClick={() => setActiveEditTab('schedule')}
+                    className={`px-3 py-1.5 rounded-md text-sm ${activeEditTab === 'schedule' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                   >
-                    {editingMaster ? 'Сохранить' : 'Добавить'}
+                    Расписание
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveEditTab('absences')}
+                    className={`px-3 py-1.5 rounded-md text-sm ${activeEditTab === 'absences' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  >
+                    Отсутствия
                   </button>
                 </div>
-              </form>
+              )}
+              
+              {(!editingMaster || activeEditTab === 'profile') && (
+                <form ref={formRef} onSubmit={handleSaveMaster} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="md:col-span-1">
+                      <PhotoUpload
+                        currentPhotoUrl={formData.photoUrl}
+                        onPhotoChange={(photoUrl) => setFormData({...formData, photoUrl})}
+                        onPhotoRemove={() => setFormData({...formData, photoUrl: ''})}
+                      />
+                    </div>
+                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Имя *</label>
+                        <input
+                          type="text"
+                          value={formData.firstName}
+                          onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[44px]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Фамилия *</label>
+                        <input
+                          type="text"
+                          value={formData.lastName}
+                          onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                          className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[44px]"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Описание</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      rows={3}
+                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Опыт работы, специализация, достижения..."
+                    />
+                  </div>
+
+                  <div className="pb-24 md:pb-0">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Услуги мастера</label>
+                    <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
+                      {services.filter(s => !s.isArchived).map((service) => (
+                        <label key={service.id} className="flex items-center py-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.serviceIds.includes(service.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData({ ...formData, serviceIds: [...formData.serviceIds, service.id] })
+                              } else {
+                                setFormData({ ...formData, serviceIds: formData.serviceIds.filter(id => id !== service.id) })
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">{service.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <details className="mt-2">
+                      <summary className="text-xs text-gray-500 cursor-pointer select-none">Услуги в архиве</summary>
+                      <div className="mt-2 grid grid-cols-2 gap-2 max-h-28 overflow-y-auto border border-gray-200 rounded-md p-2 bg-gray-50">
+                        {services.filter(s => s.isArchived).map((service) => (
+                          <label key={service.id} className="flex items-center opacity-70 py-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={formData.serviceIds.includes(service.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({ ...formData, serviceIds: [...formData.serviceIds, service.id] })
+                                } else {
+                                  setFormData({ ...formData, serviceIds: formData.serviceIds.filter(id => id !== service.id) })
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 h-5 w-5"
+                            />
+                            <span className="ml-2 text-sm text-gray-600">{service.name}</span>
+                          </label>
+                        ))}
+                        {services.filter(s => s.isArchived).length === 0 && (
+                          <div className="text-xs text-gray-400">Архивных услуг нет</div>
+                        )}
+                      </div>
+                    </details>
+                  </div>
+
+                  <div className="flex justify-end space-x-3">
+                    <button type="button" onClick={cancelEditing} className="px-4 py-2 min-h-[44px] border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">Отмена</button>
+                    <button type="submit" className="px-4 py-2 min-h-[44px] border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">{editingMaster ? 'Сохранить' : 'Добавить'}</button>
+                  </div>
+                </form>
+              )}
+
+              {editingMaster && activeEditTab === 'schedule' && (
+                <div className="mt-2">
+                  <MasterSchedule
+                    masterId={editingMaster.id}
+                    isOpen={true}
+                    onClose={() => {}}
+                    onSave={() => { loadData() }}
+                    embedded
+                  />
+                </div>
+              )}
+
+              {editingMaster && activeEditTab === 'absences' && (
+                <div className="mt-2">
+                  <MasterAbsencesManager
+                    masterId={editingMaster.id}
+                    masterName={`${editingMaster.firstName} ${editingMaster.lastName}`}
+                    onClose={() => {}}
+                    embedded
+                  />
+                </div>
+              )}
+            </div>
+            {/* FAB Сохранить на мобильных */}
+            <div className="md:hidden">
+              <div className="fixed bottom-20 right-5 z-40">
+                <button
+                  onClick={() => formRef.current?.requestSubmit()}
+                  className="rounded-full bg-blue-600 text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-14 h-14 flex items-center justify-center"
+                  title="Сохранить"
+                >
+                  ✓
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -579,7 +586,7 @@ export default function MastersPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-500">{master.user.email}</p>
+                            {/* Убрали показ email */}
                             {master.description && (
                               <p className="text-sm text-gray-600 mt-1">{master.description}</p>
                             )}
@@ -596,26 +603,6 @@ export default function MastersPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <div className="text-right text-sm text-gray-500">
-                            <p>Записей: {master._count.bookings}</p>
-                            {master.user.lastLoginAt && (
-                              <p>Последний вход: {new Date(master.user.lastLoginAt).toLocaleDateString()}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => setScheduleDialogMaster(master)}
-                            className="p-2 text-gray-400 hover:text-blue-600"
-                            title="Рабочее время"
-                          >
-                            <Clock className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setAbsenceDialogMaster(master)}
-                            className="p-2 text-gray-400 hover:text-green-600"
-                            title="Отпуска и отсутствия"
-                          >
-                            <Calendar className="w-4 h-4" />
-                          </button>
                           <button
                             onClick={() => startEditingMaster(master)}
                             className="p-2 text-gray-400 hover:text-blue-600"
@@ -644,27 +631,6 @@ export default function MastersPage() {
           )}
         </div>
       </div>
-      
-             {/* Диалог управления расписанием */}
-       {scheduleDialogMaster && (
-         <MasterSchedule
-           masterId={scheduleDialogMaster.id}
-           isOpen={true}
-           onClose={() => setScheduleDialogMaster(null)}
-           onSave={(schedule) => {
-             loadData() // Перезагружаем данные после сохранения
-           }}
-         />
-       )}
-
-       {/* Диалог управления отпусками */}
-       {absenceDialogMaster && (
-         <MasterAbsencesManager
-           masterId={absenceDialogMaster.id}
-           masterName={`${absenceDialogMaster.firstName} ${absenceDialogMaster.lastName}`}
-           onClose={() => setAbsenceDialogMaster(null)}
-         />
-       )}
     </div>
   )
 }

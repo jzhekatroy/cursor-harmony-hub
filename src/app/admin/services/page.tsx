@@ -44,6 +44,12 @@ export default function ServicesPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('ungrouped')
+  
+  // Состояния удаления группы с переносом услуг
+  const [showDeleteGroupOptions, setShowDeleteGroupOptions] = useState(false)
+  const [deleteTargetGroupId, setDeleteTargetGroupId] = useState<string>('') // '' = Без группы
+  const [isProcessingGroupDelete, setIsProcessingGroupDelete] = useState(false)
+
 
   // Форма для услуги
   const [serviceForm, setServiceForm] = useState({
@@ -60,6 +66,9 @@ export default function ServicesPage() {
   const [groupForm, setGroupForm] = useState({
     name: '',
     order: 0
+  })
+  const [groupDeleteForm, setGroupDeleteForm] = useState({
+    targetGroupId: '' // '' => Без группы
   })
 
   useEffect(() => {
@@ -108,6 +117,8 @@ export default function ServicesPage() {
         const errorData = await mastersResponse.json()
         setError(`Ошибка загрузки мастеров: ${errorData.error || 'Неизвестная ошибка'}`)
       }
+
+      // Настройки шага длительности оставляем по умолчанию 15 минут
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)
       setError('Ошибка соединения с сервером')
@@ -125,8 +136,8 @@ export default function ServicesPage() {
       return
     }
     
-    if (!serviceForm.duration || serviceForm.duration < 15) {
-      setError('Минимальная продолжительность 15 минут')
+    if (!serviceForm.duration || serviceForm.duration <= 0) {
+      setError('Нельзя создать услугу длительностью 0 минут')
       return
     }
     
@@ -219,6 +230,8 @@ export default function ServicesPage() {
         setIsCreatingGroup(false)
         setGroupForm({ name: '', order: 0 })
         setError(null)
+        setShowDeleteGroupOptions(false)
+        setDeleteTargetGroupId('')
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Ошибка сохранения группы')
@@ -230,26 +243,13 @@ export default function ServicesPage() {
   }
 
   const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm('Вы уверены? Все услуги из этой группы будут перемещены в "Без группы".')) return
-
-    try {
-      const response = await fetch(`/api/service-groups/${groupId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-
-      if (response.ok) {
-        await loadData()
-      } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Ошибка удаления группы')
-      }
-    } catch (error) {
-      console.error('Ошибка удаления группы:', error)
-      setError('Ошибка соединения с сервером')
-    }
+    // Под удаление с переносом услуг — показ формы в UI, а не мгновенный DELETE
+    const group = serviceGroups.find(g => g.id === groupId)
+    if (!group) return
+    setEditingGroup(group)
+    setGroupForm({ name: group.name, order: group.order })
+    setShowDeleteGroupOptions(true)
+    setDeleteTargetGroupId('')
   }
 
   const startEditingService = (service: Service) => {
@@ -273,6 +273,8 @@ export default function ServicesPage() {
       order: group.order
     })
     setError(null)
+    setShowDeleteGroupOptions(false)
+    setDeleteTargetGroupId('')
   }
 
   const startCreatingService = (defaultGroupId?: string) => {
@@ -295,6 +297,8 @@ export default function ServicesPage() {
     setServiceForm({ name: '', description: '', duration: 60, price: 0, photoUrl: '', groupId: '', requireConfirmation: false })
     setGroupForm({ name: '', order: 0 })
     setError(null)
+    setShowDeleteGroupOptions(false)
+    setDeleteTargetGroupId('')
   }
 
   // Фильтруем услуги по статусу архивирования
@@ -315,11 +319,45 @@ export default function ServicesPage() {
   const orderedGroups = groupsWithCounts.slice().sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
   const activeGroup = activeTab !== 'ungrouped' ? orderedGroups.find(g => g.id === activeTab) : null
   
-  // Группы с количеством услуг (в текущем фильтре архива)
-  const groupsWithCounts = serviceGroups.map(group => ({
-    ...group,
-    servicesCount: filteredServices.filter(service => service.groupId === group.id).length
-  }))
+  // Пресеты длительности (минуты) и форматирование длительности для UX
+  const durationPresets = [15, 30, 45, 60, 75, 90, 105, 120, 150, 180]
+  const getHoursWord = (hours: number) => {
+    const mod100 = hours % 100
+    if (mod100 >= 11 && mod100 <= 14) return 'часов'
+    const mod10 = hours % 10
+    if (mod10 === 1) return 'час'
+    if (mod10 >= 2 && mod10 <= 4) return 'часа'
+    return 'часов'
+  }
+  const formatDurationRu = (minutes: number) => {
+    if (!minutes) return '0 минут'
+    if (minutes < 60) return `${minutes} минут`
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    if (rest === 0) return `${hours} ${getHoursWord(hours)}`
+    return `${hours} ${getHoursWord(hours)} ${rest} минут`
+  }
+  
+  // Запрет переключения вкладок при редактировании/создании услуги
+  const handleSelectTab = async (targetId: string) => {
+    if (editingService || isCreatingService) {
+      const wantSave = confirm('У вас есть несохраненная услуга. Сохранить изменения?')
+      if (wantSave) {
+        await handleSaveService()
+        setActiveTab(targetId)
+        return
+      }
+      const wantCancel = confirm('Отменить создание/редактирование услуги? Несохраненные изменения будут потеряны.')
+      if (wantCancel) {
+        cancelEditing()
+        setActiveTab(targetId)
+      }
+      return
+    }
+    setActiveTab(targetId)
+  }
+  
+  // Сортировка порядка групп отключена по требованию — изменение порядка недоступно
 
   if (isLoading) {
     return (
@@ -345,13 +383,6 @@ export default function ServicesPage() {
             {showArchived ? <EyeOff className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
             {showArchived ? 'Скрыть архив' : 'Показать архив'}
           </button>
-          <button
-            onClick={() => startCreatingService(activeTab === 'ungrouped' ? '' : activeTab)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Добавить услугу
-          </button>
         </div>
       </div>
 
@@ -359,20 +390,21 @@ export default function ServicesPage() {
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-4 sm:px-6 py-3 flex items-center gap-2 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('ungrouped')}
-            className={`${activeTab === 'ungrouped' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
+            onClick={() => handleSelectTab('ungrouped')}
+            className={`${activeTab === 'ungrouped' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm whitespace-nowrap`}
           >
-            Основные услуги ({ungroupedServices.length})
+            Без группы ({ungroupedServices.length})
           </button>
           {orderedGroups.map(group => (
-            <button
-              key={group.id}
-              onClick={() => setActiveTab(group.id)}
-              className={`${activeTab === group.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
-              title={group.name}
-            >
-              {group.name} ({group.servicesCount})
-            </button>
+            <div key={group.id} className="inline-flex items-center">
+              <button
+                onClick={() => handleSelectTab(group.id)}
+                className={`${activeTab === group.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm whitespace-nowrap`}
+                title={group.name}
+              >
+                {group.name} ({group.servicesCount})
+              </button>
+            </div>
           ))}
           <button
             onClick={startCreatingGroup}
@@ -429,18 +461,99 @@ export default function ServicesPage() {
                 placeholder="Например: Парикмахерские услуги"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Порядок отображения
-              </label>
-              <input
-                type="number"
-                value={groupForm.order}
-                onChange={(e) => setGroupForm({...groupForm, order: parseInt(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-              />
-            </div>
+            {/* Порядок скрыт — управляется переносом вкладок или ↑/↓ */}
           </div>
+          {editingGroup && (
+            <div className="mt-6 border-t border-gray-200 pt-6">
+              <h4 className="text-sm font-medium text-gray-900 mb-3">Удаление группы</h4>
+              {editingGroup.services && editingGroup.services.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">В группе есть услуги. Выберите, куда их перенести перед удалением группы.</p>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-700">Перенести услуги в:</label>
+                    <select
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      value={deleteTargetGroupId}
+                      onChange={(e) => setDeleteTargetGroupId(e.target.value)}
+                    >
+                      <option value="">Без группы</option>
+                      {serviceGroups.filter(g => g.id !== editingGroup.id).map(g => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Удалить группу и перенести услуги?')) return
+                      setIsProcessingGroupDelete(true)
+                      try {
+                        const token = localStorage.getItem('token')
+                        if (!token) return
+                        // Перенос услуг: если целевая пустая => в без группы
+                        if (deleteTargetGroupId !== undefined) {
+                          await fetch('/api/services/move-group', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ fromGroupId: editingGroup.id, toGroupId: deleteTargetGroupId || null })
+                          })
+                        }
+                        // Удаляем группу
+                        const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
+                          method: 'DELETE',
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        })
+                        if (!resp.ok) {
+                          const ed = await resp.json()
+                          throw new Error(ed.error || 'Ошибка удаления группы')
+                        }
+                        await loadData()
+                        setEditingGroup(null)
+                        setShowDeleteGroupOptions(false)
+                        setDeleteTargetGroupId('')
+                      } catch (err) {
+                        console.error(err)
+                        setError('Ошибка при удалении группы')
+                      } finally {
+                        setIsProcessingGroupDelete(false)
+                      }
+                    }}
+                    disabled={isProcessingGroupDelete}
+                    className={`px-4 py-2 rounded-md text-white ${isProcessingGroupDelete ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}
+                  >
+                    {isProcessingGroupDelete ? 'Удаление...' : 'Удалить группу'}
+                  </button>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Удалить пустую группу?')) return
+                      try {
+                        const token = localStorage.getItem('token')
+                        if (!token) return
+                        const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
+                          method: 'DELETE',
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        })
+                        if (!resp.ok) {
+                          const ed = await resp.json()
+                          throw new Error(ed.error || 'Ошибка удаления группы')
+                        }
+                        await loadData()
+                        setEditingGroup(null)
+                      } catch (err) {
+                        console.error(err)
+                        setError('Ошибка при удалении группы')
+                      }
+                    }}
+                    className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700"
+                  >
+                    Удалить группу
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={cancelEditing}
@@ -493,31 +606,72 @@ export default function ServicesPage() {
                   <option key={group.id} value={group.id}>{group.name}</option>
                 ))}
               </select>
+              {editingService && (
+                <p className="text-xs text-gray-500 mt-1">Можно перенести услугу в другую группу, выбрав её здесь.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Продолжительность (мин) *
               </label>
-              <input
-                type="number"
-                value={serviceForm.duration}
-                onChange={(e) => setServiceForm({...serviceForm, duration: parseInt(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-                min="15"
-                step="15"
-              />
+              {(() => {
+                const allowedMinutes = [0, 15, 30, 45]
+                const rawHours = Math.floor((serviceForm.duration || 0) / 60)
+                const rawMinutes = (serviceForm.duration || 0) % 60
+                const hoursValue = Math.max(0, Math.min(10, rawHours))
+                const minutesValue = allowedMinutes.includes(rawMinutes) ? rawMinutes : 0
+                return (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-700 whitespace-nowrap">Часы</label>
+                      <select
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        value={hoursValue}
+                        onChange={(e) => {
+                          const h = parseInt(e.target.value)
+                          const total = h * 60 + minutesValue
+                          setServiceForm({ ...serviceForm, duration: total })
+                        }}
+                      >
+                        {[0,1,2,3,4,5,6,7,8,9,10].map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2 md:col-span-1">
+                      <label className="text-sm text-gray-700 whitespace-nowrap">Минуты</label>
+                      <select
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        value={minutesValue}
+                        onChange={(e) => {
+                          const m = parseInt(e.target.value)
+                          const total = hoursValue * 60 + m
+                          setServiceForm({ ...serviceForm, duration: total })
+                        }}
+                      >
+                        {[0,15,30,45].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="text-sm text-gray-500 md:text-right">
+                      {formatDurationRu(serviceForm.duration)}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Базовая цена (₽) *
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={serviceForm.price}
                 onChange={(e) => setServiceForm({...serviceForm, price: parseFloat(e.target.value) || 0})}
                 className="w-full border border-gray-300 rounded-md px-3 py-2"
-                min="0"
-                step="100"
+                placeholder="0"
               />
             </div>
             <div className="md:col-span-2">
@@ -566,7 +720,7 @@ export default function ServicesPage() {
             </button>
             <button
               onClick={handleSaveService}
-              disabled={!serviceForm.name.trim() || !serviceForm.duration || !serviceForm.price}
+              disabled={!serviceForm.name.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 flex items-center"
             >
               <Save className="w-4 h-4 mr-2" />
@@ -577,11 +731,11 @@ export default function ServicesPage() {
       )}
 
       {/* Контент активной закладки */}
-      <div className="space-y-6">
+      <div className="space-y-6 pb-24">
         {activeTab === 'ungrouped' ? (
           <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Основные услуги {showArchived && '(Архив)'}</h3>
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
+              <h3 className="text-lg font-medium text-gray-900">Без группы {showArchived && '(Архив)'}</h3>
               <button
                 onClick={() => startCreatingService('')}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"
@@ -609,7 +763,7 @@ export default function ServicesPage() {
                             <h4 className={`font-medium ${service.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>{service.name} {service.isArchived && '(Архив)'}</h4>
                             {service.description && (<p className="text-sm text-gray-600 mt-1">{service.description}</p>)}
                             <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                              <span>{service.duration} мин</span>
+                              <span>{formatDurationRu(service.duration)}</span>
                               <span>{service.price} ₽</span>
                               {service.requireConfirmation && (
                                 <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Требует подтверждения</span>
@@ -620,13 +774,13 @@ export default function ServicesPage() {
                       </div>
                       <div className="flex items-center space-x-2">
                         {!service.isArchived && (
-                          <button onClick={() => startEditingService(service)} className="p-2 text-gray-400 hover:text-blue-600">
+                          <button onClick={() => startEditingService(service)} className="p-3 sm:p-2 text-gray-400 hover:text-blue-600" aria-label="Редактировать услугу" title="Редактировать услугу">
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
                         <button
                           onClick={() => handleArchiveService(service.id, service.isArchived)}
-                          className={`p-2 ${service.isArchived ? 'text-gray-400 hover:text-green-600' : 'text-gray-400 hover:text-orange-600'}`}
+                          className={`p-3 sm:p-2 ${service.isArchived ? 'text-gray-400 hover:text-green-600' : 'text-gray-400 hover:text-orange-600'}`}
                           title={service.isArchived ? 'Восстановить' : 'Архивировать'}
                         >
                           {service.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
@@ -640,14 +794,26 @@ export default function ServicesPage() {
           </div>
         ) : (
           <div className="bg-white rounded-lg border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center">
               <h3 className="text-lg font-medium text-gray-900">{activeGroup?.name} {showArchived && '(Архив)'}</h3>
-              <button
-                onClick={() => startCreatingService(activeGroup?.id)}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"
-              >
-                <Plus className="w-4 h-4 mr-2" /> Добавить услугу
-              </button>
+              {activeGroup && (
+                <>
+                  <button
+                    onClick={() => startEditingGroup(activeGroup)}
+                    className="ml-3 p-2 text-gray-400 hover:text-blue-600"
+                    title="Переименовать группу"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => startCreatingService(activeGroup.id)}
+                    className="ml-3 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"
+                    title="Добавить услугу"
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Добавить услугу
+                  </button>
+                </>
+              )}
             </div>
             <div className="p-6">
               {(() => {
@@ -671,7 +837,7 @@ export default function ServicesPage() {
                               <h4 className={`font-medium ${service.isArchived ? 'text-gray-500' : 'text-gray-900'}`}>{service.name} {service.isArchived && '(Архив)'}</h4>
                               {service.description && (<p className="text-sm text-gray-600 mt-1">{service.description}</p>)}
                               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                                <span>{service.duration} мин</span>
+                                <span>{formatDurationRu(service.duration)}</span>
                                 <span>{service.price} ₽</span>
                                 {service.requireConfirmation && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Требует подтверждения</span>
@@ -681,14 +847,14 @@ export default function ServicesPage() {
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          {!service.isArchived && (
-                            <button onClick={() => startEditingService(service)} className="p-2 text-gray-400 hover:text-blue-600">
+                        {!service.isArchived && (
+                          <button onClick={() => startEditingService(service)} className="p-3 sm:p-2 text-gray-400 hover:text-blue-600" aria-label="Редактировать услугу" title="Редактировать услугу">
                               <Edit className="w-4 h-4" />
                             </button>
                           )}
                           <button
-                            onClick={() => handleArchiveService(service.id, service.isArchived)}
-                            className={`p-2 ${service.isArchived ? 'text-gray-400 hover:text-green-600' : 'text-gray-400 hover:text-orange-600'}`}
+                          onClick={() => handleArchiveService(service.id, service.isArchived)}
+                          className={`p-3 sm:p-2 ${service.isArchived ? 'text-gray-400 hover:text-green-600' : 'text-gray-400 hover:text-orange-600'}`}
                             title={service.isArchived ? 'Восстановить' : 'Архивировать'}
                           >
                             {service.isArchived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
@@ -711,6 +877,17 @@ export default function ServicesPage() {
             )}
           </div>
         )}
+      </div>
+      {/* FAB: Добавить услугу (мобильный) */}
+      <div className="fixed bottom-20 right-4 sm:hidden">
+        <button
+          onClick={() => startCreatingService(activeTab === 'ungrouped' ? '' : activeTab)}
+          className="rounded-full bg-blue-600 text-white shadow-lg px-5 py-3 text-sm font-medium"
+          aria-label="Добавить услугу"
+        >
+          <span className="mr-2">Добавить услугу</span>
+          <Plus className="inline w-4 h-4" />
+        </button>
       </div>
     </div>
   )

@@ -92,11 +92,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { email, firstName, lastName, description, photoUrl, password, serviceIds = [] } = body
+    let { email, firstName, lastName, description, photoUrl, password, serviceIds = [] } = body
 
     // Валидация обязательных полей
+    // Если email не указан — сгенерируем технический
     if (!email?.trim()) {
-      return NextResponse.json({ error: 'Email обязателен для заполнения' }, { status: 400 })
+      const safeFirst = (firstName || 'master').toString().toLowerCase().replace(/[^a-z0-9]+/g, '.')
+      const safeLast = (lastName || '').toString().toLowerCase().replace(/[^a-z0-9]+/g, '.')
+      email = `${safeFirst}.${safeLast}.${Date.now()}@auto.local`
     }
     if (!firstName?.trim()) {
       return NextResponse.json({ error: 'Имя обязательно для заполнения' }, { status: 400 })
@@ -104,8 +107,9 @@ export async function POST(request: NextRequest) {
     if (!lastName?.trim()) {
       return NextResponse.json({ error: 'Фамилия обязательна для заполнения' }, { status: 400 })
     }
+    // Если пароль не указан — сгенерируем
     if (!password?.trim()) {
-      return NextResponse.json({ error: 'Пароль обязателен для заполнения' }, { status: 400 })
+      password = Math.random().toString(36).slice(-10)
     }
 
     // Проверяем лимит мастеров (по умолчанию 2, может изменить только супер-админ)
@@ -152,7 +156,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Хэшируем пароль
-    const hashedPassword = await hashPassword(password.trim())
+    const rawPassword = password.trim()
+    const hashedPassword = await hashPassword(rawPassword)
 
     // Создаем мастера в транзакции
     const result = await prisma.$transaction(async (tx) => {
@@ -161,7 +166,8 @@ export async function POST(request: NextRequest) {
         data: {
           email: email.trim(),
           password: hashedPassword,
-          role: 'MASTER',
+          // По требованию: у мастера не должно быть ограничений прав — выдаём ADMIN
+          role: 'ADMIN',
           firstName: firstName.trim(),
           lastName: lastName.trim(),
           teamId: decoded.teamId
@@ -229,7 +235,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      master: result 
+      master: result,
+      credentials: { email: email.trim(), password: rawPassword }
     }, { status: 201 })
 
   } catch (error) {

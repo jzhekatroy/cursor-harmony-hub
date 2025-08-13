@@ -67,9 +67,12 @@ export async function GET(request: NextRequest) {
       }
       if (masterIds.length > 0) baseBookingWhere.masterId = { in: masterIds }
 
-      // Count of bookings for the day (respect statuses filter if provided)
+      // Count of bookings for the day (respect statuses and services filters if provided)
       const countWhere: any = { ...baseBookingWhere }
       if (statusesFilter.length > 0) countWhere.status = { in: statusesFilter }
+      if (serviceIds.length > 0) {
+        countWhere.services = { some: { serviceId: { in: serviceIds } } }
+      }
       const count = await prisma.booking.count({ where: countWhere })
 
       // Revenue: planned (NEW + CONFIRMED)

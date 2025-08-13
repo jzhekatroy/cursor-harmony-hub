@@ -89,8 +89,8 @@ export default function BookingsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false)
 
-  // Просмотр: неделя | месяц | диапазон
-  const [viewMode, setViewMode] = useState<'week' | 'month' | 'range'>('week')
+  // Просмотр: день | неделя | месяц | диапазон
+  const [viewMode, setViewMode] = useState<'day' | 'week' | 'month' | 'range'>('week')
   const [anchorDate, setAnchorDate] = useState<Date>(new Date())
   const [rangeStartStr, setRangeStartStr] = useState<string>('') // YYYY-MM-DD
   const [rangeEndStr, setRangeEndStr] = useState<string>('')
@@ -130,8 +130,8 @@ export default function BookingsPage() {
         const masterIds = selectedMasterIds.join(',')
         const serviceIds = selectedServiceIds.join(',')
         const statuses = selectedStatuses.join(',')
-        const url = `/api/bookings/summary?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}`
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        const url = `/api/bookings/summary?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}&t=${Date.now()}`
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           setSummary(data.summary || {})
@@ -154,16 +154,17 @@ export default function BookingsPage() {
         const masterIds = selectedMasterIds.join(',')
         const serviceIds = selectedServiceIds.join(',')
         const statuses = selectedStatuses.join(',')
-        const url = `/api/bookings/summary/daily?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}`
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        const url = `/api/bookings/summary/daily?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}&t=${Date.now()}`
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
         if (res.ok) {
           const data = await res.json()
           const tz = salonTimezone || 'Europe/Moscow'
-          const daysIso: string[] = (data.daily || []).map((d: any) => d.day)
+          const arr: any[] = (data.dailySummary || data.daily || [])
+          const daysIso: string[] = arr.map((d: any) => (d.date || d.day))
           const labels: string[] = daysIso.map((iso: string) => new Date(iso).toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' }))
-          const counts: number[] = (data.daily || []).map((d: any) => Number(d.count) || 0)
-          const revenueSalon: number[] = (data.daily || []).map((d: any) => Number(d.revenueSalon) || 0)
-          const revenueLost: number[] = (data.daily || []).map((d: any) => Number(d.revenueLost) || 0)
+          const counts: number[] = arr.map((d: any) => Number(d.count) || 0)
+          const revenueSalon: number[] = arr.map((d: any) => Number(d.revenueSalon) || 0)
+          const revenueLost: number[] = arr.map((d: any) => Number(d.revenueLost) || 0)
           setDailySeries({ daysIso, labels, counts, revenueSalon, revenueLost })
         }
       } finally {
@@ -506,6 +507,15 @@ export default function BookingsPage() {
     return { startUtc, endUtc }
   }
 
+  const getDayRangeUtc = (date: Date, tz: string) => {
+    const y = Number(date.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+    const m = Number(date.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const d = Number(date.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+    const startUtc = createDateInSalonTimezone(y, m, d, 0, 0, tz)
+    const endUtc = new Date(startUtc.getTime() + 24 * 60 * 60 * 1000)
+    return { startUtc, endUtc }
+  }
+
   const getRangeModeUtc = (tz: string) => {
     if (!rangeStartStr || !rangeEndStr) return null
     const [sy, sm, sd] = rangeStartStr.split('-').map(Number)
@@ -518,6 +528,7 @@ export default function BookingsPage() {
 
   const getCurrentRangeUtc = () => {
     const tz = salonTimezone || 'Europe/Moscow'
+    if (viewMode === 'day') return getDayRangeUtc(anchorDate, tz)
     if (viewMode === 'week') return getWeekRangeUtc(anchorDate, tz)
     if (viewMode === 'month') return getMonthRangeUtc(anchorDate, tz)
     const r = getRangeModeUtc(tz)
@@ -531,6 +542,9 @@ export default function BookingsPage() {
     // Для месяца: показываем месяц и год
     if (viewMode === 'month') {
       return anchorDate.toLocaleDateString('ru-RU', { timeZone: tz, month: 'long', year: 'numeric' })
+    }
+    if (viewMode === 'day') {
+      return anchorDate.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short', year: 'numeric' })
     }
     const endMinusOne = new Date(endUtc.getTime() - 24 * 60 * 60 * 1000)
     const endLabel = endMinusOne.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
@@ -549,6 +563,9 @@ export default function BookingsPage() {
 
   const getSummaryTitle = () => {
     const tz = salonTimezone || 'Europe/Moscow'
+    if (viewMode === 'day') {
+      return `За день ${formatRangeLabel()} у вас:`
+    }
     if (viewMode === 'week') {
       return `За неделю ${formatRangeLabel()} у вас:`
     }
@@ -741,6 +758,7 @@ export default function BookingsPage() {
         <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+              <button onClick={() => setViewMode('day')} className={`px-3 py-2 text-sm ${viewMode === 'day' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>День</button>
               <button onClick={() => setViewMode('week')} className={`px-3 py-2 text-sm ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Неделя</button>
               <button onClick={() => setViewMode('month')} className={`px-3 py-2 text-sm ${viewMode === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Месяц</button>
               <button onClick={() => setViewMode('range')} className={`px-3 py-2 text-sm ${viewMode === 'range' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Диапазон</button>
@@ -750,7 +768,8 @@ export default function BookingsPage() {
               <button
                 onClick={() => {
                   const d = new Date(anchorDate)
-                  if (viewMode === 'week') d.setDate(d.getDate() - 7)
+                  if (viewMode === 'day') d.setDate(d.getDate() - 1)
+                  else if (viewMode === 'week') d.setDate(d.getDate() - 7)
                   else if (viewMode === 'month') d.setMonth(d.getMonth() - 1)
                   else {
                     // диапазон — ручной выбор
@@ -764,7 +783,8 @@ export default function BookingsPage() {
               <button
                 onClick={() => {
                   const d = new Date(anchorDate)
-                  if (viewMode === 'week') d.setDate(d.getDate() + 7)
+                  if (viewMode === 'day') d.setDate(d.getDate() + 1)
+                  else if (viewMode === 'week') d.setDate(d.getDate() + 7)
                   else if (viewMode === 'month') d.setMonth(d.getMonth() + 1)
                   setAnchorDate(d)
                 }}
@@ -792,6 +812,28 @@ export default function BookingsPage() {
                     const tz = salonTimezone || 'Europe/Moscow'
                     const d = createDateInSalonTimezone(y, m, 1, 12, 0, tz)
                     setAnchorDate(d)
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
+            {viewMode === 'day' && (
+              <div className="ml-auto">
+                <input
+                  type="date"
+                  value={(() => {
+                    const tz = salonTimezone || 'Europe/Moscow'
+                    const y = anchorDate.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' })
+                    const m = Number(anchorDate.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+                    const d = Number(anchorDate.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+                    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+                  })()}
+                  onChange={(e) => {
+                    const [y, m, d] = e.target.value.split('-').map(Number)
+                    const tz = salonTimezone || 'Europe/Moscow'
+                    const newDate = createDateInSalonTimezone(y, m, d, 12, 0, tz)
+                    setAnchorDate(newDate)
                   }}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
@@ -896,7 +938,7 @@ export default function BookingsPage() {
           {(() => {
             const { labels, counts, revenueSalon, revenueLost } = aggregateGraphSeries()
             const width = 240
-            const height = 40
+            const height = 80
             const stepX = (n: number) => (n > 1 ? width / (n - 1) : width)
 
             // Количество: тики по Y
@@ -940,8 +982,12 @@ export default function BookingsPage() {
                     </div>
                     {/* Сам график */}
                     <div className="flex-1">
-                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
-                        <path d={buildSparklinePath(counts, width, height)} stroke="#2563eb" strokeWidth="2" fill="none" />
+                      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                        {/* горизонтальные линии сетки: верх, середина, низ (0) */}
+                        <line x1={0} y1={0} x2={width} y2={0} stroke="#e5e7eb" strokeWidth="1" />
+                        <line x1={0} y1={height/2} x2={width} y2={height/2} stroke="#f1f5f9" strokeWidth="1" />
+                        <line x1={0} y1={height} x2={width} y2={height} stroke="#e5e7eb" strokeWidth="1" />
+                        <path d={buildSparklinePath(counts, width, height, maxCount)} stroke="#2563eb" strokeWidth="2" fill="none" />
                       </svg>
                       {/* Ось X с метками вне графика */}
                       <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
@@ -970,7 +1016,11 @@ export default function BookingsPage() {
                     </div>
                     {/* Сам график */}
                     <div className="flex-1">
-                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                        {/* горизонтальные линии сетки: верх, середина, низ (0) */}
+                        <line x1={0} y1={0} x2={width} y2={0} stroke="#e5e7eb" strokeWidth="1" />
+                        <line x1={0} y1={height/2} x2={width} y2={height/2} stroke="#f1f5f9" strokeWidth="1" />
+                        <line x1={0} y1={height} x2={width} y2={height} stroke="#e5e7eb" strokeWidth="1" />
                         <path d={buildSparklinePath(revenueSalon, width, height, maxRevenue)} stroke="#16a34a" strokeWidth="2" fill="none" />
                         <path d={buildSparklinePath(revenueLost, width, height, maxRevenue)} stroke="#ef4444" strokeWidth="2" fill="none" />
                       </svg>
@@ -990,10 +1040,10 @@ export default function BookingsPage() {
             )
           })()}
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-baseline mb-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-baseline mb-3">
             <div className="text-sm font-medium text-gray-900">{getSummaryTitle()}</div>
             <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">на сумму</div>
-            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">Выручка салона</div>
+            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200"></div>
             <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">Упущенная выручка</div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
@@ -1028,16 +1078,30 @@ export default function BookingsPage() {
                 </div>
               ))}
             </div>
-            {/* Колонка 3: Выручка салона */}
+            {/* Колонка 3: Выручка салона (итого и разбивка) */}
             <div className="md:border-l md:pl-4 border-gray-200">
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-gray-700">Фактическая (выполнено)</span>
-                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(summary.COMPLETED?.amount ?? 0).toLocaleString('ru-RU')} ₽`}</span>
-              </div>
-              <div className="flex items-center justify-between py-0.5">
-                <span className="text-gray-700">Планируемая (создана + подтверждено)</span>
-                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(((summary.NEW?.amount ?? 0) + (summary.CONFIRMED?.amount ?? 0)) as number).toLocaleString('ru-RU')} ₽`}</span>
-              </div>
+              {(() => {
+                const completed = Number(summary.COMPLETED?.amount ?? 0)
+                const planned = Number((summary.NEW?.amount ?? 0) + (summary.CONFIRMED?.amount ?? 0))
+                const total = completed + planned
+                return (
+                  <div>
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-900 font-medium">Выручка салона</span>
+                      <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${total.toLocaleString('ru-RU')} ₽`}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">из них</div>
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-700">Фактическая (выполнено)</span>
+                      <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${completed.toLocaleString('ru-RU')} ₽`}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-0.5">
+                      <span className="text-gray-700">Планируемая (создана + подтверждено)</span>
+                      <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${planned.toLocaleString('ru-RU')} ₽`}</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
             {/* Колонка 4: Упущенная выручка */}
             <div className="md:border-l md:pl-4 border-gray-200">

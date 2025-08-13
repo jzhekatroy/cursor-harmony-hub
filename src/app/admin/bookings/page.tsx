@@ -444,10 +444,10 @@ export default function BookingsPage() {
         const utcStart = createDateInSalonTimezone(y, m, d, hh, mm, tz)
         const duration = Number(form.duration) || 0
         const utcEnd = new Date(utcStart.getTime() + duration * 60 * 1000)
-        const conflict = bookings.some(other => {
+    const conflict = bookings.some(other => {
           if (other.id === b.id) return false
           if (other.master.id !== form.masterId) return false
-          if (!['NEW', 'CONFIRMED'].includes(other.status)) return false
+      // Предупреждаем о конфликтах со всеми активными/прошедшими бронями, но не блокируем
           const oStart = new Date(other.startTime)
           const oEnd = new Date(other.endTime)
           return utcStart < oEnd && utcEnd > oStart

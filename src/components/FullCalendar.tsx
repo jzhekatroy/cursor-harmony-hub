@@ -87,11 +87,21 @@ export default function FullCalendar({
   const [selectedMaster, setSelectedMaster] = useState<Master | null>(null)
   const [now, setNow] = useState<Date>(new Date())
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [slotPx, setSlotPx] = useState<number>(33)
 
   // Обновляем текущее время каждую минуту, чтобы линия и состояния брони обновлялись автоматически
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000)
     return () => clearInterval(timer)
+  }, [])
+
+  // Адаптивная высота слотов для мобильных, без влияния на десктоп
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const updateSlotPx = () => setSlotPx(window.innerWidth < 640 ? 26 : 33)
+    updateSlotPx()
+    window.addEventListener('resize', updateSlotPx)
+    return () => window.removeEventListener('resize', updateSlotPx)
   }, [])
 
   // Получаем активных мастеров (только выбранного или всех, если не выбран)
@@ -149,6 +159,22 @@ export default function FullCalendar({
         endStr >= target
       )
     })
+  }
+
+  // Человекочитаемые метки причин отсутствий, как в интерфейсе "Отсутствия"
+  const getAbsenceReasonLabel = (reason: string) => {
+    switch (reason) {
+      case 'VACATION':
+        return '🏖️ Отпуск'
+      case 'SICK_LEAVE':
+        return '🤒 Больничный'
+      case 'PERSONAL':
+        return '👤 Личные дела'
+      case 'TRAINING':
+        return '📚 Обучение'
+      default:
+        return '❓ Отсутствие'
+    }
   }
 
   const cancelBooking = async (bookingId: string) => {
@@ -247,6 +273,19 @@ export default function FullCalendar({
     return { startMinutes: earliestStart, endMinutes: latestEnd }
   }
 
+  // Цвета статусов — как на странице "Сводка по бронированиям"
+  const getStatusColor = (status: string) => {
+    const map: Record<string, string> = {
+      NEW: '#FFA500',
+      CONFIRMED: '#4CAF50',
+      COMPLETED: '#2196F3',
+      NO_SHOW: '#FF5722',
+      CANCELLED_BY_CLIENT: '#FF9800',
+      CANCELLED_BY_SALON: '#F44336'
+    }
+    return map[status] || '#9E9E9E'
+  }
+
   // Форматирование времени и дат
   const formatTime = (time: Date) => {
     return formatHHmmInSalon(time)
@@ -274,7 +313,7 @@ export default function FullCalendar({
 
   // ПРОСТАЯ функция позиционирования броней (время салона)
   const getBookingPosition = (startTime: string, endTime: string) => {
-    const SLOT_PX = 33 // 30 минут визуально: 32px высота + 1px нижняя граница ряда
+    const SLOT_PX = slotPx // 30 минут визуально
     // Получаем метки времени в часовом поясе салона
     const startLabel = new Date(startTime).toLocaleTimeString('ru-RU', {
       timeZone: salonTimezone, hour: '2-digit', minute: '2-digit', hour12: false
@@ -391,18 +430,18 @@ export default function FullCalendar({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       {/* Заголовок с навигацией */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
+      <div className="p-3 sm:p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             <button
               onClick={goToToday}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
             >
               Сегодня
             </button>
           </div>
           
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
             {formatDate(selectedDate)}
           </h2>
         </div>
@@ -420,7 +459,7 @@ export default function FullCalendar({
           </button>
           
           {/* Дни недели */}
-          <div className="flex-1 flex space-x-1">
+          <div className="flex-1 flex space-x-1 overflow-x-auto">
             {weekDays.map((day, index) => {
               const isSelected = isSameDay(day, selectedDate)
               const isToday = isSameDay(day, new Date())
@@ -429,7 +468,7 @@ export default function FullCalendar({
                 <button
                   key={index}
                   onClick={() => goToWeekDay(day)}
-                  className={`flex-1 text-center px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`min-w-[44px] sm:min-w-0 flex-1 text-center px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                     isSelected
                       ? 'bg-blue-600 text-white'
                       : isToday
@@ -439,7 +478,7 @@ export default function FullCalendar({
                 >
                   {format(day, 'EEE', { locale: ru })}
                   <br />
-                  <span className="text-xs">{format(day, 'd')}</span>
+                  <span className="text-[11px] sm:text-xs">{format(day, 'd')}</span>
                 </button>
               )
             })}
@@ -457,14 +496,14 @@ export default function FullCalendar({
         </div>
 
         {/* Селектор мастера */}
-        <div className="mt-4">
+        <div className="mt-3 sm:mt-4">
           <select
             value={selectedMaster?.id || ''}
             onChange={(e) => {
               const master = masters.find(m => m.id === e.target.value)
               setSelectedMaster(master || null)
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
           >
             <option value="">Все мастера</option>
             {masters.map(master => (
@@ -480,14 +519,14 @@ export default function FullCalendar({
       <div className="overflow-x-auto">
         <div className="min-w-max">
           {/* Заголовок с временем */}
-          <div className="flex border-b border-gray-200">
-            <div className="w-24 p-3 bg-gray-50 font-medium text-gray-700 text-sm">
+          <div className="flex border-b border-gray-200 sticky top-0 z-20 bg-white/90 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+            <div className="w-24 p-2 sm:p-3 bg-gray-50 font-medium text-gray-700 text-xs sm:text-sm sticky left-0 z-20 border-r border-gray-200">
               Время
             </div>
             {activeMasters.map(master => (
               <div
                 key={master.id}
-                className="p-3 bg-gray-50 font-medium text-gray-700 text-sm text-center border-l border-gray-200"
+                className="p-2 sm:p-3 bg-gray-50 font-medium text-gray-700 text-xs sm:text-sm text-center border-l border-gray-200"
                 style={{ width: masterColumnWidth }}
               >
                 {master.firstName} {master.lastName}
@@ -501,7 +540,7 @@ export default function FullCalendar({
                   return (
                     <div key={index} className="flex border-b border-gray-100">
                       {/* Колонка времени */}
-                      <div className="w-24 p-2 text-xs text-gray-500 bg-gray-50">
+                      <div className="w-24 p-1.5 sm:p-2 text-[11px] sm:text-xs text-gray-500 bg-gray-50 sticky left-0 z-10 border-r border-gray-200">
                         {formatTime(timeSlot)}
                       </div>
                       
@@ -512,19 +551,17 @@ export default function FullCalendar({
                         const isWorking = isWorkingTime(master.id, timeSlot, selectedDate)
                         const isBreak = isBreakTime(master.id, timeSlot, selectedDate)
                         
-                        let slotClass = "relative border-l border-gray-200 min-h-[32px]"
+                        let slotClass = "relative border-l border-gray-200 min-h-[28px] sm:min-h-[32px]"
                         let slotContent = null
                         const isPastSlot = isSameDay(selectedDate, now) && isBefore(timeSlot, now)
                         
                         if (absence) {
-                          // Мастер отсутствует - серый слот с причиной
+                          // Мастер отсутствует - серый слот с подписью причины
                           slotClass += " bg-gray-300"
+                          const reasonLabel = getAbsenceReasonLabel(absence.reason)
                           slotContent = (
-                            <div className="absolute inset-0 flex items-center justify-center text-xs text-gray-600 text-center px-1">
-                              <div>
-                                <div className="font-medium">Отсутствует</div>
-                                <div className="text-xs">{absence.reason}</div>
-                              </div>
+                            <div className="absolute inset-0 flex items-center justify-center text-[11px] sm:text-xs text-gray-700 text-center px-1">
+                              <div className="font-medium truncate max-w-full">{reasonLabel}</div>
                             </div>
                           )
                         } else if (!schedule) {
@@ -570,7 +607,7 @@ export default function FullCalendar({
                   const { startMinutes: baselineMinutes, endMinutes } = getWorkingTimeRange()
                   const nowMinutes = getSalonNowMinutes()
                   if (nowMinutes < baselineMinutes || nowMinutes > endMinutes) return null
-                  const top = ((nowMinutes - baselineMinutes) / 30) * 32 + 1
+                  const top = ((nowMinutes - baselineMinutes) / 30) * slotPx + 1
                   return (
                     <div className="absolute z-20" style={{ top: `${top}px`, left: '6rem', right: 0 }}>
                       <div className="h-0.5 bg-red-500 w-full relative">
@@ -611,10 +648,11 @@ export default function FullCalendar({
                 const showMasterLine = height >= 28
                 const showClientLine = true
 
+                const bgColor = getStatusColor(booking.status)
                 return (
                   <div
                     key={booking.id}
-                    className={`absolute bg-blue-500 text-white text-xs p-2 rounded cursor-pointer hover:bg-blue-600 transition-colors z-10 ${
+                    className={`absolute text-white text-[11px] sm:text-xs p-1.5 sm:p-2 rounded cursor-pointer transition-colors z-10 ${
                       isPastBooking ? 'opacity-50' : ''
                     } ${isCurrentBooking ? 'ring-2 ring-red-500 ring-offset-2' : ''}`}
                     style={{
@@ -623,7 +661,8 @@ export default function FullCalendar({
                       width: activeMasters.length === 1 
                         ? 'calc(100% - 6rem - 8px)' // Один мастер - полная ширина минус отступы
                         : `calc(${masterColumnWidth} - 8px)`, // Несколько мастеров
-                      height: `${height}px`
+                      height: `${height}px`,
+                      backgroundColor: bgColor
                     }}
                     onClick={() => onBookingClick?.(booking)}
                     title={`${primaryService}${extraSuffix} | Мастер: ${booking.master.firstName} ${booking.master.lastName} | Клиент: ${booking.client.firstName} ${booking.client.lastName}`}
@@ -642,9 +681,9 @@ export default function FullCalendar({
                     </button>
                     <div className="font-semibold truncate">{primaryService}{extraSuffix}</div>
                     {showMasterLine && (
-                      <div className="text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
+                      <div className="hidden sm:block text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
                     )}
-                    <div className="text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
+                    <div className="hidden sm:block text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
                   </div>
                 )
               })

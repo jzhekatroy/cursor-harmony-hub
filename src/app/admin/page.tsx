@@ -332,7 +332,9 @@ export default function AdminDashboard() {
   // Функции для редактирования брони в календаре
   const startEditingBooking = (booking: Booking) => {
     setEditingBooking(booking)
-    const durationSum = booking.services?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0
+    const startMs = new Date(booking.startTime).getTime()
+    const endMs = new Date(booking.endTime).getTime()
+    const durationSum = Math.max(0, Math.round((endMs - startMs) / 60000))
     setEditForm({
       // ВАЖНО: для datetime-local используем локальное время, а не toISOString()
       startTime: toLocalDateTimeInputValue(new Date(booking.startTime)),
@@ -372,8 +374,8 @@ export default function AdminDashboard() {
       })
 
       if (response.ok) {
-        // Обновляем список бронирований
-        await loadData()
+        // Обновляем список бронирований без сброса UI (сохраняем дату календаря)
+        await loadData(true)
         // Закрываем модальное окно
         cancelEditing()
       } else {
@@ -403,7 +405,7 @@ export default function AdminDashboard() {
         alert(`Ошибка отмены: ${data.error || res.statusText}`)
         return
       }
-      await loadData()
+      await loadData(true)
       cancelEditing()
     } catch (e) {
       alert('Не удалось отменить запись')
@@ -414,6 +416,25 @@ export default function AdminDashboard() {
 
   const updateEditForm = (field: string, value: any) => {
     setEditForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Утилиты форматирования длительности как на странице услуг
+  const getHoursWord = (hours: number) => {
+    const mod100 = hours % 100
+    if (mod100 >= 11 && mod100 <= 14) return 'часов'
+    const mod10 = hours % 10
+    if (mod10 === 1) return 'час'
+    if (mod10 >= 2 && mod10 <= 4) return 'часа'
+    return 'часов'
+  }
+
+  const formatDurationRu = (minutes: number) => {
+    if (!minutes) return '0 минут'
+    if (minutes < 60) return `${minutes} минут`
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    if (rest === 0) return `${hours} ${getHoursWord(hours)}`
+    return `${hours} ${getHoursWord(hours)} ${rest} минут`
   }
 
   // Проверка пересечения при изменении времени/мастера/длительности
@@ -504,7 +525,7 @@ export default function AdminDashboard() {
               masterAbsences={masterAbsences}
               onBookingClick={startEditingBooking}
               salonTimezone={team?.settings?.timezone || team?.timezone || 'Europe/Moscow'}
-              onBookingCancelled={loadData}
+              onBookingCancelled={() => loadData(true)}
             />
                 </div>
               </div>
@@ -599,33 +620,74 @@ export default function AdminDashboard() {
         </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Длительность (мин)
+                      Длительность
                     </label>
-                    <input
-                      type="number"
-                      min={15}
-                      step={15}
-                      value={editForm.duration}
-                      onChange={(e) => updateEditForm('duration', parseInt(e.target.value) || 0)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    />
+                    {(() => {
+                      const allowedMinutes = [0, 15, 30, 45]
+                      const rawMinutes = Number(editForm.duration) || 0
+                      const hoursValue = Math.max(0, Math.min(10, Math.floor(rawMinutes / 60)))
+                      const minutesValue = allowedMinutes.includes(rawMinutes % 60) ? (rawMinutes % 60) : 0
+                      const setDurationFromHm = (h: number, m: number) => updateEditForm('duration', h * 60 + m)
+                      return (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm text-gray-700 whitespace-nowrap">Часы</label>
+                            <select
+                              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+                              value={hoursValue}
+                              onChange={(e) => {
+                                const h = parseInt(e.target.value)
+                                setDurationFromHm(h, minutesValue)
+                              }}
+                            >
+                              {[0,1,2,3,4,5,6,7,8,9,10].map(h => (
+                                <option key={h} value={h}>{h}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2 md:col-span-1">
+                            <label className="text-sm text-gray-700 whitespace-nowrap">Минуты</label>
+                            <select
+                              className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm"
+                              value={minutesValue}
+                              onChange={(e) => {
+                                const m = parseInt(e.target.value)
+                                setDurationFromHm(hoursValue, m)
+                              }}
+                            >
+                              {[0,15,30,45].map(m => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="text-sm text-gray-500 md:text-right">
+                            {formatDurationRu(Number(editForm.duration) || 0)}
+                          </div>
+                        </div>
+                      )
+                    })()}
                     {hasOverlap && (
                       <p className="mt-1 text-xs text-orange-600">
                         Внимание: новая длительность пересекается с другой записью. Сохранение возможно, но учтите конфликт.
                       </p>
                     )}
-                      </div>
+                    {(Number(editForm.duration) || 0) === 0 && (
+                      <p className="mt-1 text-xs text-red-600">
+                        Нельзя установить длительность 0 минут
+                      </p>
+                    )}
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Общая цена (₽)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       value={editForm.totalPrice}
-                      onChange={(e) => updateEditForm('totalPrice', parseFloat(e.target.value))}
+                      onChange={(e) => updateEditForm('totalPrice', parseFloat(e.target.value) || 0)}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                      min="0"
-                      step="100"
+                      placeholder="0"
                     />
                   </div>
                   <div>

@@ -56,10 +56,7 @@ export async function PUT(
       return NextResponse.json({ error: 'Доступ запрещен' }, { status: 403 })
     }
 
-    // Проверяем, можно ли редактировать
-    if (existingBooking.status === 'COMPLETED') {
-      return NextResponse.json({ error: 'Завершенное бронирование нельзя редактировать' }, { status: 400 })
-    }
+    // Разрешаем редактирование завершённых бронирований по требованиям
 
     // Подготавливаем данные для обновления
     const updateData: any = {}
@@ -88,32 +85,7 @@ export async function PUT(
         : existingBooking.services.reduce((sum, bs) => sum + bs.service.duration, 0)
       const utcEndTime = new Date(utcStartTime.getTime() + totalDuration * 60 * 1000)
 
-      // Проверяем конфликты с другими бронированиями (исключая текущее)
-      const conflictingBooking = await prisma.booking.findFirst({
-        where: {
-          id: { not: bookingId },
-          masterId: masterId || existingBooking.masterId,
-          status: { in: ['NEW', 'CONFIRMED'] },
-          OR: [
-            {
-              startTime: { lte: utcStartTime },
-              endTime: { gt: utcStartTime }
-            },
-            {
-              startTime: { lt: utcEndTime },
-              endTime: { gte: utcEndTime }
-            },
-            {
-              startTime: { gte: utcStartTime },
-              endTime: { lte: utcEndTime }
-            }
-          ]
-        }
-      })
-
-      if (conflictingBooking) {
-        return NextResponse.json({ error: 'Выбранное время уже занято' }, { status: 409 })
-      }
+      // Не блокируем сохранение при конфликтах: предупреждение отображается на фронтенде
 
       updateData.startTime = utcStartTime
       updateData.endTime = utcEndTime
@@ -134,42 +106,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Мастер не найден или неактивен' }, { status: 404 })
       }
 
-      // Если меняется время, проверяем конфликты для нового мастера
-      if (startTime) {
-        const newStartTime = new Date(startTime)
-        const totalDuration = existingBooking.services.reduce((sum, bs) => sum + bs.service.duration, 0)
-        
-        // Конвертируем время из салона в UTC для проверки
-        const salonTimezone = user.team.timezone || 'Europe/Moscow'
-        const utcStartTime = salonTimeToUtc(newStartTime, salonTimezone)
-        const utcEndTime = new Date(utcStartTime.getTime() + totalDuration * 60 * 1000)
-
-        const conflictingBooking = await prisma.booking.findFirst({
-          where: {
-            id: { not: bookingId },
-            masterId: masterId,
-            status: { in: ['NEW', 'CONFIRMED'] },
-            OR: [
-              {
-                startTime: { lte: utcStartTime },
-                endTime: { gt: utcStartTime }
-              },
-              {
-                startTime: { lt: utcEndTime },
-                endTime: { gte: utcEndTime }
-              },
-              {
-                startTime: { gte: utcStartTime },
-                endTime: { lte: utcEndTime }
-              }
-            ]
-          }
-        })
-
-        if (conflictingBooking) {
-          return NextResponse.json({ error: 'Выбранное время уже занято у нового мастера' }, { status: 409 })
-        }
-      }
+      // Не блокируем сохранение при конфликтах у нового мастера
 
       updateData.masterId = masterId
     }

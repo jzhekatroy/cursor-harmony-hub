@@ -391,7 +391,7 @@ export default function ServicesPage() {
         <div className="px-4 sm:px-6 py-3 flex items-center gap-2 overflow-x-auto">
           <button
             onClick={() => handleSelectTab('ungrouped')}
-            className={`${activeTab === 'ungrouped' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm whitespace-nowrap`}
+            className={`${activeTab === 'ungrouped' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
           >
             Без группы ({ungroupedServices.length})
           </button>
@@ -399,7 +399,7 @@ export default function ServicesPage() {
             <div key={group.id} className="inline-flex items-center">
               <button
                 onClick={() => handleSelectTab(group.id)}
-                className={`${activeTab === group.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-4 py-2 sm:px-3 sm:py-1.5 rounded-md text-sm whitespace-nowrap`}
+                className={`${activeTab === group.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
                 title={group.name}
               >
                 {group.name} ({group.servicesCount})
@@ -457,7 +457,7 @@ export default function ServicesPage() {
                 type="text"
                 value={groupForm.name}
                 onChange={(e) => setGroupForm({...groupForm, name: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Например: Парикмахерские услуги"
               />
             </div>
@@ -472,7 +472,7 @@ export default function ServicesPage() {
                   <div className="flex items-center gap-2">
                     <label className="text-sm text-gray-700">Перенести услуги в:</label>
                     <select
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      className="border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                       value={deleteTargetGroupId}
                       onChange={(e) => setDeleteTargetGroupId(e.target.value)}
                     >
@@ -588,7 +588,7 @@ export default function ServicesPage() {
                 type="text"
                 value={serviceForm.name}
                 onChange={(e) => setServiceForm({...serviceForm, name: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Например: Стрижка женская"
               />
             </div>
@@ -596,11 +596,11 @@ export default function ServicesPage() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Группа
               </label>
-              <select
-                value={serviceForm.groupId}
-                onChange={(e) => setServiceForm({...serviceForm, groupId: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
-              >
+               <select
+                 value={serviceForm.groupId}
+                 onChange={(e) => setServiceForm({...serviceForm, groupId: e.target.value})}
+                 className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
+               >
                 <option value="">Без группы</option>
                 {serviceGroups.map(group => (
                   <option key={group.id} value={group.id}>{group.name}</option>
@@ -624,8 +624,8 @@ export default function ServicesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                     <div className="flex items-center gap-2">
                       <label className="text-sm text-gray-700 whitespace-nowrap">Часы</label>
-                      <select
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        <select
+                          className="flex-1 border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                         value={hoursValue}
                         onChange={(e) => {
                           const h = parseInt(e.target.value)
@@ -640,8 +640,8 @@ export default function ServicesPage() {
                     </div>
                     <div className="flex items-center gap-2 md:col-span-1">
                       <label className="text-sm text-gray-700 whitespace-nowrap">Минуты</label>
-                      <select
-                        className="flex-1 border border-gray-300 rounded-md px-3 py-2"
+                        <select
+                          className="flex-1 border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                         value={minutesValue}
                         onChange={(e) => {
                           const m = parseInt(e.target.value)
@@ -670,7 +670,7 @@ export default function ServicesPage() {
                 inputMode="decimal"
                 value={serviceForm.price}
                 onChange={(e) => setServiceForm({...serviceForm, price: parseFloat(e.target.value) || 0})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                 placeholder="0"
               />
             </div>
@@ -681,7 +681,7 @@ export default function ServicesPage() {
               <textarea
                 value={serviceForm.description}
                 onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
-                className="w-full border border-gray-300 rounded-md px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                 rows={3}
                 placeholder="Описание услуги..."
               />
@@ -700,7 +700,7 @@ export default function ServicesPage() {
                   id="requireConfirmation"
                   checked={serviceForm.requireConfirmation}
                   onChange={(e) => setServiceForm({...serviceForm, requireConfirmation: e.target.checked})}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                 />
                 <label htmlFor="requireConfirmation" className="ml-3 text-sm text-gray-700">
                   Требовать подтверждение записи
@@ -714,14 +714,14 @@ export default function ServicesPage() {
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={cancelEditing}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Отмена
             </button>
             <button
               onClick={handleSaveService}
               disabled={!serviceForm.name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 flex items-center"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 flex items-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               <Save className="w-4 h-4 mr-2" />
               Сохранить
@@ -879,14 +879,14 @@ export default function ServicesPage() {
         )}
       </div>
       {/* FAB: Добавить услугу (мобильный) */}
-      <div className="fixed bottom-20 right-4 sm:hidden">
+      <div className="fixed bottom-20 right-5 sm:hidden">
         <button
           onClick={() => startCreatingService(activeTab === 'ungrouped' ? '' : activeTab)}
-          className="rounded-full bg-blue-600 text-white shadow-lg px-5 py-3 text-sm font-medium"
+          className="rounded-full bg-blue-600 text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-14 h-14 flex items-center justify-center"
           aria-label="Добавить услугу"
+          title="Добавить услугу"
         >
-          <span className="mr-2">Добавить услугу</span>
-          <Plus className="inline w-4 h-4" />
+          <Plus className="w-5 h-5" />
         </button>
       </div>
     </div>

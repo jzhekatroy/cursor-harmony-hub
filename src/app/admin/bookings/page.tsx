@@ -8,6 +8,7 @@ import { formatTimeForAdmin } from '@/lib/timezone'
 // Removed calendar view on bookings page
 
 interface BookingService {
+  id?: string
   name: string
   duration: number
   price: number
@@ -21,6 +22,7 @@ interface Booking {
   status: string
   totalPrice: number
   notes?: string
+  createdAt?: string
   client: {
     firstName: string
     lastName: string
@@ -40,6 +42,13 @@ interface Master {
   id: string
   firstName: string
   lastName: string
+  isActive?: boolean
+}
+
+interface FilterService {
+  id: string
+  name: string
+  isArchived?: boolean
 }
 
 const statusColors = {
@@ -63,13 +72,28 @@ const statusNames = {
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [masters, setMasters] = useState<Master[]>([])
+  const [services, setServices] = useState<FilterService[]>([])
   const [loading, setLoading] = useState(true)
+  const [bookingsLoading, setBookingsLoading] = useState(false)
+  const [bookingsLoaded, setBookingsLoaded] = useState(false)
+  const [summary, setSummary] = useState<{[k:string]: any}>({})
+  const [summaryLoading, setSummaryLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [masterFilter, setMasterFilter] = useState<string>('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedMasterIds, setSelectedMasterIds] = useState<string[]>([])
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
+  const [includeDismissedMasters, setIncludeDismissedMasters] = useState<boolean>(false)
+  const [includeArchivedServices, setIncludeArchivedServices] = useState<boolean>(false)
   const [sortBy, setSortBy] = useState<'date' | 'client' | 'master' | 'status'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false)
+
+  // Просмотр: неделя | месяц | диапазон
+  const [viewMode, setViewMode] = useState<'week' | 'month' | 'range'>('week')
+  const [anchorDate, setAnchorDate] = useState<Date>(new Date())
+  const [rangeStartStr, setRangeStartStr] = useState<string>('') // YYYY-MM-DD
+  const [rangeEndStr, setRangeEndStr] = useState<string>('')
   
   // Новое состояние для временной зоны салона
   const [salonTimezone, setSalonTimezone] = useState<string>('Europe/Moscow')
@@ -86,11 +110,36 @@ export default function BookingsPage() {
   // На странице бронирований оставляем только список (календарь убран)
 
   useEffect(() => {
-    loadData()
-  }, [statusFilter, masterFilter, sortBy, sortOrder])
+    loadStaticData()
+  }, [])
+
+  useEffect(() => {
+    // загружаем сводку при изменении периода
+    const fetchSummary = async () => {
+      try {
+        setSummaryLoading(true)
+        const tz = salonTimezone || 'Europe/Moscow'
+        const { startUtc, endUtc } = getCurrentRangeUtc()
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const masterIds = selectedMasterIds.join(',')
+        const serviceIds = selectedServiceIds.join(',')
+        const statuses = selectedStatuses.join(',')
+        const url = `/api/bookings/summary?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}`
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) {
+          const data = await res.json()
+          setSummary(data.summary || {})
+        }
+      } finally {
+        setSummaryLoading(false)
+      }
+    }
+    fetchSummary()
+  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses])
 
   // Загрузка данных
-  const loadData = async () => {
+  const loadStaticData = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -110,36 +159,11 @@ export default function BookingsPage() {
         setSalonTimezone(settingsData.settings.timezone || 'Europe/Moscow')
       }
 
-      // Загружаем бронирования и мастеров параллельно
-      const [bookingsResponse, mastersResponse] = await Promise.all([
-        fetch('/api/bookings', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        }),
-        fetch('/api/masters', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
+      // Загружаем мастеров и услуги параллельно (без бронирований)
+      const [mastersResponse, servicesResponse] = await Promise.all([
+        fetch('/api/masters', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/services?includeArchived=true', { headers: { 'Authorization': `Bearer ${token}` } })
       ])
-
-      if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json()
-        const normalized = (bookingsData.bookings || []).map((b: any) => ({
-          ...b,
-          services: (b.services || []).map((bs: any) => ({
-            name: bs.service?.name ?? bs.name,
-            duration: bs.service?.duration ?? bs.duration ?? 0,
-            price: bs.service?.price ?? bs.price ?? 0
-          })),
-          client: {
-            ...b.client,
-            firstName: b.client?.firstName || b.client?.name || '',
-            lastName: b.client?.lastName || ''
-          }
-        }))
-        setBookings(normalized)
-      } else {
-        const errorData = await bookingsResponse.json()
-        setError(`Ошибка загрузки бронирований: ${errorData.error || 'Неизвестная ошибка'}`)
-      }
 
       if (mastersResponse.ok) {
         const mastersData = await mastersResponse.json()
@@ -149,11 +173,61 @@ export default function BookingsPage() {
         setError(`Ошибка загрузки мастеров: ${errorData.error || 'Неизвестная ошибка'}`)
       }
 
+      if (servicesResponse.ok) {
+        const servicesData = await servicesResponse.json()
+        const list = (servicesData.services || servicesData || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          isArchived: s.isArchived ?? false
+        }))
+        setServices(list)
+      } else {
+        const errorData = await servicesResponse.json()
+        setError(`Ошибка загрузки услуг: ${errorData.error || 'Неизвестная ошибка'}`)
+      }
+
     } catch (error) {
       console.error('Ошибка загрузки данных:', error)
       setError(error instanceof Error ? error.message : 'Неизвестная ошибка')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBookings = async () => {
+    try {
+      setBookingsLoading(true)
+      setError(null)
+      const token = localStorage.getItem('token')
+      if (!token) throw new Error('Токен авторизации не найден')
+      const response = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Ошибка загрузки бронирований')
+      }
+      const data = await response.json()
+      const normalized = (data.bookings || []).map((b: any) => ({
+        ...b,
+        createdAt: b.createdAt,
+        services: (b.services || []).map((bs: any) => ({
+          id: bs.service?.id ?? bs.serviceId ?? bs.id,
+          name: bs.service?.name ?? bs.name,
+          duration: bs.service?.duration ?? bs.duration ?? 0,
+          price: bs.service?.price ?? bs.price ?? 0
+        })),
+        client: {
+          ...b.client,
+          firstName: b.client?.firstName || b.client?.name || '',
+          lastName: b.client?.lastName || ''
+        }
+      }))
+      setBookings(normalized)
+      setBookingsLoaded(true)
+    } catch (e) {
+      console.error('Ошибка загрузки бронирований:', e)
+      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
+    } finally {
+      setBookingsLoading(false)
     }
   }
 
@@ -173,7 +247,7 @@ export default function BookingsPage() {
 
       if (response.ok) {
         // Обновляем список бронирований
-        await loadData()
+        await loadBookings()
       } else {
         const errorData = await response.json()
         alert(`Ошибка: ${errorData.error || 'Неизвестная ошибка'}`)
@@ -252,7 +326,7 @@ export default function BookingsPage() {
 
       if (response.ok) {
         // Обновляем список бронирований
-        await loadData()
+        await loadBookings()
         // Выходим из режима редактирования
         cancelEditing(bookingId)
       } else {
@@ -309,22 +383,165 @@ export default function BookingsPage() {
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString)
     return {
-      date: date.toLocaleDateString('ru-RU'),
-      time: date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      date: date.toLocaleDateString('ru-RU', { timeZone: salonTimezone }),
+      time: date.toLocaleTimeString('ru-RU', { timeZone: salonTimezone, hour: '2-digit', minute: '2-digit' })
     }
   }
 
+  // Вспомогательные функции для диапазонов по часовому поясу салона
+  const getMondaySalonDate = (date: Date, tz: string) => {
+    // Возвращает дату (год, месяц, день) ПОНЕДЕЛЬНИКА для недели, в которой находится date по часовому поясу салона
+    const d = new Date(date)
+    // Вычисляем локальный (по tz) день недели: 0=вс,1=пн,...
+    // Для устойчивости используем toLocaleString с опцией weekday? Трудно. Проще сдвигать по UTC, но достаточно типично:
+    // Берем даты в «календарном» смысле с точки зрения tz:
+    const y = Number(d.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+    const m = Number(d.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const day = Number(d.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+    const noon = createDateInSalonTimezone(y, m, day, 12, 0, tz) // полдень чтобы избегать переходов
+    const weekday = noon.getUTCDay() // 0 вс ... 6 сб (в UTC, но для полудня с tz это корректно)
+    const offsetToMonday = (weekday + 6) % 7 // пн=0, вт=1, ... вс=6
+    const mondayNoonUtc = new Date(noon.getTime() - offsetToMonday * 24 * 60 * 60 * 1000)
+    const my = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+    const mm = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const md = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+    return { y: my, m: mm, d: md }
+  }
+
+  const getWeekRangeUtc = (date: Date, tz: string) => {
+    const { y, m, d } = getMondaySalonDate(date, tz)
+    const startUtc = createDateInSalonTimezone(y, m, d, 0, 0, tz)
+    const endUtc = new Date(startUtc.getTime() + 7 * 24 * 60 * 60 * 1000)
+    return { startUtc, endUtc }
+  }
+
+  const getMonthRangeUtc = (date: Date, tz: string) => {
+    const y = Number(date.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+    const m = Number(date.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const startUtc = createDateInSalonTimezone(y, m, 1, 0, 0, tz)
+    const nextMonth = m === 12 ? 1 : m + 1
+    const nextYear = m === 12 ? y + 1 : y
+    const endUtc = createDateInSalonTimezone(nextYear, nextMonth, 1, 0, 0, tz)
+    return { startUtc, endUtc }
+  }
+
+  const getRangeModeUtc = (tz: string) => {
+    if (!rangeStartStr || !rangeEndStr) return null
+    const [sy, sm, sd] = rangeStartStr.split('-').map(Number)
+    const [ey, em, ed] = rangeEndStr.split('-').map(Number)
+    const startUtc = createDateInSalonTimezone(sy, sm, sd, 0, 0, tz)
+    // end exclusive: следующий день после end
+    const endUtc = createDateInSalonTimezone(ey, em, ed, 0, 0, tz)
+    return { startUtc, endUtc: new Date(endUtc.getTime() + 24 * 60 * 60 * 1000) }
+  }
+
+  const getCurrentRangeUtc = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    if (viewMode === 'week') return getWeekRangeUtc(anchorDate, tz)
+    if (viewMode === 'month') return getMonthRangeUtc(anchorDate, tz)
+    const r = getRangeModeUtc(tz)
+    return r || getWeekRangeUtc(new Date(), tz)
+  }
+
+  const formatRangeLabel = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    const { startUtc, endUtc } = getCurrentRangeUtc()
+    const startLabel = startUtc.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
+    // Для месяца: показываем месяц и год
+    if (viewMode === 'month') {
+      return anchorDate.toLocaleDateString('ru-RU', { timeZone: tz, month: 'long', year: 'numeric' })
+    }
+    const endMinusOne = new Date(endUtc.getTime() - 24 * 60 * 60 * 1000)
+    const endLabel = endMinusOne.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
+    return `${startLabel} — ${endLabel}`
+  }
+
+  const getMonthPrepositional = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    const m = Number(anchorDate.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const map: Record<number, string> = {
+      1: 'январе', 2: 'феврале', 3: 'марте', 4: 'апреле', 5: 'мае', 6: 'июне',
+      7: 'июле', 8: 'августе', 9: 'сентябре', 10: 'октябре', 11: 'ноябре', 12: 'декабре'
+    }
+    return map[m]
+  }
+
+  const getSummaryTitle = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    if (viewMode === 'week') {
+      return `За неделю ${formatRangeLabel()} у вас:`
+    }
+    if (viewMode === 'month') {
+      return `В ${getMonthPrepositional()} у вас:`
+    }
+    // range
+    const { startUtc, endUtc } = getCurrentRangeUtc()
+    const startLabel = startUtc.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
+    const endMinusOne = new Date(endUtc.getTime() - 24 * 60 * 60 * 1000)
+    const endLabel = endMinusOne.toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
+    return `За период ${startLabel} — ${endLabel} у вас:`
+  }
+
   // Фильтрация и сортировка
+  const displayedServices = includeArchivedServices ? services : services.filter(s => !s.isArchived)
+  const displayedMasters = includeDismissedMasters ? masters : masters.filter(m => m.isActive !== false)
+
   const filteredBookings = bookings.filter(booking => {
-    const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
-    const matchesMaster = masterFilter === 'all' || booking.master.id === masterFilter
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(booking.status)
+    const matchesMaster = selectedMasterIds.length === 0 || selectedMasterIds.includes(booking.master.id)
+    const matchesServices = selectedServiceIds.length === 0 || (booking.services || []).some(s => s.id && selectedServiceIds.includes(s.id))
+    // Фильтр по диапазону дат
+    const { startUtc, endUtc } = getCurrentRangeUtc()
+    const bStart = new Date(booking.startTime)
+    const inRange = bStart >= startUtc && bStart < endUtc
     const matchesSearch = searchTerm === '' || 
       booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${booking.client.firstName} ${booking.client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       `${booking.master.firstName} ${booking.master.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
 
-    return matchesStatus && matchesMaster && matchesSearch
+    return matchesStatus && matchesMaster && matchesServices && inRange && matchesSearch
   })
+
+  const summaryCounts = (() => {
+    const list = filteredBookings
+    return {
+      COMPLETED: list.filter(b => b.status === 'COMPLETED').length,
+      NEW: list.filter(b => b.status === 'NEW').length,
+      CONFIRMED: list.filter(b => b.status === 'CONFIRMED').length,
+      NO_SHOW: list.filter(b => b.status === 'NO_SHOW').length,
+      CANCELLED_BY_CLIENT: list.filter(b => b.status === 'CANCELLED_BY_CLIENT').length,
+      CANCELLED_BY_SALON: list.filter(b => b.status === 'CANCELLED_BY_SALON').length
+    }
+  })()
+
+  const getPrimaryServiceLabel = (b: Booking) => {
+    const count = b.services?.length || 0
+    if (count === 0) return '—'
+    const primary = b.services[0].name
+    return count > 1 ? `${primary} +${count - 1}` : primary
+  }
+
+  const getTotalDuration = (b: Booking) => (b.services || []).reduce((sum, s) => sum + (s.duration || 0), 0)
+
+  const getStatusChipStyle = (status: string) => {
+    const map: Record<string, string> = {
+      NEW: '#FFA500',
+      CONFIRMED: '#4CAF50',
+      COMPLETED: '#2196F3',
+      CANCELLED_BY_CLIENT: '#FF9800',
+      CANCELLED_BY_SALON: '#F44336',
+      NO_SHOW: '#FF5722'
+    }
+    const bg = map[status] || '#9E9E9E'
+    return { backgroundColor: bg, color: '#fff' }
+  }
+
+  const hasActiveAdvancedFilters =
+    selectedStatuses.length > 0 ||
+    selectedMasterIds.length > 0 ||
+    selectedServiceIds.length > 0 ||
+    includeDismissedMasters ||
+    includeArchivedServices
 
   const sortedBookings = [...filteredBookings].sort((a, b) => {
     let aValue: any, bValue: any
@@ -377,7 +594,7 @@ export default function BookingsPage() {
           <h2 className="mt-4 text-lg font-medium text-gray-900">Ошибка загрузки</h2>
           <p className="mt-2 text-gray-600">{error}</p>
                   <button
-            onClick={loadData}
+            onClick={loadBookings}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
                     Попробовать снова
@@ -398,21 +615,126 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        {/* Переключение видов убрано — здесь всегда список */}
+        
 
-        {/* Фильтры */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        {/* Управление диапазоном и режимом просмотра */}
+        <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+              <button onClick={() => setViewMode('week')} className={`px-3 py-2 text-sm ${viewMode === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Неделя</button>
+              <button onClick={() => setViewMode('month')} className={`px-3 py-2 text-sm ${viewMode === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Месяц</button>
+              <button onClick={() => setViewMode('range')} className={`px-3 py-2 text-sm ${viewMode === 'range' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Диапазон</button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const d = new Date(anchorDate)
+                  if (viewMode === 'week') d.setDate(d.getDate() - 7)
+                  else if (viewMode === 'month') d.setMonth(d.getMonth() - 1)
+                  else {
+                    // диапазон — ручной выбор
+                  }
+                  setAnchorDate(d)
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                title="Назад"
+              >◀</button>
+              <div className="text-sm font-medium text-gray-900 min-w-[160px] text-center">{formatRangeLabel()}</div>
+              <button
+                onClick={() => {
+                  const d = new Date(anchorDate)
+                  if (viewMode === 'week') d.setDate(d.getDate() + 7)
+                  else if (viewMode === 'month') d.setMonth(d.getMonth() + 1)
+                  setAnchorDate(d)
+                }}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+                title="Вперед"
+              >▶</button>
+              <button
+                onClick={() => setAnchorDate(new Date())}
+                className="px-2 py-1 border border-gray-300 rounded text-sm"
+              >Сегодня</button>
+            </div>
+
+            {viewMode === 'month' && (
+              <div className="ml-auto">
+                <input
+                  type="month"
+                  value={(() => {
+                    const tz = salonTimezone || 'Europe/Moscow'
+                    const y = anchorDate.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' })
+                    const m = Number(anchorDate.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+                    return `${y}-${String(m).padStart(2, '0')}`
+                  })()}
+                  onChange={(e) => {
+                    const [y, m] = e.target.value.split('-').map(Number)
+                    const tz = salonTimezone || 'Europe/Moscow'
+                    const d = createDateInSalonTimezone(y, m, 1, 12, 0, tz)
+                    setAnchorDate(d)
+                  }}
+                  className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+
+            {viewMode === 'range' && (
+              <div className="ml-auto flex items-center gap-2">
+                <input type="date" value={rangeStartStr} onChange={(e) => setRangeStartStr(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                <span>—</span>
+                <input type="date" value={rangeEndStr} onChange={(e) => setRangeEndStr(e.target.value)} className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Кнопка доп. фильтров (под блоком времени) */}
+        <div className="mt-3 flex justify-end">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAdvancedFilters(prev => !prev)}
+              className={`px-3 py-2 text-sm border rounded-md bg-white hover:bg-gray-50 ${(!showAdvancedFilters && hasActiveAdvancedFilters) ? 'border-orange-400 text-orange-700' : 'border-gray-300'}`}
+            >
+              {showAdvancedFilters ? 'Скрыть дополнительные фильтры ▲' : 'Дополнительные фильтры ▼'}
+            </button>
+            {!showAdvancedFilters && hasActiveAdvancedFilters && (
+              <button
+                onClick={() => {
+                  setSelectedStatuses([]);
+                  setSelectedMasterIds([]);
+                  setSelectedServiceIds([]);
+                  setIncludeDismissedMasters(false);
+                  setIncludeArchivedServices(false);
+                }}
+                title="Сбросить дополнительные фильтры"
+                className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 text-red-600 border border-red-300 hover:bg-red-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Дополнительные фильтры (ниже периода) */}
+        {showAdvancedFilters && (
+        <div className="mt-3 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex justify-between items-center mb-3">
+            <div className="text-sm text-gray-600">Вы можете выбрать несколько значений в каждом поле, удерживая Ctrl/Cmd или перетаскивая мышью.</div>
+            <button
+              onClick={() => {
+                setSelectedStatuses([])
+                setSelectedMasterIds([])
+                setSelectedServiceIds([])
+                setIncludeDismissedMasters(false)
+                setIncludeArchivedServices(false)
+              }}
+              className="text-sm text-gray-700 border border-gray-300 rounded-md px-3 py-1 hover:bg-gray-50"
+            >Очистить все доп. фильтры</button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Статус
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              >
-                <option value="all">Все статусы</option>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+              <select multiple value={selectedStatuses} onChange={(e) => { const opts = Array.from(e.target.selectedOptions).map(o => o.value); setSelectedStatuses(opts) }} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm h-28">
                 <option value="NEW">Создана</option>
                 <option value="CONFIRMED">Подтверждена</option>
                 <option value="COMPLETED">Завершена</option>
@@ -420,319 +742,275 @@ export default function BookingsPage() {
                 <option value="CANCELLED_BY_CLIENT">Отменена клиентом</option>
                 <option value="CANCELLED_BY_SALON">Отменена администратором</option>
               </select>
+              <div className="mt-2 text-xs text-gray-500">Мультивыбор: Cmd/Ctrl + клик</div>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Мастер
-              </label>
-              <select
-                value={masterFilter}
-                onChange={(e) => setMasterFilter(e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-              >
-                <option value="all">Все мастера</option>
-                {masters.map(master => (
-                  <option key={master.id} value={master.id}>{master.firstName} {master.lastName}</option>
-                ))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Мастера</label>
+              <select multiple value={selectedMasterIds} onChange={(e) => { const opts = Array.from(e.target.selectedOptions).map(o => o.value); setSelectedMasterIds(opts) }} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm h-28">
+                {displayedMasters.map(master => (<option key={master.id} value={master.id}>{master.firstName} {master.lastName}{master.isActive === false ? ' (уволен)' : ''}</option>))}
               </select>
+              <label className="mt-2 inline-flex items-center text-xs text-gray-600">
+                <input type="checkbox" className="mr-2" checked={includeDismissedMasters} onChange={(e) => setIncludeDismissedMasters(e.target.checked)} />
+                Показать уволенных
+              </label>
+              <div className="mt-1 text-xs text-gray-500">Мультивыбор: Cmd/Ctrl + клик</div>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Услуги</label>
+              <select multiple value={selectedServiceIds} onChange={(e) => { const opts = Array.from(e.target.selectedOptions).map(o => o.value); setSelectedServiceIds(opts) }} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm h-28">
+                {displayedServices.map(service => (<option key={service.id} value={service.id}>{service.name}{service.isArchived ? ' (архив)' : ''}</option>))}
+              </select>
+              <label className="mt-2 inline-flex items-center text-xs text-gray-600">
+                <input type="checkbox" className="mr-2" checked={includeArchivedServices} onChange={(e) => setIncludeArchivedServices(e.target.checked)} />
+                Показать архивные услуги
+              </label>
+              <div className="mt-1 text-xs text-gray-500">Мультивыбор: Cmd/Ctrl + клик</div>
+            </div>
+          </div>
+        </div>
+        )}
 
-            <div className="flex items-end">
-              <button
-                onClick={() => {
-                  setStatusFilter('all');
-                  setMasterFilter('all');
-                  setSearchTerm('');
-                  setSortBy('date');
-                  setSortOrder('desc');
-                }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Сбросить
-              </button>
+        {/* Сводная информация (построчно) */}
+        <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-baseline mb-3">
+            <div className="text-sm font-medium text-gray-900">{getSummaryTitle()}</div>
+            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">на сумму</div>
+            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">Выручка салона</div>
+            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">Упущенная выручка</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
+            {/* Колонка 1: статусы и количества */}
+            <div>
+              {[
+                { key: 'COMPLETED', label: 'Выполнено' },
+                { key: 'NEW', label: 'Создана' },
+                { key: 'CONFIRMED', label: 'Подтверждено' },
+                { key: 'NO_SHOW', label: 'Клиент не пришел' },
+                { key: 'CANCELLED_BY_CLIENT', label: 'Отменено клиентом' },
+                { key: 'CANCELLED_BY_SALON', label: 'Отменено салоном' },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center py-0.5">
+                  <span className="inline-flex items-center px-2 py-[2px] rounded-full text-xs text-white" style={getStatusChipStyle(key)}>{label}</span>
+                  <span className="ml-3 font-semibold inline-block w-12 text-right tabular-nums">{summaryLoading ? '…' : (summary[key]?.count ?? summary[key] ?? 0)}</span>
+                </div>
+              ))}
+            </div>
+            {/* Колонка 2: суммы по статусам */}
+            <div className="md:border-l md:pl-4 border-gray-200">
+              {[
+                { key: 'COMPLETED' },
+                { key: 'NEW' },
+                { key: 'CONFIRMED' },
+                { key: 'NO_SHOW' },
+                { key: 'CANCELLED_BY_CLIENT' },
+                { key: 'CANCELLED_BY_SALON' },
+              ].map(({ key }) => (
+                <div key={key} className="flex justify-end py-0.5">
+                  <span className="font-medium inline-block w-28 text-right tabular-nums">{summaryLoading ? '' : `${(summary[key]?.amount ?? 0).toLocaleString('ru-RU')} ₽`}</span>
+                </div>
+              ))}
+            </div>
+            {/* Колонка 3: Выручка салона */}
+            <div className="md:border-l md:pl-4 border-gray-200">
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-gray-700">Фактическая (выполнено)</span>
+                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(summary.COMPLETED?.amount ?? 0).toLocaleString('ru-RU')} ₽`}</span>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-gray-700">Планируемая (создана + подтверждено)</span>
+                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(((summary.NEW?.amount ?? 0) + (summary.CONFIRMED?.amount ?? 0)) as number).toLocaleString('ru-RU')} ₽`}</span>
+              </div>
+            </div>
+            {/* Колонка 4: Упущенная выручка */}
+            <div className="md:border-l md:pl-4 border-gray-200">
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-gray-700">Всего (не пришел + отмены)</span>
+                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(((summary.NO_SHOW?.amount ?? 0) + (summary.CANCELLED_BY_CLIENT?.amount ?? 0) + (summary.CANCELLED_BY_SALON?.amount ?? 0)) as number).toLocaleString('ru-RU')} ₽`}</span>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Список бронирований */}
+        {/* Кнопка загрузки списка вне блока сводки */}
+        <div className="mt-3">
+          <button
+            onClick={loadBookings}
+            disabled={bookingsLoading}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 disabled:opacity-50"
+          >
+            {bookingsLoading ? 'Загрузка…' : (bookingsLoaded ? 'Обновить список' : 'Загрузить список')}
+          </button>
+        </div>
+
+        {/* Таблица бронирований */}
         <div className="mt-6">
           {sortedBookings.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
               <Calendar className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">Нет записей</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Записи будут отображаться здесь после их создания.
-              </p>
+              <p className="mt-1 text-sm text-gray-500">Записи будут отображаться здесь после их создания.</p>
             </div>
           ) : (
-            <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-              <div className="divide-y divide-gray-200">
-                  {sortedBookings.map((booking) => {
-                  const startTime = formatDateTime(booking.startTime)
-                  const endTime = formatDateTime(booking.endTime)
-                    const canCancel = booking.status === 'NEW' || booking.status === 'CONFIRMED'
-                    const canEdit = booking.status !== 'COMPLETED'
-                    const isExpanded = expandedBookings.has(booking.id)
-                    const isEditing = editingBookings.has(booking.id)
-                    const editForm = editForms[booking.id] || {}
-
-                    // Отладочная информация
-                    console.log('🔍 Booking debug:', {
-                      id: booking.id,
-                      status: booking.status,
-                      canEdit,
-                      canCancel,
-                      isExpanded,
-                      isEditing
-                    })
-
+            <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-x-hidden">
+              <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Дата начала услуги</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Дата создания брони</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Услуга</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Мастер</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Длительность</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Цена</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Имя клиента</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500 uppercase tracking-wider w-16">Действие</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {sortedBookings.map((b) => {
+                    const isExpanded = expandedBookings.has(b.id)
+                    const isEditing = editingBookings.has(b.id)
+                    const editForm = editForms[b.id] || {}
+                    const isFinished = new Date(b.endTime).getTime() <= Date.now()
+                    const isCancellable = ['NEW', 'CONFIRMED'].includes(b.status)
+                    const start = formatDateTime(b.startTime)
+                    const end = formatDateTime(b.endTime)
+                    const created = b.createdAt ? formatDateTime(b.createdAt) : null
                   return (
-                    <div key={booking.id} className="p-6 hover:bg-gray-50">
-                        {/* Заголовок брони */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-4">
+                      <React.Fragment key={b.id}>
+                        <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleExpanded(b.id)}>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words">
+                            {start.date} <br />
+                            <span className="text-gray-500">{start.time} - {end.time}</span>
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-500 break-words">
+                            {created ? (
+                              <>
+                                {created.date} <br />
+                                <span className="text-gray-500">{created.time}</span>
+                              </>
+                            ) : '—'}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">{getPrimaryServiceLabel(b)}</td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words">{b.master.firstName} {b.master.lastName}</td>
+                          <td className="px-3 py-2 text-xs text-gray-900">{getTotalDuration(b)} мин</td>
+                          <td className="px-3 py-2 text-xs text-gray-900">{b.totalPrice} ₽</td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">{b.client.firstName} {b.client.lastName}</td>
+                          <td className="px-3 py-2 text-xs">
+                            <span className="inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full" style={getStatusChipStyle(b.status)}>
+                              {statusNames[b.status as keyof typeof statusNames] || b.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-right text-xs font-medium w-16" onClick={(e) => e.stopPropagation()}>
+                            {(isCancellable || isFinished) ? (
                               <button
-                                onClick={() => toggleExpanded(booking.id)}
-                                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+                                onClick={() => cancelBooking(b.id)}
+                                disabled={cancellingBooking === b.id}
+                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={isFinished ? 'Отметить как «Не пришёл»' : 'Отменить запись'}
                               >
-                                {isExpanded ? (
-                                  <ChevronUp className="w-5 h-5" />
-                                ) : (
-                                  <ChevronDown className="w-5 h-5" />
-                                )}
-                            <div>
-                              <div className="flex items-center space-x-2">
-                                <h3 className="text-lg font-medium text-gray-900">
-                                  #{booking.bookingNumber}
-                                </h3>
-                                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${statusColors[booking.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
-                                  {statusNames[booking.status as keyof typeof statusNames] || booking.status}
-                                </span>
-                              </div>
-                              <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                                <div className="flex items-center">
-                                  <Calendar className="w-4 h-4 mr-1" />
-                                  {startTime.date}
-                                </div>
-                                <div className="flex items-center">
-                                  <Clock className="w-4 h-4 mr-1" />
-                                  {startTime.time} - {endTime.time}
-                                </div>
-                              </div>
-                                </div>
+                                {cancellingBooking === b.id ? (<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 inline-block"></div>) : (<X className="w-4 h-4" />)}
                               </button>
-                            </div>
-                          </div>
-
-                          {/* Действия */}
-                          <div className="ml-6 flex flex-col space-y-2">
-                            {/* Отладочная информация */}
-                            <div className="text-xs text-gray-500 mb-2">
-                              Статус: {booking.status} | 
-                              Можно редактировать: {canEdit ? 'Да' : 'Нет'} | 
-                              Можно отменить: {canCancel ? 'Да' : 'Нет'}
-                            </div>
-                            
-                            {canEdit && (
-                              <button
-                                onClick={() => isEditing ? saveChanges(booking.id) : startEditing(booking)}
-                                className="inline-flex items-center px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50"
-                              >
-                                {isEditing ? (
-                                  <>
-                                    <Save className="w-4 h-4 mr-2" />
-                                    Сохранить
-                                  </>
-                                ) : (
-                                  <>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Редактировать
-                                  </>
-                                )}
-                              </button>
+                            ) : (
+                              <span className="text-gray-400">—</span>
                             )}
-                            {canCancel && (
-                              <button
-                                onClick={() => cancelBooking(booking.id)}
-                                disabled={cancellingBooking === booking.id}
-                                className="inline-flex items-center px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                {cancellingBooking === booking.id ? (
-                                  <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
-                                    Отменяем...
-                                  </>
-                                ) : (
-                                  <>
-                                    <X className="w-4 h-4 mr-2" />
-                                    Отменить
-                                  </>
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Раскрываемая информация */}
+                          </td>
+                        </tr>
                         {isExpanded && (
-                          <div className="mt-6 space-y-6">
-                            {/* Форма редактирования */}
-                            {isEditing && (
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <h4 className="text-sm font-medium text-blue-900 mb-4">Редактирование брони</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Время начала
-                                    </label>
-                                    <input
-                                      type="datetime-local"
-                                      value={editForm.startTime || ''}
-                                      onChange={(e) => updateEditForm(booking.id, 'startTime', e.target.value)}
-                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Мастер
-                                    </label>
-                                    <select
-                                      value={editForm.masterId || ''}
-                                      onChange={(e) => updateEditForm(booking.id, 'masterId', e.target.value)}
-                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                    >
-                                      {masters.map(master => (
-                                        <option key={master.id} value={master.id}>
-                                          {master.firstName} {master.lastName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Длительность (мин)
-                                    </label>
-                                    <input
-                                      type="number"
-                                      min={15}
-                                      step={15}
-                                      value={editForm.duration || 0}
-                                      onChange={(e) => updateEditForm(booking.id, 'duration', parseInt(e.target.value) || 0)}
-                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                    />
-                                    {overlaps[booking.id] && (
-                                      <p className="mt-1 text-xs text-orange-600">
-                                        Внимание: новая длительность пересекается с другой записью. Сохранение возможно, но учтите конфликт.
-                                      </p>
-                                    )}
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Общая цена (₽)
-                                    </label>
-                                    <input
-                                      type="number"
-                                      value={editForm.totalPrice || 0}
-                                      onChange={(e) => updateEditForm(booking.id, 'totalPrice', parseFloat(e.target.value))}
-                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                      min="0"
-                                      step="100"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                      Комментарий
-                                    </label>
-                                    <textarea
-                                      value={editForm.notes || ''}
-                                      onChange={(e) => updateEditForm(booking.id, 'notes', e.target.value)}
-                                      rows={2}
-                                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                                      placeholder="Причина изменения..."
-                                    />
-                                  </div>
-                                </div>
-                                <div className="mt-4 flex justify-end space-x-2">
+                          <tr>
+                            <td colSpan={9} className="px-3 py-3 bg-gray-50">
+                              <div className="flex justify-end space-x-2 mb-4">
+                                {(b.status !== 'COMPLETED' && b.status !== 'CANCELLED_BY_CLIENT' && b.status !== 'CANCELLED_BY_SALON') && (
                                   <button
-                                    onClick={() => cancelEditing(booking.id)}
+                                    onClick={() => isEditing ? saveChanges(b.id) : startEditing(b)}
+                                    className="inline-flex items-center px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-white hover:bg-blue-50"
+                                  >
+                                    {isEditing ? (
+                                      <>
+                                        <Save className="w-4 h-4 mr-2" />
+                                        Сохранить
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Edit className="w-4 h-4 mr-2" />
+                                        Редактировать
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                                {isEditing && (
+                                  <button
+                                    onClick={() => cancelEditing(b.id)}
                                     className="px-3 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
                                   >
                                     Отмена
                                   </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Информация о клиенте и услугах */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Клиент */}
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-900 mb-3">Клиент</h4>
-                                <div className="space-y-2 text-sm text-gray-600">
-                                <div className="flex items-center">
-                                  <User className="w-4 h-4 mr-2" />
-                                  {booking.client.firstName} {booking.client.lastName}
-                                </div>
-                                <div className="flex items-center">
-                                  <Mail className="w-4 h-4 mr-2" />
-                                  {booking.client.email}
-                                </div>
-                                {booking.client.phone && (
-                                  <div className="flex items-center">
-                                    <Phone className="w-4 h-4 mr-2" />
-                                    {booking.client.phone}
-                                  </div>
-                                )}
-                                {booking.client.telegram && (
-                                  <div className="flex items-center">
-                                    <MessageCircle className="w-4 h-4 mr-2" />
-                                    {booking.client.telegram}
-                                  </div>
                                 )}
                               </div>
-                            </div>
 
-                            {/* Услуги и мастер */}
-                            <div>
-                                <h4 className="text-sm font-medium text-gray-900 mb-3">Услуги</h4>
-                                <div className="space-y-2 text-sm text-gray-600">
-                                {booking.services.map((service, index) => (
-                                    <div key={index} className="flex justify-between">
-                                      <span>{service.name} ({service.duration} мин)</span>
-                                      <span className="font-medium">{service.price} ₽</span>
+                              {isEditing ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Время начала</label>
+                                    <input type="datetime-local" value={editForm.startTime || ''} onChange={(e) => updateEditForm(b.id, 'startTime', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
                                   </div>
-                                ))}
-                                  <div className="pt-2 border-t border-gray-200">
-                                    <div className="flex justify-between font-medium">
-                                      <span>Мастер:</span>
-                                      <span>{booking.master.firstName} {booking.master.lastName}</span>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
+                                    <select value={editForm.masterId || ''} onChange={(e) => updateEditForm(b.id, 'masterId', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                                      {masters.map(master => (<option key={master.id} value={master.id}>{master.firstName} {master.lastName}</option>))}
+                                    </select>
                                   </div>
-                                    <div className="flex justify-between font-medium text-lg text-blue-600">
-                                      <span>Итого:</span>
-                                      <span>{booking.totalPrice} ₽</span>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Длительность (мин)</label>
+                                    <input type="number" min={15} step={15} value={editForm.duration || 0} onChange={(e) => updateEditForm(b.id, 'duration', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                    {overlaps[b.id] && (<p className="mt-1 text-xs text-orange-600">Внимание: новая длительность пересекается с другой записью.</p>)}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Общая цена (₽)</label>
+                                    <input type="number" min={0} step={100} value={editForm.totalPrice ?? 0} onChange={(e) => updateEditForm(b.id, 'totalPrice', Number(e.target.value) || 0)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                                  </div>
+                                  <div className="md:col-span-3">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Комментарий</label>
+                                    <textarea value={editForm.notes || ''} onChange={(e) => updateEditForm(b.id, 'notes', e.target.value)} rows={2} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Причина изменения..." />
                                   </div>
                                 </div>
-                              </div>
-                            </div>
-                          </div>
-
-                            {/* Комментарий */}
-                          {booking.notes && (
-                              <div>
-                                <h4 className="text-sm font-medium text-gray-900 mb-2">Комментарий</h4>
-                                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-                                  {booking.notes}
-                                </p>
-                            </div>
-                          )}
-                        </div>
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-900 mb-3">Клиент</h4>
+                                    <div className="space-y-2 text-sm text-gray-600">
+                                      <div className="flex items-center"><User className="w-4 h-4 mr-2" />{b.client.firstName} {b.client.lastName}</div>
+                                      <div className="flex items-center"><Mail className="w-4 h-4 mr-2" />{b.client.email}</div>
+                                      {b.client.phone && (<div className="flex items-center"><Phone className="w-4 h-4 mr-2" />{b.client.phone}</div>)}
+                                      {b.client.telegram && (<div className="flex items-center"><MessageCircle className="w-4 h-4 mr-2" />{b.client.telegram}</div>)}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-medium text-gray-900 mb-3">Услуги</h4>
+                                    <div className="space-y-2 text-sm text-gray-600">
+                                      {b.services.map((s, i) => (<div key={i} className="flex justify-between"><span>{s.name} ({s.duration} мин)</span><span className="font-medium">{s.price} ₽</span></div>))}
+                                      <div className="pt-2 border-t border-gray-200">
+                                        <div className="flex justify-between font-medium"><span>Мастер:</span><span>{b.master.firstName} {b.master.lastName}</span></div>
+                                        <div className="flex justify-between font-medium text-lg text-blue-600"><span>Итого:</span><span>{b.totalPrice} ₽</span></div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {b.notes && (
+                                    <div className="md:col-span-2">
+                                      <h4 className="text-sm font-medium text-gray-900 mb-2">Комментарий</h4>
+                                      <p className="text-sm text-gray-600 bg-gray-100 p-3 rounded-md">{b.notes}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
                         )}
-                    </div>
-                  )
-                })}
-              </div>
+                      </React.Fragment>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

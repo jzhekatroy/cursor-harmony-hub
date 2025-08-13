@@ -307,6 +307,12 @@ export default function ServicesPage() {
 
   // Услуги без группы
   const ungroupedServices = filteredServices.filter(service => !service.groupId)
+  
+  // Группы с количеством услуг (в текущем фильтре архива)
+  const groupsWithCounts = serviceGroups.map(group => ({
+    ...group,
+    servicesCount: filteredServices.filter(service => service.groupId === group.id).length
+  }))
 
   if (isLoading) {
     return (
@@ -531,6 +537,64 @@ export default function ServicesPage() {
           </div>
         </div>
       )}
+
+      {/* Управление списком групп (всегда видно) */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-gray-900">Группы услуг</h3>
+          <div className="text-xs text-gray-500">Чтобы изменить порядок — откройте группу (Редактировать) и поменяйте поле «Порядок отображения». Чтобы добавить услугу в группу — отредактируйте услугу и выберите поле «Группа».</div>
+        </div>
+        <div className="p-6">
+          {groupsWithCounts.length === 0 ? (
+            <div className="text-sm text-gray-500">Группы ещё не созданы. Нажмите «Добавить группу» выше.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="py-2 pr-4">Порядок</th>
+                    <th className="py-2 pr-4">Название</th>
+                    <th className="py-2 pr-4">Услуг</th>
+                    <th className="py-2 pr-4 text-right">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="align-top">
+                  {groupsWithCounts
+                    .slice()
+                    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+                    .map(group => (
+                    <tr key={group.id} className="border-t border-gray-100">
+                      <td className="py-2 pr-4 text-gray-700">{group.order}</td>
+                      <td className="py-2 pr-4">
+                        <div className="text-gray-900">{group.name}</div>
+                      </td>
+                      <td className="py-2 pr-4 text-gray-700">{group.servicesCount}</td>
+                      <td className="py-2 pr-0">
+                        <div className="flex items-center justify-end space-x-2">
+                          <button
+                            onClick={() => startEditingGroup(group)}
+                            className="p-2 text-gray-400 hover:text-blue-600"
+                            title="Редактировать группу"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteGroup(group.id)}
+                            className="p-2 text-gray-400 hover:text-red-600"
+                            title="Удалить группу"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Список групп и услуг */}
       <div className="space-y-6">

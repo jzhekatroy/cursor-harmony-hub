@@ -85,7 +85,7 @@ export default function AdminLayout({
 
   const navigation = [
     { name: 'Календарь', href: '/admin', icon: Calendar },
-    { name: 'Бронирования', href: '/admin/bookings', icon: BookOpen },
+    { name: 'Сводка по бронированиям', href: '/admin/bookings', icon: BookOpen },
     { name: 'Клиенты', href: '/admin/clients', icon: Users },
     { name: 'Услуги', href: '/admin/services', icon: Scissors },
     { name: 'Мастера', href: '/admin/masters', icon: User },

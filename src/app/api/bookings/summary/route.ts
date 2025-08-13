@@ -41,6 +41,17 @@ export async function GET(request: NextRequest) {
 
     const teamId = user.teamId
 
+    // Автообновление: все прошедшие подтвержденные брони переводим в COMPLETED
+    // Выполняем перед расчетом статистики, в рамках команды
+    await prisma.booking.updateMany({
+      where: {
+        teamId,
+        status: 'CONFIRMED',
+        endTime: { lt: new Date() }
+      },
+      data: { status: 'COMPLETED' }
+    })
+
     const masterIds = masterIdsParam
       .split(',')
       .map(s => s.trim())

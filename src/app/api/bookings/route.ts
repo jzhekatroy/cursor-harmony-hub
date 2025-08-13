@@ -281,6 +281,16 @@ export async function GET(request: NextRequest) {
 
     let whereClause: any = { teamId }
 
+    // Автообновление: при каждом запросе списка, закрываем просроченные CONFIRMED как COMPLETED
+    await prisma.booking.updateMany({
+      where: {
+        teamId,
+        status: 'CONFIRMED',
+        endTime: { lt: new Date() }
+      },
+      data: { status: 'COMPLETED' }
+    })
+
     if (masterId) {
       whereClause.masterId = masterId
     }

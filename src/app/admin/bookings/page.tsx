@@ -107,6 +107,11 @@ export default function BookingsPage() {
   const [editForms, setEditForms] = useState<Record<string, any>>({})
   const [overlaps, setOverlaps] = useState<Record<string, boolean>>({})
 
+  // Данные для мини‑графиков (грузим всегда с сервера, не зависят от списка)
+  const [dailySeries, setDailySeries] = useState<{ daysIso: string[]; labels: string[]; counts: number[]; revenueSalon: number[]; revenueLost: number[] }>({ daysIso: [], labels: [], counts: [], revenueSalon: [], revenueLost: [] })
+  const [dailyLoading, setDailyLoading] = useState<boolean>(false)
+  const [graphGroupBy, setGraphGroupBy] = useState<'day' | 'week' | 'month'>('day')
+
   // На странице бронирований оставляем только список (календарь убран)
 
   useEffect(() => {
@@ -137,6 +142,82 @@ export default function BookingsPage() {
     }
     fetchSummary()
   }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses])
+
+  // Загружаем дневные ряды для графиков (всегда, без кнопки загрузки списка)
+  useEffect(() => {
+    const fetchDaily = async () => {
+      try {
+        setDailyLoading(true)
+        const { startUtc, endUtc } = getCurrentRangeUtc()
+        const token = localStorage.getItem('token')
+        if (!token) return
+        const masterIds = selectedMasterIds.join(',')
+        const serviceIds = selectedServiceIds.join(',')
+        const statuses = selectedStatuses.join(',')
+        const url = `/api/bookings/summary/daily?from=${encodeURIComponent(startUtc.toISOString())}&to=${encodeURIComponent(endUtc.toISOString())}${masterIds ? `&masterIds=${encodeURIComponent(masterIds)}` : ''}${serviceIds ? `&serviceIds=${encodeURIComponent(serviceIds)}` : ''}${statuses ? `&status=${encodeURIComponent(statuses)}` : ''}`
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        if (res.ok) {
+          const data = await res.json()
+          const tz = salonTimezone || 'Europe/Moscow'
+          const daysIso: string[] = (data.daily || []).map((d: any) => d.day)
+          const labels: string[] = daysIso.map((iso: string) => new Date(iso).toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' }))
+          const counts: number[] = (data.daily || []).map((d: any) => Number(d.count) || 0)
+          const revenueSalon: number[] = (data.daily || []).map((d: any) => Number(d.revenueSalon) || 0)
+          const revenueLost: number[] = (data.daily || []).map((d: any) => Number(d.revenueLost) || 0)
+          setDailySeries({ daysIso, labels, counts, revenueSalon, revenueLost })
+        }
+      } finally {
+        setDailyLoading(false)
+      }
+    }
+    fetchDaily()
+  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses])
+
+  // Агрегация рядов для графиков по дням/неделям/месяцам
+  const aggregateGraphSeries = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    if (graphGroupBy === 'day') {
+      return dailySeries
+    }
+    // Строим словари по ключам
+    const map: Record<string, { label: string; count: number; revenueSalon: number; revenueLost: number }> = {}
+    const addToKey = (key: string, label: string, i: number) => {
+      if (!map[key]) map[key] = { label, count: 0, revenueSalon: 0, revenueLost: 0 }
+      map[key].count += dailySeries.counts[i] || 0
+      map[key].revenueSalon += dailySeries.revenueSalon[i] || 0
+      map[key].revenueLost += dailySeries.revenueLost[i] || 0
+    }
+    dailySeries.daysIso.forEach((iso, i) => {
+      const d = new Date(iso)
+      const y = Number(d.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+      const m = Number(d.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+      const day = Number(d.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+      if (graphGroupBy === 'week') {
+        const noon = createDateInSalonTimezone(y, m, day, 12, 0, tz)
+        const weekday = noon.getUTCDay()
+        const offsetToMonday = (weekday + 6) % 7
+        const mondayNoonUtc = new Date(noon.getTime() - offsetToMonday * 24 * 60 * 60 * 1000)
+        const my = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+        const mm = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+        const md = Number(mondayNoonUtc.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+        const key = `${my}-${String(mm).padStart(2, '0')}-${String(md).padStart(2, '0')}`
+        const label = new Date(createDateInSalonTimezone(my, mm, md, 12, 0, tz)).toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' })
+        addToKey(key, label, i)
+      } else {
+        // month
+        const key = `${y}-${String(m).padStart(2, '0')}`
+        const dateForLabel = createDateInSalonTimezone(y, m, 1, 12, 0, tz)
+        const label = dateForLabel.toLocaleDateString('ru-RU', { timeZone: tz, month: 'short', year: '2-digit' })
+        addToKey(key, label, i)
+      }
+    })
+    const keys = Object.keys(map).sort()
+    const labels = keys.map(k => map[k].label)
+    const counts = keys.map(k => map[k].count)
+    const revenueSalon = keys.map(k => Math.round(map[k].revenueSalon))
+    const revenueLost = keys.map(k => Math.round(map[k].revenueLost))
+    return { daysIso: keys, labels, counts, revenueSalon, revenueLost }
+  }
 
   // Загрузка данных
   const loadStaticData = async () => {
@@ -482,6 +563,45 @@ export default function BookingsPage() {
     return `За период ${startLabel} — ${endLabel} у вас:`
   }
 
+  // Мини‑графики: подготовка дневных рядов в TZ салона
+  const getDailyMetrics = () => {
+    const tz = salonTimezone || 'Europe/Moscow'
+    const { startUtc, endUtc } = getCurrentRangeUtc()
+    const days: Date[] = []
+    for (let t = startUtc.getTime(); t < endUtc.getTime(); t += 24 * 60 * 60 * 1000) {
+      days.push(new Date(t))
+    }
+    const dayKeys = days.map(d => new Date(d).toLocaleDateString('ru-RU', { timeZone: tz }))
+    const mapAll: Record<string, { count: number, amountCompleted: number, amountPlanned: number, amountLost: number }> = {}
+    dayKeys.forEach(k => { mapAll[k] = { count: 0, amountCompleted: 0, amountPlanned: 0, amountLost: 0 } })
+    filteredBookings.forEach(b => {
+      const key = new Date(b.startTime).toLocaleDateString('ru-RU', { timeZone: tz })
+      if (!mapAll[key]) return
+      mapAll[key].count += 1
+      const price = Number(b.totalPrice || 0)
+      if (b.status === 'COMPLETED') mapAll[key].amountCompleted += price
+      if (b.status === 'NEW' || b.status === 'CONFIRMED') mapAll[key].amountPlanned += price
+      if (b.status === 'NO_SHOW' || b.status === 'CANCELLED_BY_CLIENT' || b.status === 'CANCELLED_BY_SALON') mapAll[key].amountLost += price
+    })
+    const counts = dayKeys.map(k => mapAll[k]?.count || 0)
+    const revenueSalon = dayKeys.map(k => (mapAll[k]?.amountCompleted || 0) + (mapAll[k]?.amountPlanned || 0))
+    const revenueLost = dayKeys.map(k => mapAll[k]?.amountLost || 0)
+    return { labels: dayKeys, counts, revenueSalon, revenueLost }
+  }
+
+  const buildSparklinePath = (values: number[], width = 240, height = 40, maxValue?: number) => {
+    if (values.length === 0) return ''
+    const max = Math.max(1, maxValue ?? Math.max(...values))
+    const stepX = values.length > 1 ? width / (values.length - 1) : width
+    const points = values.map((v, i) => {
+      const x = i * stepX
+      const y = height - (v / max) * height
+      return [x, y]
+    })
+    const d = points.map((p, i) => (i === 0 ? `M ${p[0]} ${p[1]}` : `L ${p[0]} ${p[1]}`)).join(' ')
+    return d
+  }
+
   // Фильтрация и сортировка
   const displayedServices = includeArchivedServices ? services : services.filter(s => !s.isArchived)
   const displayedMasters = includeDismissedMasters ? masters : masters.filter(m => m.isActive !== false)
@@ -594,7 +714,7 @@ export default function BookingsPage() {
           <h2 className="mt-4 text-lg font-medium text-gray-900">Ошибка загрузки</h2>
           <p className="mt-2 text-gray-600">{error}</p>
                   <button
-            onClick={loadBookings}
+                    onClick={loadBookings}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
                     Попробовать снова
@@ -772,6 +892,104 @@ export default function BookingsPage() {
 
         {/* Сводная информация (построчно) */}
         <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          {/* Мини‑графики: всегда показываем, две панели */}
+          {(() => {
+            const { labels, counts, revenueSalon, revenueLost } = aggregateGraphSeries()
+            const width = 240
+            const height = 40
+            const stepX = (n: number) => (n > 1 ? width / (n - 1) : width)
+
+            // Количество: тики по Y
+            const maxCount = Math.max(1, ...counts)
+            const countTicks = [0, Math.round(maxCount / 2), maxCount]
+
+            // Выручка: тики по Y
+            const maxRevenue = Math.max(1, ...revenueSalon, ...revenueLost)
+            const revenueTicks = [0, Math.round(maxRevenue / 2), maxRevenue]
+
+            // Метки по оси X (дни): начало, середина, конец
+            const xIdxs = (() => {
+              const n = labels.length
+              if (n === 0) return [] as number[]
+              if (n <= 2) return [0, n - 1]
+              const mid = Math.floor((n - 1) / 2)
+              return [0, mid, n - 1]
+            })()
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div className="mb-2 md:col-span-2">
+                  <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+                    <button onClick={() => setGraphGroupBy('day')} className={`px-2 py-1 text-xs ${graphGroupBy === 'day' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Дни</button>
+                    <button onClick={() => setGraphGroupBy('week')} className={`px-2 py-1 text-xs ${graphGroupBy === 'week' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Недели</button>
+                    <button onClick={() => setGraphGroupBy('month')} className={`px-2 py-1 text-xs ${graphGroupBy === 'month' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Месяцы</button>
+                  </div>
+                </div>
+                {/* График 1: количество */}
+                <div className="border border-gray-200 rounded p-3">
+                  <div className="text-xs text-gray-600 mb-2">Количество бронирований по дням</div>
+                  <div className="flex items-start gap-2">
+                    {/* Ось Y с подписями вне графика */}
+                    <div>
+                      <div className="text-[10px] text-gray-400 mb-1">шт</div>
+                      <div className="flex flex-col justify-between text-[10px] text-gray-400" style={{ height: `${height}px` }}>
+                        <div>{maxCount}</div>
+                        <div>{Math.round(maxCount / 2)}</div>
+                        <div>0</div>
+                      </div>
+                    </div>
+                    {/* Сам график */}
+                    <div className="flex-1">
+                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                        <path d={buildSparklinePath(counts, width, height)} stroke="#2563eb" strokeWidth="2" fill="none" />
+                      </svg>
+                      {/* Ось X с метками вне графика */}
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                        <div className="flex-1 flex justify-between">
+                          {xIdxs.map((idx, i) => (
+                            <div key={i} className="text-[10px]">{labels[idx]}</div>
+                          ))}
+                        </div>
+                        <div className="ml-2">дни</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* График 2: выручка (зелёная) и упущенная (красная) */}
+                <div className="border border-gray-200 rounded p-3">
+                  <div className="text-xs text-gray-600 mb-2">Выручка (зелёная) и упущенная (красная) по дням</div>
+                  <div className="flex items-start gap-2">
+                    {/* Ось Y с подписями вне графика */}
+                    <div>
+                      <div className="text-[10px] text-gray-400 mb-1">₽</div>
+                      <div className="flex flex-col justify-between text-[10px] text-gray-400" style={{ height: `${height}px` }}>
+                        <div>{maxRevenue.toLocaleString('ru-RU')}</div>
+                        <div>{Math.round(maxRevenue / 2).toLocaleString('ru-RU')}</div>
+                        <div>0</div>
+                      </div>
+                    </div>
+                    {/* Сам график */}
+                    <div className="flex-1">
+                      <svg width="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+                        <path d={buildSparklinePath(revenueSalon, width, height, maxRevenue)} stroke="#16a34a" strokeWidth="2" fill="none" />
+                        <path d={buildSparklinePath(revenueLost, width, height, maxRevenue)} stroke="#ef4444" strokeWidth="2" fill="none" />
+                      </svg>
+                      {/* Ось X с метками вне графика */}
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                        <div className="flex-1 flex justify-between">
+                          {xIdxs.map((idx, i) => (
+                            <div key={i} className="text-[10px]">{labels[idx]}</div>
+                          ))}
+                        </div>
+                        <div className="ml-2">дни</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-baseline mb-3">
             <div className="text-sm font-medium text-gray-900">{getSummaryTitle()}</div>
             <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">на сумму</div>
@@ -852,17 +1070,18 @@ export default function BookingsPage() {
             </div>
           ) : (
             <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-x-hidden">
+              <div className="max-h-[60vh] overflow-y-auto">
               <table className="w-full table-fixed divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Дата начала услуги</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Дата создания брони</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Услуга</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Мастер</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Длительность</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Цена</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Имя клиента</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[14%]">Дата начала услуги</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[14%]">Дата создания брони</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[18%]">Услуга</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[14%]">Мастер</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[10%]">Длительность</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[10%]">Цена</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[16%]">Имя клиента</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wider w-[12%]">Статус</th>
                     <th className="px-3 py-2 text-right text-[11px] font-medium text-gray-500 uppercase tracking-wider w-16">Действие</th>
                   </tr>
                 </thead>
@@ -899,7 +1118,7 @@ export default function BookingsPage() {
                           <td className="px-3 py-2 text-xs">
                             <span className="inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full" style={getStatusChipStyle(b.status)}>
                               {statusNames[b.status as keyof typeof statusNames] || b.status}
-                            </span>
+                                </span>
                           </td>
                           <td className="px-3 py-2 text-right text-xs font-medium w-16" onClick={(e) => e.stopPropagation()}>
                             {(isCancellable || isFinished) ? (
@@ -959,8 +1178,8 @@ export default function BookingsPage() {
                                     <select value={editForm.masterId || ''} onChange={(e) => updateEditForm(b.id, 'masterId', e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
                                       {masters.map(master => (<option key={master.id} value={master.id}>{master.firstName} {master.lastName}</option>))}
                                     </select>
-                                  </div>
-                                  <div>
+                            </div>
+                            <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Длительность (мин)</label>
                                     <input type="number" min={15} step={15} value={editForm.duration || 0} onChange={(e) => updateEditForm(b.id, 'duration', parseInt(e.target.value) || 0)} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
                                     {overlaps[b.id] && (<p className="mt-1 text-xs text-orange-600">Внимание: новая длительность пересекается с другой записью.</p>)}
@@ -992,16 +1211,16 @@ export default function BookingsPage() {
                                       <div className="pt-2 border-t border-gray-200">
                                         <div className="flex justify-between font-medium"><span>Мастер:</span><span>{b.master.firstName} {b.master.lastName}</span></div>
                                         <div className="flex justify-between font-medium text-lg text-blue-600"><span>Итого:</span><span>{b.totalPrice} ₽</span></div>
-                                      </div>
-                                    </div>
-                                  </div>
+                              </div>
+                            </div>
+                          </div>
                                   {b.notes && (
                                     <div className="md:col-span-2">
                                       <h4 className="text-sm font-medium text-gray-900 mb-2">Комментарий</h4>
                                       <p className="text-sm text-gray-600 bg-gray-100 p-3 rounded-md">{b.notes}</p>
-                                    </div>
-                                  )}
-                                </div>
+                            </div>
+                          )}
+                        </div>
                               )}
                             </td>
                           </tr>
@@ -1011,6 +1230,7 @@ export default function BookingsPage() {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>

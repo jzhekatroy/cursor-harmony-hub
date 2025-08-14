@@ -323,6 +323,13 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                     }
                     const entry = typeMap[type] || { label: type, chip: 'bg-gray-100 text-gray-700' }
                     const meta = ev.metadata || {}
+                    const sourceMap: Record<string, string> = {
+                      public: 'Публичная страница',
+                      admin: 'Админка',
+                      webapp: 'Telegram WebApp',
+                      system: 'Система'
+                    }
+                    const sourceLabel = sourceMap[(ev.source as string) || ''] || ev.source || '—'
                     return (
                       <div key={ev.id} className="border rounded p-3">
                         <div className="flex items-center justify-between text-sm text-gray-600">
@@ -330,9 +337,12 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                           <span className={`inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full ${entry.chip}`}>{entry.label}</span>
                         </div>
                         <div className="mt-2 text-sm text-gray-800">
-                          {type === 'page_open' && (
-                            <div>Источник: {ev.source}</div>
-                          )}
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-700">
+                            <div>Источник: <span className="text-gray-900">{sourceLabel}</span></div>
+                            {meta.timezone && (
+                              <div>Часовой пояс: <span className="text-gray-900">{meta.timezone}</span></div>
+                            )}
+                          </div>
                           {type.startsWith('booking_') && (
                             <div className="space-y-1">
                               {meta.bookingId && (
@@ -343,6 +353,9 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                               )}
                               {Array.isArray(meta.serviceIds) && meta.serviceIds.length > 0 && (
                                 <div>Услуги: <span className="font-mono text-xs">{meta.serviceIds.join(', ')}</span></div>
+                              )}
+                              {type === 'booking_cancelled' && meta.cancelledBy && (
+                                <div>Отменено: <span className="text-gray-900">{meta.cancelledBy === 'salon' ? 'салоном' : meta.cancelledBy === 'client' ? 'клиентом' : meta.cancelledBy}</span></div>
                               )}
                             </div>
                           )}

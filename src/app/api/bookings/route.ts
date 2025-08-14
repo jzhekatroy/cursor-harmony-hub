@@ -349,14 +349,30 @@ export async function GET(request: NextRequest) {
     let whereClause: any = { teamId }
 
     // Автообновление: при каждом запросе списка, закрываем просроченные CONFIRMED как COMPLETED
-    await prisma.booking.updateMany({
-      where: {
-        teamId,
-        status: 'CONFIRMED',
-        endTime: { lt: new Date() }
-      },
-      data: { status: 'COMPLETED' }
+    // Перевод просроченных CONFIRMED в COMPLETED + лог события клиента
+    const outdated = await prisma.booking.findMany({
+      where: { teamId, status: 'CONFIRMED', endTime: { lt: new Date() } },
+      select: { id: true, clientId: true }
     })
+    if (outdated.length > 0) {
+      await prisma.$transaction(async (tx) => {
+        await tx.booking.updateMany({
+          where: { teamId, status: 'CONFIRMED', endTime: { lt: new Date() } },
+          data: { status: 'COMPLETED' }
+        })
+        for (const b of outdated) {
+          await (tx as any).clientEvent.create({
+            data: {
+              teamId,
+              clientId: b.clientId,
+              source: 'system',
+              type: 'booking_completed',
+              metadata: { bookingId: b.id },
+            }
+          })
+        }
+      })
+    }
 
     if (masterId) {
       whereClause.masterId = masterId

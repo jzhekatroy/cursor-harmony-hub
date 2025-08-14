@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { ToastProvider } from '@/components/Toast'
 import { 
   Calendar, 
   Users, 
@@ -105,6 +106,7 @@ export default function AdminLayout({
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-gray-50">
       {/* Top header with horizontal navigation */}
       <div className="bg-white shadow-sm border-b border-gray-200">
@@ -226,5 +228,6 @@ export default function AdminLayout({
         {children}
       </main>
     </div>
+    </ToastProvider>
   )
 }

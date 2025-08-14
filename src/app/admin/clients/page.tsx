@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useToast } from '@/components/Toast'
 import { Search, Users } from 'lucide-react'
 
 interface ClientRow {
@@ -18,6 +19,7 @@ interface ClientRow {
 
 export default function ClientsPage() {
   const searchParams = useSearchParams()
+  const toast = useToast()
   const [items, setItems] = useState<ClientRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -51,7 +53,9 @@ export default function ClientsPage() {
       setItems(data.clients || [])
       setTotal(data.total || 0)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
+      const msg = e instanceof Error ? e.message : 'Неизвестная ошибка'
+      setError(msg)
+      toast.error(`Ошибка загрузки клиентов: ${msg}`)
     } finally {
       setLoading(false)
     }
@@ -124,7 +128,7 @@ export default function ClientsPage() {
       <div className="flex items-center gap-2 mb-4">
         <Users className="w-5 h-5 text-gray-600" />
         <h1 className="text-xl font-semibold">Клиенты</h1>
-      </div>
+          </div>
 
       <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
         <div className="relative flex-1">
@@ -198,7 +202,7 @@ export default function ClientsPage() {
             )}
           </tbody>
         </table>
-      </div>
+                  </div>
 
       {/* Пагинация */}
       <div className="flex items-center justify-between mt-4">
@@ -210,8 +214,8 @@ export default function ClientsPage() {
           <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))} className="ml-2 border rounded px-2 py-1.5">
             {[10, 20, 30, 50].map(s => <option key={s} value={s}>{s}/стр</option>)}
           </select>
-        </div>
-      </div>
+              </div>
+            </div>
 
       {/* Боковая карточка клиента */}
       {selectedId && <ClientDrawer id={selectedId} onClose={() => setSelectedId(null)} />}
@@ -226,6 +230,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const toast = useToast()
 
   const loadClient = async () => {
     try {
@@ -309,11 +314,14 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                           })
                         })
                         const json = await res.json()
-                        if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
+        if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
                         await loadClient()
-                        setSuccess('Данные клиента обновлены')
+        setSuccess('Данные клиента обновлены')
+        toast.success('Данные клиента сохранены')
                       } catch (err) {
-                        setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
+        const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
+        setError(msg)
+        toast.error(`Ошибка сохранения: ${msg}`)
                       } finally {
                         setLoading(false)
                       }
@@ -326,23 +334,23 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Фамилия</label>
                       <input value={data.lastName || ''} onChange={(e) => setData((d: any) => ({...d, lastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                    </div>
+                  </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Телефон</label>
                       <input value={data.phone || ''} onChange={(e) => setData((d: any) => ({...d, phone: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                    </div>
+                  </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Email</label>
                       <input type="email" value={data.email || ''} onChange={(e) => setData((d: any) => ({...d, email: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" required />
-                    </div>
+                </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Telegram</label>
                       <input value={data.telegram || ''} onChange={(e) => setData((d: any) => ({...d, telegram: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                    </div>
+              </div>
                     <div>
                       <label className="block text-sm text-gray-600 mb-1">Адрес</label>
                       <input value={data.address || ''} onChange={(e) => setData((d: any) => ({...d, address: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                    </div>
+            </div>
                     <div className="flex items-center gap-2 pt-2">
                       <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={loading}>Сохранить</button>
                       <div className="text-sm text-gray-500">Создан: {new Date(data.createdAt).toLocaleString('ru-RU')}</div>
@@ -359,12 +367,12 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                         <div className="flex items-center justify-between">
                           <div className="font-medium">#{b.bookingNumber}</div>
                           <div className="text-sm text-gray-600">{new Date(b.startTime).toLocaleString('ru-RU')}</div>
-                        </div>
+                  </div>
                         <div className="text-sm text-gray-700">Мастер: {b.master.firstName} {b.master.lastName}</div>
                         <div className="text-sm text-gray-700">Статус: {b.status}</div>
                         <div className="text-sm text-gray-700">Сумма: {Number(b.totalPrice).toLocaleString('ru-RU')} ₽</div>
                         <div className="text-sm text-gray-500">Услуги: {b.services.map((s: any) => s.name).join(', ')}</div>
-                      </div>
+                  </div>
                     ))
                   ) : (
                     <div className="text-gray-500">Пока нет данных</div>
@@ -422,8 +430,8 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                               )}
                             </div>
                           )}
-                        </div>
-                      </div>
+              </div>
+            </div>
                     )
                   })}
                   <div className="flex items-center justify-between">

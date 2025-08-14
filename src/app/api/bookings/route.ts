@@ -4,6 +4,7 @@ import { generateBookingNumber } from '@/lib/auth'
 import { BookingStatus } from '@prisma/client'
 import jwt from 'jsonwebtoken'
 import { utcToSalonTime, createDateInSalonTimezone } from '@/lib/timezone'
+import { toE164 } from '@/lib/phone'
 
 // Создание нового бронирования
 export async function POST(request: NextRequest) {
@@ -141,15 +142,18 @@ export async function POST(request: NextRequest) {
       parsedLastName = parts.slice(1).join(' ') || null
     }
 
+    // Нормализуем телефон в E.164
+    const { e164: phoneE164 } = toE164(clientData.phone || '', (team as any).countryCode || 'RU')
+
     let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)
     if (clientData.email) {
       client = await prisma.client.findFirst({
         where: { email: clientData.email, teamId: team.id }
       })
     }
-    if (!client && clientData.phone) {
+    if (!client && phoneE164) {
       client = await prisma.client.findFirst({
-        where: { phone: clientData.phone, teamId: team.id }
+        where: { phone: phoneE164, teamId: team.id }
       })
     }
 
@@ -157,7 +161,7 @@ export async function POST(request: NextRequest) {
       client = await prisma.client.create({
         data: {
           email: clientData.email,
-          phone: clientData.phone,
+          phone: phoneE164,
           telegram: clientData.telegram,
           firstName: clientData.firstName ?? parsedFirstName,
           lastName: clientData.lastName ?? parsedLastName,
@@ -165,13 +169,14 @@ export async function POST(request: NextRequest) {
           teamId: team.id
         }
       })
-    } else if ((!client.firstName || !client.lastName) && (parsedFirstName || parsedLastName)) {
+    } else if (((!client.firstName && parsedFirstName) || (!client.lastName && parsedLastName)) || (phoneE164 && client.phone !== phoneE164)) {
       // Обновляем отсутствующие ФИО, если пришло имя от клиента
       client = await prisma.client.update({
         where: { id: client.id },
         data: {
           firstName: client.firstName || parsedFirstName,
-          lastName: client.lastName || parsedLastName
+          lastName: client.lastName || parsedLastName,
+          phone: phoneE164 || client.phone
         }
       })
     }

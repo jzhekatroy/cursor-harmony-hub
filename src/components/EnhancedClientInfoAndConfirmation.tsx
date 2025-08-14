@@ -10,6 +10,7 @@ import {
   DollarSign, Check, ChevronDown, ChevronUp 
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toE164 } from '@/lib/phone'
 
 interface EnhancedClientInfoAndConfirmationProps {
   bookingData: BookingData;
@@ -83,6 +84,14 @@ export function EnhancedClientInfoAndConfirmation({
       console.log('🔍 DEBUG startTime (salon) being sent:', startTime)
       
       // Отправляем данные на сервер
+      // Нормализуем телефон в E.164 перед отправкой
+      const { e164: phoneE164, error: phoneErr } = toE164(bookingData.clientInfo.phone, 'RU')
+      if (phoneErr || !phoneE164) {
+        setErrors(prev => ({ ...prev, phone: 'Некорректный номер телефона' }))
+        setIsSubmitting(false)
+        return
+      }
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {
@@ -95,7 +104,7 @@ export function EnhancedClientInfoAndConfirmation({
           startTime: startTime,
           clientData: {
             name: bookingData.clientInfo.name,
-            phone: bookingData.clientInfo.phone,
+            phone: phoneE164,
             email: bookingData.clientInfo.email,
             notes: bookingData.clientInfo.notes,
           }

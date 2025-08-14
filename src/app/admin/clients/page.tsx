@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Search, Users } from 'lucide-react'
 
 interface ClientRow {
@@ -16,6 +17,7 @@ interface ClientRow {
 }
 
 export default function ClientsPage() {
+  const searchParams = useSearchParams()
   const [items, setItems] = useState<ClientRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -57,6 +59,13 @@ export default function ClientsPage() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize])
+
+  // Авто-открытие карточки через ?id=
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id) setSelectedId(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

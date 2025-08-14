@@ -1178,7 +1178,15 @@ export default function BookingsPage() {
                           <td className="px-3 py-2 text-xs text-gray-900 break-words">{b.master.firstName} {b.master.lastName}</td>
                           <td className="px-3 py-2 text-xs text-gray-900">{getTotalDuration(b)} мин</td>
                           <td className="px-3 py-2 text-xs text-gray-900">{b.totalPrice} ₽</td>
-                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">{b.client.firstName} {b.client.lastName}</td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">
+                            <a
+                              href={`/admin/clients?id=${encodeURIComponent((b as any).clientId || '')}`}
+                              className="text-blue-600 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {b.client.firstName} {b.client.lastName}
+                            </a>
+                          </td>
                           <td className="px-3 py-2 text-xs">
                             <span className="inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full" style={getStatusChipStyle(b.status)}>
                               {statusNames[b.status as keyof typeof statusNames] || b.status}
@@ -1262,7 +1270,11 @@ export default function BookingsPage() {
                                   <div>
                                     <h4 className="text-sm font-medium text-gray-900 mb-3">Клиент</h4>
                                     <div className="space-y-2 text-sm text-gray-600">
-                                      <div className="flex items-center"><User className="w-4 h-4 mr-2" />{b.client.firstName} {b.client.lastName}</div>
+                                      <div className="flex items-center"><User className="w-4 h-4 mr-2" />
+                                        <a href={`/admin/clients?id=${encodeURIComponent((b as any).clientId || '')}`} className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
+                                          {b.client.firstName} {b.client.lastName}
+                                        </a>
+                                      </div>
                                       <div className="flex items-center"><Mail className="w-4 h-4 mr-2" />{b.client.email}</div>
                                       {b.client.phone && (<div className="flex items-center"><Phone className="w-4 h-4 mr-2" />{b.client.phone}</div>)}
                                       {b.client.telegram && (<div className="flex items-center"><MessageCircle className="w-4 h-4 mr-2" />{b.client.telegram}</div>)}

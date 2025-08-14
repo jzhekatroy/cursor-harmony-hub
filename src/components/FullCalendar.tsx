@@ -683,7 +683,9 @@ export default function FullCalendar({
                     {showMasterLine && (
                       <div className="hidden sm:block text-xs opacity-75">Мастер: {booking.master.firstName} {booking.master.lastName}</div>
                     )}
-                    <div className="hidden sm:block text-xs opacity-75">Клиент: {booking.client.firstName} {booking.client.lastName}</div>
+                    <div className="hidden sm:block text-xs opacity-75">
+                      Клиент: <a href={`/admin/clients?id=${encodeURIComponent((booking as any).clientId || '')}`} className="underline" onClick={(e)=> e.stopPropagation()}>{booking.client.firstName} {booking.client.lastName}</a>
+                    </div>
                   </div>
                 )
               })

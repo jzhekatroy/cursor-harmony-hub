@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id: clientId } = await context.params
     const authHeader = request.headers.get('authorization')
     if (!authHeader) {
       return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
@@ -19,7 +20,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
     }
 
-    const clientId = params.id
     const client = await prisma.client.findFirst({
       where: { id: clientId, teamId: user.teamId },
       include: {
@@ -96,6 +96,88 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     })
   } catch (error) {
     console.error('Client detail error:', error)
+    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+  try {
+    const { id: clientId } = await context.params
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
+    }
+
+    const token = authHeader.replace('Bearer ', '')
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, include: { team: true } })
+    if (!user || !user.team) {
+      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
+    }
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const {
+      firstName = '',
+      lastName = '',
+      phone = '',
+      email = '',
+      telegram = '',
+      address = ''
+    } = body || {}
+
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return NextResponse.json({ error: 'Email обязателен' }, { status: 400 })
+    }
+
+    // Проверяем, что клиент существует и принадлежит этой команде
+    const existing = await prisma.client.findFirst({ where: { id: clientId, teamId: user.teamId } })
+    if (!existing) {
+      return NextResponse.json({ error: 'Клиент не найден' }, { status: 404 })
+    }
+
+    const normalized = {
+      firstName: String(firstName || '').trim() || null,
+      lastName: String(lastName || '').trim() || null,
+      phone: String(phone || '').trim() || null,
+      email: String(email || '').trim(),
+      telegram: String(telegram || '').trim() || null,
+      address: String(address || '').trim() || null,
+    }
+
+    // Проверяем уникальность email в пределах команды
+    if (normalized.email !== existing.email) {
+      const sameEmail = await prisma.client.findFirst({
+        where: { email: normalized.email, teamId: user.teamId, NOT: { id: clientId } }
+      })
+      if (sameEmail) {
+        return NextResponse.json({ error: 'Клиент с таким email уже существует' }, { status: 409 })
+      }
+    }
+
+    const updated = await prisma.client.update({
+      where: { id: clientId },
+      data: normalized
+    })
+
+    return NextResponse.json({
+      success: true,
+      client: {
+        id: updated.id,
+        firstName: updated.firstName || '',
+        lastName: updated.lastName || '',
+        phone: updated.phone || '',
+        email: updated.email,
+        telegram: updated.telegram || '',
+        address: updated.address || '',
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt
+      }
+    })
+  } catch (error) {
+    console.error('Client update error:', error)
     return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
   }
 }

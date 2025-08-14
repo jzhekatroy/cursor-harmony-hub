@@ -207,12 +207,69 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
             <>
               {tab === 'profile' && (
                 <div className="space-y-2">
-                  <div className="text-lg font-medium">{[data.lastName, data.firstName].filter(Boolean).join(' ') || 'Без имени'}</div>
-                  <div className="text-gray-700">Телефон: {data.phone || '—'}</div>
-                  <div className="text-gray-700">Email: {data.email || '—'}</div>
-                  <div className="text-gray-700">Telegram: {data.telegram ? `@${data.telegram}` : '—'}</div>
-                  <div className="text-gray-700">Адрес: {data.address || '—'}</div>
-                  <div className="text-gray-500 text-sm">Создан: {new Date(data.createdAt).toLocaleString('ru-RU')}</div>
+                  <form
+                    className="space-y-3"
+                    onSubmit={async (e) => {
+                      e.preventDefault()
+                      try {
+                        setLoading(true)
+                        setError(null)
+                        const token = localStorage.getItem('token')
+                        if (!token) return
+                        const res = await fetch(`/api/clients/${id}`, {
+                          method: 'PATCH',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                          },
+                          body: JSON.stringify({
+                            firstName: data.firstName,
+                            lastName: data.lastName,
+                            phone: data.phone,
+                            email: data.email,
+                            telegram: data.telegram,
+                            address: data.address,
+                          })
+                        })
+                        const json = await res.json()
+                        if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
+                        await loadClient()
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
+                      } finally {
+                        setLoading(false)
+                      }
+                    }}
+                  >
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Имя</label>
+                      <input value={data.firstName || ''} onChange={(e) => setData((d: any) => ({...d, firstName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Фамилия</label>
+                      <input value={data.lastName || ''} onChange={(e) => setData((d: any) => ({...d, lastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Телефон</label>
+                      <input value={data.phone || ''} onChange={(e) => setData((d: any) => ({...d, phone: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Email</label>
+                      <input type="email" value={data.email || ''} onChange={(e) => setData((d: any) => ({...d, email: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" required />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Telegram</label>
+                      <input value={data.telegram || ''} onChange={(e) => setData((d: any) => ({...d, telegram: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600 mb-1">Адрес</label>
+                      <input value={data.address || ''} onChange={(e) => setData((d: any) => ({...d, address: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={loading}>Сохранить</button>
+                      <div className="text-sm text-gray-500">Создан: {new Date(data.createdAt).toLocaleString('ru-RU')}</div>
+                    </div>
+                  </form>
                 </div>
               )}
 

@@ -1,180 +1,273 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Search, Users } from 'lucide-react'
 
-interface Client {
+interface ClientRow {
   id: string
   firstName: string
   lastName: string
   phone: string
   email: string
+  telegram: string
   totalBookings: number
-  lastVisit: string
+  lastActivity: string | null
+  createdAt: string
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([])
-  const [loading, setLoading] = useState(true)
+  const [items, setItems] = useState<ClientRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
+  const [q, setQ] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
+
+  const load = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        setError('Токен авторизации отсутствует')
+        return
+      }
+      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+      if (q.trim()) params.set('q', q.trim())
+      const res = await fetch(`/api/clients?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store'
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Ошибка загрузки')
+      setItems(data.clients || [])
+      setTotal(data.total || 0)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    // В реальном приложении здесь будет API запрос
-    setLoading(false)
-  }, [])
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Загрузка клиентов...</p>
-        </div>
-      </div>
-    )
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setPage(1)
+    load()
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="md:flex md:items-center md:justify-between">
-          <div className="flex-1 min-w-0">
-            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-              Управление клиентами
-            </h2>
-          </div>
-          <div className="mt-4 flex md:mt-0 md:ml-4">
-            <button
-              type="button"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-            >
-              Экспорт
-            </button>
-            <button
-              type="button"
-              className="ml-3 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Добавить клиента
-            </button>
-          </div>
+    <div className="p-4 sm:p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Users className="w-5 h-5 text-gray-600" />
+        <h1 className="text-xl font-semibold">Клиенты</h1>
+      </div>
+
+      <form onSubmit={handleSearch} className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-gray-400 absolute left-2 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            placeholder="Поиск: имя, телефон, email, Telegram"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="w-full pl-8 pr-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[44px]"
+          />
+        </div>
+        <button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 min-h-[44px]">Искать</button>
+      </form>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">{error}</div>
+      )}
+
+      <div className="overflow-x-auto bg-white rounded-md shadow-sm border">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-50 sticky top-0">
+            <tr>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Клиент</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Контакты</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Всего записей</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600">Последняя активность</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-500">Загрузка…</td></tr>
+            ) : items.length === 0 ? (
+              <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-500">Ничего не найдено</td></tr>
+            ) : (
+              items.map((c) => (
+                <tr key={c.id} className="border-t hover:bg-gray-50">
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{[c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'}</div>
+                    <div className="text-gray-500 text-xs">Создан: {new Date(c.createdAt).toLocaleDateString('ru-RU')}</div>
+                  </td>
+                  <td className="px-3 py-2 text-gray-700">
+                    <div>{c.phone || '—'}</div>
+                    <div className="text-gray-500 text-xs">{c.email || '—'} {c.telegram ? `· @${c.telegram}` : ''}</div>
+                  </td>
+                    <td className="px-3 py-2">{c.totalBookings}</td>
+                  <td className="px-3 py-2">{c.lastActivity ? new Date(c.lastActivity).toLocaleString('ru-RU') : '—'}</td>
+                  <td className="px-3 py-2">
+                    <button onClick={() => setSelectedId(c.id)} className="px-3 py-1.5 border rounded hover:bg-gray-50">Открыть</button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Пагинация */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-600">Всего: {total}</div>
+        <div className="flex items-center gap-2">
+          <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1.5 border rounded disabled:opacity-50">Назад</button>
+          <div className="text-sm">{page} / {totalPages}</div>
+          <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} className="px-3 py-1.5 border rounded disabled:opacity-50">Вперед</button>
+          <select value={pageSize} onChange={(e) => setPageSize(parseInt(e.target.value, 10))} className="ml-2 border rounded px-2 py-1.5">
+            {[10, 20, 30, 50].map(s => <option key={s} value={s}>{s}/стр</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Боковая карточка клиента */}
+      {selectedId && <ClientDrawer id={selectedId} onClose={() => setSelectedId(null)} />}
+    </div>
+  )
+}
+
+function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
+  const [tab, setTab] = useState<'profile' | 'bookings' | 'events' | 'analytics'>('profile')
+  const [data, setData] = useState<any>(null)
+  const [events, setEvents] = useState<any>({ total: 0, events: [], page: 1, pageSize: 20 })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadClient = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const res = await fetch(`/api/clients/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Ошибка загрузки клиента')
+      setData(json)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadEvents = async (page = 1) => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return
+      const res = await fetch(`/api/clients/${id}/events?page=${page}&pageSize=20`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Ошибка загрузки событий')
+      setEvents(json)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
+    }
+  }
+
+  useEffect(() => { loadClient(); loadEvents(1) }, [id])
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-40 flex" onClick={onClose}>
+      <div className="ml-auto h-full w-full max-w-2xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <div className="font-semibold">Клиент</div>
+          <button onClick={onClose} className="px-2 py-1.5 border rounded">Закрыть</button>
         </div>
 
-        {/* Статистика */}
-        <div className="mt-8">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Всего клиентов</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Активные</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Новые за месяц</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                    </div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 truncate">Постоянные</dt>
-                      <dd className="text-lg font-medium text-gray-900">0</dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div className="px-4 pt-3 flex gap-2 border-b">
+          {([['profile','Профиль'],['bookings','Брони'],['events','События'],['analytics','Аналитика']] as const).map(([key,label]) => (
+            <button key={key} onClick={() => setTab(key as any)} className={`px-3 py-2 border-b-2 -mb-px ${tab===key? 'border-blue-600 text-blue-600':'border-transparent text-gray-600'}`}>{label}</button>
+          ))}
         </div>
 
-        {/* Таблица клиентов */}
-        <div className="mt-8">
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="text-center py-12">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">Нет клиентов</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Клиенты появятся после первых записей через виджет.
-                </p>
-                <div className="mt-6">
-                  <button
-                    type="button"
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Добавить клиента
-                  </button>
+        <div className="p-4 overflow-y-auto max-h-[calc(100vh-130px)]">
+          {loading && <div className="text-gray-500">Загрузка…</div>}
+          {error && <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">{error}</div>}
+          {!loading && data && (
+            <>
+              {tab === 'profile' && (
+                <div className="space-y-2">
+                  <div className="text-lg font-medium">{[data.lastName, data.firstName].filter(Boolean).join(' ') || 'Без имени'}</div>
+                  <div className="text-gray-700">Телефон: {data.phone || '—'}</div>
+                  <div className="text-gray-700">Email: {data.email || '—'}</div>
+                  <div className="text-gray-700">Telegram: {data.telegram ? `@${data.telegram}` : '—'}</div>
+                  <div className="text-gray-700">Адрес: {data.address || '—'}</div>
+                  <div className="text-gray-500 text-sm">Создан: {new Date(data.createdAt).toLocaleString('ru-RU')}</div>
                 </div>
-              </div>
-            </div>
-          </div>
+              )}
+
+              {tab === 'bookings' && (
+                <div className="space-y-3">
+                  {data.recentBookings && data.recentBookings.length > 0 ? (
+                    data.recentBookings.map((b: any) => (
+                      <div key={b.id} className="border rounded p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">#{b.bookingNumber}</div>
+                          <div className="text-sm text-gray-600">{new Date(b.startTime).toLocaleString('ru-RU')}</div>
+                        </div>
+                        <div className="text-sm text-gray-700">Мастер: {b.master.firstName} {b.master.lastName}</div>
+                        <div className="text-sm text-gray-700">Статус: {b.status}</div>
+                        <div className="text-sm text-gray-700">Сумма: {Number(b.totalPrice).toLocaleString('ru-RU')} ₽</div>
+                        <div className="text-sm text-gray-500">Услуги: {b.services.map((s: any) => s.name).join(', ')}</div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-gray-500">Пока нет данных</div>
+                  )}
+                </div>
+              )}
+
+              {tab === 'events' && (
+                <div className="space-y-3">
+                  {(events.events || []).map((ev: any) => (
+                    <div key={ev.id} className="border rounded p-3">
+                      <div className="text-sm text-gray-600">{new Date(ev.createdAt).toLocaleString('ru-RU')}</div>
+                      <div className="font-medium">{ev.type}</div>
+                      <pre className="text-xs text-gray-600 whitespace-pre-wrap break-all">{JSON.stringify(ev.metadata || {}, null, 2)}</pre>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-gray-600">Найдено: {events.total}</div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => loadEvents(Math.max(1, (events.page || 1) - 1))} className="px-3 py-1.5 border rounded" disabled={(events.page || 1) <= 1}>Назад</button>
+                      <div className="text-sm">{events.page || 1}</div>
+                      <button onClick={() => loadEvents((events.page || 1) + 1)} className="px-3 py-1.5 border rounded" disabled={(events.page || 1) * (events.pageSize || 20) >= (events.total || 0)}>Вперед</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {tab === 'analytics' && (
+                <div className="space-y-2">
+                  <div className="text-gray-700">Всего записей: {data.metrics?.counts?.completed + data.metrics?.counts?.planned + data.metrics?.counts?.lost}</div>
+                  <div className="text-gray-700">Завершено: {data.metrics?.counts?.completed} · {Number(data.metrics?.revenue?.completed || 0).toLocaleString('ru-RU')} ₽</div>
+                  <div className="text-gray-700">Запланировано: {data.metrics?.counts?.planned} · {Number(data.metrics?.revenue?.planned || 0).toLocaleString('ru-RU')} ₽</div>
+                  <div className="text-gray-700">Упущено: {data.metrics?.counts?.lost} · {Number(data.metrics?.revenue?.lost || 0).toLocaleString('ru-RU')} ₽</div>
+                  <div className="text-gray-500 text-sm">Последняя запись: {data.metrics?.lastBookingAt ? new Date(data.metrics.lastBookingAt).toLocaleString('ru-RU') : '—'}</div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

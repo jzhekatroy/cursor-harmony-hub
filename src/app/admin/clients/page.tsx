@@ -311,13 +311,45 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
 
               {tab === 'events' && (
                 <div className="space-y-3">
-                  {(events.events || []).map((ev: any) => (
-                    <div key={ev.id} className="border rounded p-3">
-                      <div className="text-sm text-gray-600">{new Date(ev.createdAt).toLocaleString('ru-RU')}</div>
-                      <div className="font-medium">{ev.type}</div>
-                      <pre className="text-xs text-gray-600 whitespace-pre-wrap break-all">{JSON.stringify(ev.metadata || {}, null, 2)}</pre>
-                    </div>
-                  ))}
+                  {(events.events || []).map((ev: any) => {
+                    const type = ev.type as string
+                    const typeMap: Record<string, { label: string; chip: string }> = {
+                      'page_open': { label: 'Открытие страницы', chip: 'bg-gray-100 text-gray-700' },
+                      'booking_created': { label: 'Создана бронь', chip: 'bg-yellow-100 text-yellow-800' },
+                      'booking_rescheduled': { label: 'Перенос брони', chip: 'bg-blue-100 text-blue-800' },
+                      'booking_cancelled': { label: 'Отмена брони', chip: 'bg-red-100 text-red-800' },
+                      'booking_no_show': { label: 'Клиент не пришел', chip: 'bg-orange-100 text-orange-800' },
+                      'booking_completed': { label: 'Бронь завершена', chip: 'bg-gray-100 text-gray-800' },
+                    }
+                    const entry = typeMap[type] || { label: type, chip: 'bg-gray-100 text-gray-700' }
+                    const meta = ev.metadata || {}
+                    return (
+                      <div key={ev.id} className="border rounded p-3">
+                        <div className="flex items-center justify-between text-sm text-gray-600">
+                          <div>{new Date(ev.createdAt).toLocaleString('ru-RU')}</div>
+                          <span className={`inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full ${entry.chip}`}>{entry.label}</span>
+                        </div>
+                        <div className="mt-2 text-sm text-gray-800">
+                          {type === 'page_open' && (
+                            <div>Источник: {ev.source}</div>
+                          )}
+                          {type.startsWith('booking_') && (
+                            <div className="space-y-1">
+                              {meta.bookingId && (
+                                <div>Бронь: <span className="font-mono text-xs">{meta.bookingId}</span></div>
+                              )}
+                              {meta.masterId && (
+                                <div>Мастер: <span className="font-mono text-xs">{meta.masterId}</span></div>
+                              )}
+                              {Array.isArray(meta.serviceIds) && meta.serviceIds.length > 0 && (
+                                <div>Услуги: <span className="font-mono text-xs">{meta.serviceIds.join(', ')}</span></div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-gray-600">Найдено: {events.total}</div>
                     <div className="flex items-center gap-2">

@@ -69,6 +69,19 @@ export async function POST(
         }
       })
 
+      // Событие клиента
+      await (tx as any).clientEvent.create({
+        data: {
+          teamId: user.teamId,
+          clientId: updated.clientId,
+          source: 'admin',
+          type: 'booking_cancelled',
+          metadata: { bookingId: updated.id, cancelledBy: 'salon' },
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+          userAgent: request.headers.get('user-agent') || null
+        }
+      })
+
       return updated
     })
 

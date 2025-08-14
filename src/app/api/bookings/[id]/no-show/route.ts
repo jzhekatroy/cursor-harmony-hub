@@ -60,6 +60,20 @@ export async function POST(
           userId: user.id
         }
       })
+
+      // Событие клиента
+      await (tx as any).clientEvent.create({
+        data: {
+          teamId: user.teamId,
+          // найдём clientId быстро
+          clientId: (await tx.booking.findUnique({ where: { id }, select: { clientId: true } }))?.clientId || null,
+          source: 'admin',
+          type: 'booking_no_show',
+          metadata: { bookingId: id },
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+          userAgent: request.headers.get('user-agent') || null
+        }
+      })
     })
 
     return NextResponse.json({ success: true })

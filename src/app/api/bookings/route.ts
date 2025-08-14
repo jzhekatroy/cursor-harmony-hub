@@ -251,7 +251,13 @@ export async function POST(request: NextRequest) {
           clientId: client.id,
           source: 'public',
           type: 'booking_created',
-          metadata: { bookingId: booking.id, masterId, serviceIds },
+          metadata: {
+            bookingId: booking.id,
+            masterId,
+            serviceIds,
+            timezone: (team as any).timezone || 'Europe/Moscow',
+            // Город лучше определять на фронте (Geolocation API) или по IP на бэке через GeoIP, пока пишем tz
+          },
           ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
           userAgent: request.headers.get('user-agent') || null
         }

@@ -153,6 +153,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
   const [events, setEvents] = useState<any>({ total: 0, events: [], page: 1, pageSize: 20 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const loadClient = async () => {
     try {
@@ -207,6 +208,9 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
             <>
               {tab === 'profile' && (
                 <div className="space-y-2">
+                  {success && (
+                    <div className="mb-2 p-3 bg-green-50 text-green-700 border border-green-200 rounded">{success}</div>
+                  )}
                   <form
                     className="space-y-3"
                     onSubmit={async (e) => {
@@ -214,6 +218,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                       try {
                         setLoading(true)
                         setError(null)
+                        setSuccess(null)
                         const token = localStorage.getItem('token')
                         if (!token) return
                         const res = await fetch(`/api/clients/${id}`, {
@@ -234,6 +239,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                         const json = await res.json()
                         if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
                         await loadClient()
+                        setSuccess('Данные клиента обновлены')
                       } catch (err) {
                         setError(err instanceof Error ? err.message : 'Неизвестная ошибка')
                       } finally {

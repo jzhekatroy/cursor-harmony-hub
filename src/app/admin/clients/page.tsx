@@ -26,6 +26,8 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'totalBookings' | 'lastActivity'>('createdAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
@@ -73,6 +75,50 @@ export default function ClientsPage() {
     load()
   }
 
+  const sortedItems = useMemo(() => {
+    const copy = [...items]
+    copy.sort((a, b) => {
+      let av: any, bv: any
+      switch (sortBy) {
+        case 'name':
+          av = `${a.lastName} ${a.firstName}`.trim().toLowerCase()
+          bv = `${b.lastName} ${b.firstName}`.trim().toLowerCase()
+          break
+        case 'totalBookings':
+          av = a.totalBookings; bv = b.totalBookings; break
+        case 'lastActivity':
+          av = a.lastActivity ? new Date(a.lastActivity).getTime() : 0
+          bv = b.lastActivity ? new Date(b.lastActivity).getTime() : 0
+          break
+        default:
+          av = new Date(a.createdAt).getTime(); bv = new Date(b.createdAt).getTime()
+      }
+      const res = av < bv ? -1 : av > bv ? 1 : 0
+      return sortOrder === 'asc' ? res : -res
+    })
+    return copy
+  }, [items, sortBy, sortOrder])
+
+  const toggleSort = (key: typeof sortBy) => {
+    if (sortBy === key) setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')
+    else { setSortBy(key); setSortOrder('asc') }
+  }
+
+  const mark = (text: string) => {
+    if (!q.trim()) return text
+    const idx = text.toLowerCase().indexOf(q.trim().toLowerCase())
+    if (idx === -1) return text
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark className="bg-yellow-200 text-gray-900 px-0.5 rounded-sm">
+          {text.slice(idx, idx + q.length)}
+        </mark>
+        {text.slice(idx + q.length)}
+      </>
+    )
+  }
+
   return (
     <div className="p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-4">
@@ -102,28 +148,45 @@ export default function ClientsPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Клиент</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('name')}>Клиент {sortBy === 'name' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Контакты</th>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Всего записей</th>
-              <th className="text-left px-3 py-2 font-medium text-gray-600">Последняя активность</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('totalBookings')}>Всего записей {sortBy === 'totalBookings' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('lastActivity')}>Последняя активность {sortBy === 'lastActivity' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-500">Загрузка…</td></tr>
-            ) : items.length === 0 ? (
-              <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-500">Ничего не найдено</td></tr>
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-t">
+                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-40 animate-pulse"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2 animate-pulse"></div></td>
+                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2 animate-pulse"></div></td>
+                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-10 animate-pulse"></div></td>
+                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div></td>
+                  <td className="px-3 py-3"><div className="h-8 bg-gray-100 rounded w-16 animate-pulse"></div></td>
+                </tr>
+              ))
+            ) : sortedItems.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-3 py-10 text-center text-gray-600">
+                  <div className="space-y-2">
+                    <div>Ничего не найдено</div>
+                    {!q && (
+                      <a href="/admin" className="inline-block px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Создать запись</a>
+                    )}
+                  </div>
+                </td>
+              </tr>
             ) : (
-              items.map((c) => (
+              sortedItems.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2">
-                    <div className="font-medium">{[c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'}</div>
+                    <div className="font-medium">{mark(([c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'))}</div>
                     <div className="text-gray-500 text-xs">Создан: {new Date(c.createdAt).toLocaleDateString('ru-RU')}</div>
                   </td>
                   <td className="px-3 py-2 text-gray-700">
-                    <div>{c.phone || '—'}</div>
-                    <div className="text-gray-500 text-xs">{c.email || '—'} {c.telegram ? `· @${c.telegram}` : ''}</div>
+                    <div>{mark(c.phone || '—')}</div>
+                    <div className="text-gray-500 text-xs">{mark(c.email || '—')} {c.telegram ? <>· @{mark(c.telegram)}</> : ''}</div>
                   </td>
                     <td className="px-3 py-2">{c.totalBookings}</td>
                   <td className="px-3 py-2">{c.lastActivity ? new Date(c.lastActivity).toLocaleString('ru-RU') : '—'}</td>

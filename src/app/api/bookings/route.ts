@@ -131,13 +131,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Создаем или находим клиента
-    let client = await prisma.client.findFirst({
-      where: {
-        email: clientData.email,
-        teamId: team.id
-      }
-    })
+    // Создаем или находим клиента (MVP: по email/телефону + имя из name)
+    const fullName: string = (clientData.name || '').trim()
+    let parsedFirstName: string | null = null
+    let parsedLastName: string | null = null
+    if (fullName) {
+      const parts = fullName.split(/\s+/)
+      parsedFirstName = parts[0] || null
+      parsedLastName = parts.slice(1).join(' ') || null
+    }
+
+    let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)
+    if (clientData.email) {
+      client = await prisma.client.findFirst({
+        where: { email: clientData.email, teamId: team.id }
+      })
+    }
+    if (!client && clientData.phone) {
+      client = await prisma.client.findFirst({
+        where: { phone: clientData.phone, teamId: team.id }
+      })
+    }
 
     if (!client) {
       client = await prisma.client.create({
@@ -145,12 +159,41 @@ export async function POST(request: NextRequest) {
           email: clientData.email,
           phone: clientData.phone,
           telegram: clientData.telegram,
-          firstName: clientData.firstName,
-          lastName: clientData.lastName,
+          firstName: clientData.firstName ?? parsedFirstName,
+          lastName: clientData.lastName ?? parsedLastName,
           address: clientData.address,
           teamId: team.id
         }
       })
+    } else if ((!client.firstName || !client.lastName) && (parsedFirstName || parsedLastName)) {
+      // Обновляем отсутствующие ФИО, если пришло имя от клиента
+      client = await prisma.client.update({
+        where: { id: client.id },
+        data: {
+          firstName: client.firstName || parsedFirstName,
+          lastName: client.lastName || parsedLastName
+        }
+      })
+    }
+
+    // Лимит записей на клиента/день (по времени салона)
+    // SQLite типы у Prisma могут не подтянуть добавленное поле в типе, используем any для безопасного доступа
+    const limit = (team as any).maxBookingsPerDayPerClient ?? 3
+    const dayStartUtc = createDateInSalonTimezone(year, month, day, 0, 0, team.timezone || 'Europe/Moscow')
+    const dayEndUtc = createDateInSalonTimezone(year, month, day, 23, 59, team.timezone || 'Europe/Moscow')
+    const existingCount = await prisma.booking.count({
+      where: {
+        teamId: team.id,
+        clientId: client.id,
+        status: { in: ['NEW', 'CONFIRMED', 'COMPLETED', 'NO_SHOW'] },
+        startTime: { gte: dayStartUtc, lte: dayEndUtc }
+      }
+    })
+    if (existingCount >= limit) {
+      return NextResponse.json(
+        { error: `Лимит записей на день: ${limit}. У клиента уже ${existingCount} записей в этот день.` },
+        { status: 429 }
+      )
     }
 
     // Проверяем, есть ли услуги, требующие подтверждения
@@ -193,6 +236,19 @@ export async function POST(request: NextRequest) {
             ? 'Бронирование создано клиентом через виджет записи (требует подтверждения)'
             : 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
           teamId: team.id
+        }
+      })
+
+      // Событие клиента (аналитика)
+      await (tx as any).clientEvent.create({
+        data: {
+          teamId: team.id,
+          clientId: client.id,
+          source: 'public',
+          type: 'booking_created',
+          metadata: { bookingId: booking.id, masterId, serviceIds },
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+          userAgent: request.headers.get('user-agent') || null
         }
       })
 

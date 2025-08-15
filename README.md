@@ -45,7 +45,17 @@ npm run dev
 
 ## База данных
 
-Используется SQLite с Prisma ORM. Автоматические резервные копии при деплоях.
+По умолчанию используется SQLite с Prisma ORM (локально). Для продакшена рекомендуется PostgreSQL.
+
+Быстрый старт с Postgres (Docker):
+```bash
+npm run pg:up
+export DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/beauty?schema=public"
+npx prisma generate && npx prisma migrate dev
+npm run dev
+```
+
+Подробнее: `docs/postgres-setup.md`.
 
 ## Документация
 

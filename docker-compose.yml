@@ -12,7 +12,9 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=file:/app/data/prod.db
+      # Для production через Postgres переопределите переменную окружения DATABASE_URL
+      # Пример: postgresql://postgres:postgres@postgres:5432/beauty?schema=public
+      - DATABASE_URL=${DATABASE_URL:-file:/app/data/prod.db}
       - NEXTAUTH_SECRET=your-super-secure-secret-key-for-production-2024
       - NEXTAUTH_URL=http://localhost:3000
       - JWT_SECRET=your-jwt-secret-for-production-2024
@@ -32,6 +34,22 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Postgres для разработки/прода
+  postgres:
+    image: postgres:15-alpine
+    container_name: beauty-booking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-beauty}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - beauty_booking_network
 
   # Nginx reverse proxy (опционально)
   nginx:
@@ -53,6 +71,8 @@ volumes:
   beauty_booking_data:
     driver: local
   beauty_booking_uploads:
+    driver: local
+  pgdata:
     driver: local
 
 networks:

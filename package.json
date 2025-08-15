@@ -10,7 +10,12 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
-    "db:reset": "echo 'ЗАЩИЩЕННЫЙ РЕЖИМ: db:reset отключен для безопасности' && exit 1"
+    "db:reset": "echo 'ЗАЩИЩЕННЫЙ РЕЖИМ: db:reset отключен для безопасности' && exit 1",
+    "pg:up": "docker compose up -d postgres",
+    "pg:logs": "docker compose logs -f postgres",
+    "pg:stop": "docker compose stop postgres",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",

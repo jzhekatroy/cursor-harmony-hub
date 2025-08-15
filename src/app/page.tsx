@@ -425,7 +425,7 @@ export default function HomePage() {
         </div>
 
         <div className="text-center text-xs text-gray-500">
-          <Link href="/super-admin" className="hover:text-gray-700">
+          <Link href="/superadmin" className="hover:text-gray-700">
             Администрирование системы
           </Link>
         </div>

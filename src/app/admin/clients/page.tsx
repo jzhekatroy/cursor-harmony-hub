@@ -224,9 +224,8 @@ export default function ClientsPage() {
 }
 
 function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
-  const [tab, setTab] = useState<'profile' | 'bookings' | 'events' | 'analytics'>('profile')
+  const [tab, setTab] = useState<'profile' | 'analytics'>('profile')
   const [data, setData] = useState<any>(null)
-  const [events, setEvents] = useState<any>({ total: 0, events: [], page: 1, pageSize: 20 })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -249,20 +248,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
     }
   }
 
-  const loadEvents = async (page = 1) => {
-    try {
-      const token = localStorage.getItem('token')
-      if (!token) return
-      const res = await fetch(`/api/clients/${id}/events?page=${page}&pageSize=20`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Ошибка загрузки событий')
-      setEvents(json)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Неизвестная ошибка')
-    }
-  }
-
-  useEffect(() => { loadClient(); loadEvents(1) }, [id])
+  useEffect(() => { loadClient() }, [id])
 
   return (
     <div className="fixed inset-0 bg-black/40 z-40 flex" onClick={onClose}>
@@ -273,9 +259,8 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
         </div>
 
         <div className="px-4 pt-3 flex gap-2 border-b">
-          {([['profile','Профиль'],['bookings','Брони'],['events','События'],['analytics','Аналитика']] as const).map(([key,label]) => (
-            <button key={key} onClick={() => setTab(key as any)} className={`px-3 py-2 border-b-2 -mb-px ${tab===key? 'border-blue-600 text-blue-600':'border-transparent text-gray-600'}`}>{label}</button>
-          ))}
+          <button onClick={() => setTab('profile')} className={`px-3 py-2 border-b-2 -mb-px ${tab==='profile'? 'border-blue-600 text-blue-600':'border-transparent text-gray-600'}`}>Профиль</button>
+          <button onClick={() => setTab('analytics')} className={`px-3 py-2 border-b-2 -mb-px ${tab==='analytics'? 'border-blue-600 text-blue-600':'border-transparent text-gray-600'}`}>Аналитика</button>
         </div>
 
         <div className="p-4 overflow-y-auto max-h-[calc(100vh-130px)]">
@@ -314,14 +299,14 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                           })
                         })
                         const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
+                        if (!res.ok) throw new Error(json.error || 'Не удалось сохранить')
                         await loadClient()
-        setSuccess('Данные клиента обновлены')
-        toast.success('Данные клиента сохранены')
+                        setSuccess('Данные клиента обновлены')
+                        toast.success('Данные клиента сохранены')
                       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
-        setError(msg)
-        toast.error(`Ошибка сохранения: ${msg}`)
+                        const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
+                        setError(msg)
+                        toast.error(`Ошибка сохранения: ${msg}`)
                       } finally {
                         setLoading(false)
                       }
@@ -359,103 +344,136 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                 </div>
               )}
 
-              {tab === 'bookings' && (
-                <div className="space-y-3">
-                  {data.recentBookings && data.recentBookings.length > 0 ? (
-                    data.recentBookings.map((b: any) => (
-                      <div key={b.id} className="border rounded p-3">
-                        <div className="flex items-center justify-between">
-                          <div className="font-medium">#{b.bookingNumber}</div>
-                          <div className="text-sm text-gray-600">{new Date(b.startTime).toLocaleString('ru-RU')}</div>
-                  </div>
-                        <div className="text-sm text-gray-700">Мастер: {b.master.firstName} {b.master.lastName}</div>
-                        <div className="text-sm text-gray-700">Статус: {b.status}</div>
-                        <div className="text-sm text-gray-700">Сумма: {Number(b.totalPrice).toLocaleString('ru-RU')} ₽</div>
-                        <div className="text-sm text-gray-500">Услуги: {b.services.map((s: any) => s.name).join(', ')}</div>
-                  </div>
-                    ))
-                  ) : (
-                    <div className="text-gray-500">Пока нет данных</div>
-                  )}
-                </div>
-              )}
-
-              {tab === 'events' && (
-                <div className="space-y-3">
-                  {(events.events || []).map((ev: any) => {
-                    const type = ev.type as string
-                    const typeMap: Record<string, { label: string; chip: string }> = {
-                      'page_open': { label: 'Открытие страницы', chip: 'bg-gray-100 text-gray-700' },
-                      'booking_created': { label: 'Создана бронь', chip: 'bg-yellow-100 text-yellow-800' },
-                      'booking_rescheduled': { label: 'Перенос брони', chip: 'bg-blue-100 text-blue-800' },
-                      'booking_cancelled': { label: 'Отмена брони', chip: 'bg-red-100 text-red-800' },
-                      'booking_no_show': { label: 'Клиент не пришел', chip: 'bg-orange-100 text-orange-800' },
-                      'booking_completed': { label: 'Бронь завершена', chip: 'bg-gray-100 text-gray-800' },
-                    }
-                    const entry = typeMap[type] || { label: type, chip: 'bg-gray-100 text-gray-700' }
-                    const meta = ev.metadata || {}
-                    const sourceMap: Record<string, string> = {
-                      public: 'Публичная страница',
-                      admin: 'Админка',
-                      webapp: 'Telegram WebApp',
-                      system: 'Система'
-                    }
-                    const sourceLabel = sourceMap[(ev.source as string) || ''] || ev.source || '—'
-                    return (
-                      <div key={ev.id} className="border rounded p-3">
-                        <div className="flex items-center justify-between text-sm text-gray-600">
-                          <div>{new Date(ev.createdAt).toLocaleString('ru-RU')}</div>
-                          <span className={`inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full ${entry.chip}`}>{entry.label}</span>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-800">
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-gray-700">
-                            <div>Источник: <span className="text-gray-900">{sourceLabel}</span></div>
-                            {meta.timezone && (
-                              <div>Часовой пояс: <span className="text-gray-900">{meta.timezone}</span></div>
-                            )}
-                          </div>
-                          {type.startsWith('booking_') && (
-                            <div className="space-y-1">
-                              {meta.bookingId && (
-                                <div>Бронь: <span className="font-mono text-xs">{meta.bookingId}</span></div>
-                              )}
-                              {meta.masterId && (
-                                <div>Мастер: <span className="font-mono text-xs">{meta.masterId}</span></div>
-                              )}
-                              {Array.isArray(meta.serviceIds) && meta.serviceIds.length > 0 && (
-                                <div>Услуги: <span className="font-mono text-xs">{meta.serviceIds.join(', ')}</span></div>
-                              )}
-                              {type === 'booking_cancelled' && meta.cancelledBy && (
-                                <div>Отменено: <span className="text-gray-900">{meta.cancelledBy === 'salon' ? 'салоном' : meta.cancelledBy === 'client' ? 'клиентом' : meta.cancelledBy}</span></div>
-                              )}
-                            </div>
-                          )}
-              </div>
-            </div>
-                    )
-                  })}
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-600">Найдено: {events.total}</div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => loadEvents(Math.max(1, (events.page || 1) - 1))} className="px-3 py-1.5 border rounded" disabled={(events.page || 1) <= 1}>Назад</button>
-                      <div className="text-sm">{events.page || 1}</div>
-                      <button onClick={() => loadEvents((events.page || 1) + 1)} className="px-3 py-1.5 border rounded" disabled={(events.page || 1) * (events.pageSize || 20) >= (events.total || 0)}>Вперед</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {tab === 'analytics' && (
-                <div className="space-y-2">
-                  <div className="text-gray-700">Всего записей: {data.metrics?.counts?.completed + data.metrics?.counts?.planned + data.metrics?.counts?.lost}</div>
-                  <div className="text-gray-700">Завершено: {data.metrics?.counts?.completed} · {Number(data.metrics?.revenue?.completed || 0).toLocaleString('ru-RU')} ₽</div>
-                  <div className="text-gray-700">Запланировано: {data.metrics?.counts?.planned} · {Number(data.metrics?.revenue?.planned || 0).toLocaleString('ru-RU')} ₽</div>
-                  <div className="text-gray-700">Упущено: {data.metrics?.counts?.lost} · {Number(data.metrics?.revenue?.lost || 0).toLocaleString('ru-RU')} ₽</div>
-                  <div className="text-gray-500 text-sm">Последняя запись: {data.metrics?.lastBookingAt ? new Date(data.metrics.lastBookingAt).toLocaleString('ru-RU') : '—'}</div>
-                </div>
+                <ClientAnalytics clientId={id} baseMetrics={data.metrics} />
               )}
             </>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ClientAnalytics({ clientId, baseMetrics }: { clientId: string; baseMetrics: any }) {
+  const [mode, setMode] = useState<'all' | 'range'>('all')
+  const [fromStr, setFromStr] = useState('')
+  const [toStr, setToStr] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [summary, setSummary] = useState<any>(null)
+
+  const statusLabel = (s: string) => ({
+    COMPLETED: 'Завершено',
+    NEW: 'Создана',
+    CONFIRMED: 'Подтверждена',
+    NO_SHOW: 'Не пришёл',
+    CANCELLED_BY_CLIENT: 'Отменена клиентом',
+    CANCELLED_BY_SALON: 'Отменена салоном'
+  } as any)[s] || s
+
+  const computeFromBookings = (bookings: any[]) => {
+    const res = {
+      counts: { COMPLETED: 0, PLANNED: 0, NO_SHOW: 0, CANCELLED_BY_CLIENT: 0, CANCELLED_BY_SALON: 0 },
+      revenue: { completed: 0, planned: 0, lost: 0 }
+    }
+    for (const b of bookings) {
+      const price = Number(b.totalPrice) || 0
+      switch (b.status) {
+        case 'COMPLETED':
+          res.counts.COMPLETED++; res.revenue.completed += price; break
+        case 'NEW':
+        case 'CONFIRMED':
+          res.counts.PLANNED++; res.revenue.planned += price; break
+        case 'NO_SHOW':
+          res.counts.NO_SHOW++; res.revenue.lost += price; break
+        case 'CANCELLED_BY_CLIENT':
+          res.counts.CANCELLED_BY_CLIENT++; res.revenue.lost += price; break
+        case 'CANCELLED_BY_SALON':
+          res.counts.CANCELLED_BY_SALON++; res.revenue.lost += price; break
+      }
+    }
+    return res
+  }
+
+  const loadRange = async () => {
+    try {
+      setLoading(true)
+      const token = localStorage.getItem('token'); if (!token) return
+      const params = new URLSearchParams({ clientId })
+      if (fromStr) params.set('from', new Date(fromStr + 'T00:00:00').toISOString())
+      if (toStr) params.set('to', new Date(toStr + 'T23:59:59').toISOString())
+      const res = await fetch(`/api/bookings?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      const json = await res.json(); if (!res.ok) throw new Error(json.error || 'Ошибка загрузки')
+      setSummary(computeFromBookings(json.bookings || []))
+    } finally { setLoading(false) }
+  }
+
+  const current = mode === 'all' ? {
+    counts: {
+      COMPLETED: baseMetrics?.counts?.completed || 0,
+      PLANNED: baseMetrics?.counts?.planned || 0,
+      NO_SHOW: baseMetrics?.counts?.lost ? undefined : 0, // будет уточнено ниже
+      CANCELLED_BY_CLIENT: undefined,
+      CANCELLED_BY_SALON: undefined
+    },
+    revenue: {
+      completed: baseMetrics?.revenue?.completed || 0,
+      planned: baseMetrics?.revenue?.planned || 0,
+      lost: baseMetrics?.revenue?.lost || 0
+    }
+  } : summary
+
+  return (
+    <div className="space-y-4">
+      <form className="flex flex-wrap items-end gap-3" onSubmit={(e)=>{ e.preventDefault(); if (mode==='range') loadRange() }}>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Период:</label>
+          <select value={mode} onChange={(e)=>setMode(e.target.value as any)} className="border rounded px-2 py-1.5 text-sm">
+            <option value="all">За всё время</option>
+            <option value="range">Диапазон</option>
+          </select>
+        </div>
+        {mode==='range' && (
+          <>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">С даты</label>
+              <input type="date" value={fromStr} onChange={(e)=>setFromStr(e.target.value)} className="border rounded px-2 py-1.5" />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">По дату</label>
+              <input type="date" value={toStr} onChange={(e)=>setToStr(e.target.value)} className="border rounded px-2 py-1.5" />
+            </div>
+            <button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded text-sm" disabled={loading}>{loading ? 'Загрузка…' : 'Применить'}</button>
+          </>
+        )}
+      </form>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Завершено</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (baseMetrics?.counts?.completed || 0) : (current?.counts?.COMPLETED || 0)}</div>
+          <div className="text-sm text-gray-600">{(mode==='all' ? baseMetrics?.revenue?.completed : current?.revenue?.completed || 0)?.toLocaleString('ru-RU')} ₽</div>
+        </div>
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Запланировано</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (baseMetrics?.counts?.planned || 0) : (current?.counts?.PLANNED || 0)}</div>
+          <div className="text-sm text-gray-600">{(mode==='all' ? baseMetrics?.revenue?.planned : current?.revenue?.planned || 0)?.toLocaleString('ru-RU')} ₽</div>
+        </div>
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Не пришёл</div>
+          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.NO_SHOW || 0)}</div>
+        </div>
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Отменено клиентом</div>
+          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.CANCELLED_BY_CLIENT || 0)}</div>
+        </div>
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Отменено салоном</div>
+          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.CANCELLED_BY_SALON || 0)}</div>
+        </div>
+        <div className="p-3 border rounded">
+          <div className="text-sm text-gray-600 mb-1">Упущенная выручка</div>
+          <div className="text-lg font-semibold">{(mode==='all' ? baseMetrics?.revenue?.lost : current?.revenue?.lost || 0)?.toLocaleString('ru-RU')} ₽</div>
         </div>
       </div>
     </div>

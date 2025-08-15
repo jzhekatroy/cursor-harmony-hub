@@ -75,55 +75,37 @@ export async function GET(request: NextRequest) {
       }
       const count = await prisma.booking.count({ where: countWhere })
 
-      // Revenue: planned (NEW + CONFIRMED)
+      // Revenue: planned (NEW + CONFIRMED) — используем итоговую цену брони (totalPrice)
       const plannedStatuses = inStatuses(['NEW', 'CONFIRMED'])
       let sumPlanned = 0
       if (plannedStatuses.length > 0) {
-        const agg = await prisma.bookingService.aggregate({
-          _sum: { price: true },
-          where: {
-            serviceId: serviceIds.length > 0 ? { in: serviceIds } : undefined,
-            booking: {
-              ...baseBookingWhere,
-              status: { in: plannedStatuses }
-            }
-          }
-        })
-        sumPlanned = agg._sum.price ? Number(agg._sum.price) : 0
+        const wherePlanned: any = { ...baseBookingWhere, status: { in: plannedStatuses } }
+        if (masterIds.length > 0) wherePlanned.masterId = { in: masterIds }
+        if (serviceIds.length > 0) wherePlanned.services = { some: { serviceId: { in: serviceIds } } }
+        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: wherePlanned })
+        sumPlanned = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
       }
 
-      // Revenue: completed (COMPLETED)
+      // Revenue: completed (COMPLETED) — используем итоговую цену брони (totalPrice)
       const completedStatuses = inStatuses(['COMPLETED'])
       let sumCompleted = 0
       if (completedStatuses.length > 0) {
-        const agg = await prisma.bookingService.aggregate({
-          _sum: { price: true },
-          where: {
-            serviceId: serviceIds.length > 0 ? { in: serviceIds } : undefined,
-            booking: {
-              ...baseBookingWhere,
-              status: { in: completedStatuses }
-            }
-          }
-        })
-        sumCompleted = agg._sum.price ? Number(agg._sum.price) : 0
+        const whereCompleted: any = { ...baseBookingWhere, status: { in: completedStatuses } }
+        if (masterIds.length > 0) whereCompleted.masterId = { in: masterIds }
+        if (serviceIds.length > 0) whereCompleted.services = { some: { serviceId: { in: serviceIds } } }
+        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: whereCompleted })
+        sumCompleted = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
       }
 
-      // Revenue: lost (NO_SHOW + CANCELLED_*)
+      // Revenue: lost (NO_SHOW + CANCELLED_*) — используем итоговую цену брони (totalPrice)
       const lostStatuses = inStatuses(['NO_SHOW', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON'])
       let sumLost = 0
       if (lostStatuses.length > 0) {
-        const agg = await prisma.bookingService.aggregate({
-          _sum: { price: true },
-          where: {
-            serviceId: serviceIds.length > 0 ? { in: serviceIds } : undefined,
-            booking: {
-              ...baseBookingWhere,
-              status: { in: lostStatuses }
-            }
-          }
-        })
-        sumLost = agg._sum.price ? Number(agg._sum.price) : 0
+        const whereLost: any = { ...baseBookingWhere, status: { in: lostStatuses } }
+        if (masterIds.length > 0) whereLost.masterId = { in: masterIds }
+        if (serviceIds.length > 0) whereLost.services = { some: { serviceId: { in: serviceIds } } }
+        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: whereLost })
+        sumLost = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
       }
 
       results.push({

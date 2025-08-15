@@ -187,11 +187,33 @@ export default function AdminDashboard() {
     masterId: '',
     duration: 0,
     totalPrice: 0,
-    notes: ''
+    notes: '',
+    clientId: '',
+    clientName: '',
+    clientEmail: '',
+    clientPhone: ''
   })
+  const [editClientQuery, setEditClientQuery] = useState('')
+  const [editClientMatches, setEditClientMatches] = useState<any[]>([])
+  const [editClientLoading, setEditClientLoading] = useState(false)
+  const [isEditingClient, setIsEditingClient] = useState(false)
   const [hasOverlap, setHasOverlap] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isCancelling, setIsCancelling] = useState(false)
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createForm, setCreateForm] = useState<any>({
+    date: '',
+    time: '',
+    masterId: '',
+    serviceId: '',
+    clientName: '',
+    clientEmail: '',
+    clientPhone: ''
+  })
+  const [services, setServices] = useState<Array<{ id: string; name: string; duration: number; price: number }>>([])
+  const [clientQuery, setClientQuery] = useState('')
+  const [clientMatches, setClientMatches] = useState<any[]>([])
+  const [clientSearchLoading, setClientSearchLoading] = useState(false)
 
   // Генерируем дни недели
   // const weekDays = getWeekDays(new Date())
@@ -219,7 +241,7 @@ export default function AdminDashboard() {
       }
 
       // Загружаем данные параллельно
-      const [teamResponse, bookingsResponse, mastersResponse] = await Promise.all([
+      const [teamResponse, bookingsResponse, mastersResponse, servicesResponse] = await Promise.all([
         fetch('/api/team/settings', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
@@ -227,18 +249,23 @@ export default function AdminDashboard() {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
         fetch('/api/masters-list', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        fetch('/api/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
       ])
 
       if (!teamResponse.ok) throw new Error('Ошибка загрузки настроек команды')
       if (!bookingsResponse.ok) throw new Error('Ошибка загрузки бронирований')
       if (!mastersResponse.ok) throw new Error('Ошибка загрузки мастеров')
+      if (!servicesResponse.ok) throw new Error('Ошибка загрузки услуг')
 
-      const [teamData, bookingsData, mastersData] = await Promise.all([
+      const [teamData, bookingsData, mastersData, servicesData] = await Promise.all([
         teamResponse.json(),
         bookingsResponse.json(),
-        mastersResponse.json()
+        mastersResponse.json(),
+        servicesResponse.json()
       ])
 
       setTeam(teamData)
@@ -258,6 +285,7 @@ export default function AdminDashboard() {
       }))
       setBookings(normalizedBookings)
       setMasters(mastersData.masters || [])
+      setServices((servicesData.services || servicesData || []).map((s: any) => ({ id: s.id, name: s.name, duration: s.duration, price: Number(s.price) })))
       
       // Загружаем расписание и отсутствия для всех мастеров
       if (mastersData.masters && mastersData.masters.length > 0) {
@@ -312,6 +340,33 @@ export default function AdminDashboard() {
     loadData()
   }, [])
 
+  // Поиск клиентов по вводу (имя/телефон/email) — debounce 300ms
+  useEffect(() => {
+    let timer: any
+    const run = async () => {
+      const q = (clientQuery || '').trim()
+      if (!q) { setClientMatches([]); return }
+      try {
+        setClientSearchLoading(true)
+        const token = localStorage.getItem('token')
+        const url = `/api/clients?q=${encodeURIComponent(q)}&page=1&pageSize=5`
+        const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+        if (res.ok) {
+          const data = await res.json()
+          setClientMatches(data.clients || data || [])
+        } else {
+          setClientMatches([])
+        }
+      } catch {
+        setClientMatches([])
+      } finally {
+        setClientSearchLoading(false)
+      }
+    }
+    timer = setTimeout(run, 300)
+    return () => clearTimeout(timer)
+  }, [clientQuery])
+
   // Автообновление раз в минуту (тихий режим без спиннера)
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -341,8 +396,15 @@ export default function AdminDashboard() {
       masterId: booking.master.id,
       duration: durationSum,
       totalPrice: booking.totalPrice,
-      notes: booking.notes || ''
+      notes: booking.notes || '',
+      clientId: (booking as any).clientId || '',
+      clientName: `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim(),
+      clientEmail: booking.client.email || '',
+      clientPhone: booking.client.phone || ''
     })
+    setEditClientQuery('')
+    setEditClientMatches([])
+    setIsEditingClient(false)
   }
 
   const cancelEditing = () => {
@@ -352,9 +414,14 @@ export default function AdminDashboard() {
       masterId: '',
       duration: 0,
       totalPrice: 0,
-      notes: ''
+      notes: '',
+      clientId: '',
+      clientName: '',
+      clientEmail: '',
+      clientPhone: ''
     })
     setHasOverlap(false)
+    setIsEditingClient(false)
   }
 
   const saveBookingChanges = async () => {
@@ -370,7 +437,19 @@ export default function AdminDashboard() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(editForm)
+        body: JSON.stringify({
+          startTime: editForm.startTime,
+          masterId: editForm.masterId,
+          duration: editForm.duration,
+          totalPrice: editForm.totalPrice,
+          notes: editForm.notes,
+          clientId: editForm.clientId || undefined,
+          clientData: editForm.clientId ? undefined : (
+            editForm.clientName || editForm.clientPhone || editForm.clientEmail
+              ? { name: editForm.clientName, email: editForm.clientEmail, phone: editForm.clientPhone }
+              : undefined
+          )
+        })
       })
 
       if (response.ok) {
@@ -417,6 +496,30 @@ export default function AdminDashboard() {
   const updateEditForm = (field: string, value: any) => {
     setEditForm(prev => ({ ...prev, [field]: value }))
   }
+
+  // Поиск клиента при редактировании (debounce 300ms)
+  useEffect(() => {
+    let t: any
+    const run = async () => {
+      const q = (editClientQuery || '').trim()
+      if (!q) { setEditClientMatches([]); return }
+      try {
+        setEditClientLoading(true)
+        const token = localStorage.getItem('token')
+        const res = await fetch(`/api/clients?q=${encodeURIComponent(q)}&page=1&pageSize=5`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+        if (res.ok) {
+          const data = await res.json()
+          setEditClientMatches(data.clients || data || [])
+        } else {
+          setEditClientMatches([])
+        }
+      } finally {
+        setEditClientLoading(false)
+      }
+    }
+    t = setTimeout(run, 300)
+    return () => clearTimeout(t)
+  }, [editClientQuery])
 
   // Утилиты форматирования длительности как на странице услуг
   const getHoursWord = (hours: number) => {
@@ -526,6 +629,20 @@ export default function AdminDashboard() {
               onBookingClick={startEditingBooking}
               salonTimezone={team?.settings?.timezone || team?.timezone || 'Europe/Moscow'}
               onBookingCancelled={() => loadData(true)}
+              onEmptySlotClick={({ time, master }) => {
+                const tz = team?.settings?.timezone || team?.timezone || 'Europe/Moscow'
+                const y = Number(time.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+                const m = Number(time.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+                const d = Number(time.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+                const hh = Number(time.toLocaleString('ru-RU', { timeZone: tz, hour: '2-digit', hour12: false }))
+                const mm = Number(time.toLocaleString('ru-RU', { timeZone: tz, minute: '2-digit' }))
+                const dateStr = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+                const timeStr = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`
+                setCreateForm({ date: dateStr, time: timeStr, masterId: master.id, serviceId: services[0]?.id || '', clientName: '', clientEmail: '', clientPhone: '' })
+                setClientQuery('')
+                setClientMatches([])
+                setCreateDialogOpen(true)
+              }}
             />
                 </div>
               </div>
@@ -549,28 +666,88 @@ export default function AdminDashboard() {
               <div className="p-6 space-y-6">
                 {/* Информация о клиенте (только для чтения) */}
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Клиент</h4>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Имя:</span> {editingBooking.client.firstName} {editingBooking.client.lastName}
-          </div>
-                      <div>
-                        <span className="font-medium">Email:</span> {editingBooking.client.email}
-                </div>
-                      {editingBooking.client.phone && (
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-700">Клиент</h4>
+                    {!isEditingClient && (
+                      <button
+                        type="button"
+                        onClick={()=>setIsEditingClient(true)}
+                        className="px-2 py-1 text-xs border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Редактировать
+                      </button>
+                    )}
+                  </div>
+                  {!isEditingClient ? (
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="font-medium">Телефон:</span> {editingBooking.client.phone}
-                </div>
-                      )}
-                      {editingBooking.client.telegram && (
+                          <span className="font-medium">Имя:</span> {editForm.clientName || `${editingBooking.client.firstName} ${editingBooking.client.lastName}`}
+                        </div>
                         <div>
-                          <span className="font-medium">Telegram:</span> {editingBooking.client.telegram}
-                </div>
-                      )}
-                    </div>
+                          <span className="font-medium">Email:</span> {editForm.clientEmail || editingBooking.client.email}
+                        </div>
+                        {(editForm.clientPhone || editingBooking.client.phone) && (
+                          <div>
+                            <span className="font-medium">Телефон:</span> {editForm.clientPhone || editingBooking.client.phone}
+                          </div>
+                        )}
                       </div>
                     </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={editClientQuery}
+                        onChange={(e)=>setEditClientQuery(e.target.value)}
+                        placeholder="Поиск по имени, телефону или email"
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      />
+                      {(editClientMatches.length > 0 || editClientLoading) && (
+                        <div className="border border-gray-200 rounded-md max-h-44 overflow-y-auto bg-white shadow-sm">
+                          {editClientLoading ? (
+                            <div className="px-3 py-2 text-sm text-gray-500">Поиск…</div>
+                          ) : (
+                            editClientMatches.map((c:any) => (
+                              <button
+                                key={c.id}
+                                type="button"
+                                onClick={()=>{
+                                  const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim()
+                                  setEditForm(p=>({
+                                    ...p,
+                                    clientId: c.id,
+                                    clientName: fullName,
+                                    clientEmail: c.email || '',
+                                    clientPhone: c.phone || ''
+                                  }))
+                                  setEditClientQuery(fullName || c.email || c.phone || '')
+                                  setEditClientMatches([])
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                              >
+                                <div className="font-medium text-gray-900">{(c.firstName || c.lastName) ? `${c.firstName || ''} ${c.lastName || ''}`.trim() : 'Без имени'}</div>
+                                <div className="text-xs text-gray-600 flex gap-3">
+                                  <span>{c.email}</span>
+                                  {c.phone && <span>{c.phone}</span>}
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <input type="text" value={editForm.clientName} onChange={(e)=>setEditForm(p=>({...p, clientId: '', clientName: e.target.value}))} placeholder="Имя клиента" className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                        <input type="email" value={editForm.clientEmail} onChange={(e)=>setEditForm(p=>({...p, clientId: '', clientEmail: e.target.value}))} placeholder="Email" className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                        <input type="tel" value={editForm.clientPhone} onChange={(e)=>setEditForm(p=>({...p, clientId: '', clientPhone: e.target.value}))} placeholder="Телефон" className="border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-xs text-gray-500">Подбор клиента из поиска или введите нового (для нового — имя и телефон обязательны).</div>
+                        <button type="button" onClick={()=>setIsEditingClient(false)} className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50">Готово</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
                     
                 {/* Услуги (только для чтения) */}
                 <div>
@@ -725,6 +902,136 @@ export default function AdminDashboard() {
                   ) : (
                     'Сохранить'
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Диалог создания записи администратором */}
+        {createDialogOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-xl w-full mx-4">
+              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Новая запись</h3>
+                <button onClick={() => setCreateDialogOpen(false)} className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50">Закрыть</button>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Поиск клиента */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
+                  <input
+                    type="text"
+                    value={clientQuery}
+                    onChange={(e)=>setClientQuery(e.target.value)}
+                    placeholder="Поиск по имени, телефону или email"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                  {(clientMatches.length > 0 || clientSearchLoading) && (
+                    <div className="mt-1 border border-gray-200 rounded-md max-h-44 overflow-y-auto bg-white shadow-sm">
+                      {clientSearchLoading ? (
+                        <div className="px-3 py-2 text-sm text-gray-500">Поиск…</div>
+                      ) : (
+                        clientMatches.map((c:any) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={()=>{
+                              const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim()
+                              setCreateForm((p:any)=>({
+                                ...p,
+                                clientName: fullName,
+                                clientEmail: c.email || '',
+                                clientPhone: c.phone || ''
+                              }))
+                              setClientQuery(fullName || c.email || c.phone || '')
+                              setClientMatches([])
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                          >
+                            <div className="font-medium text-gray-900">{(c.firstName || c.lastName) ? `${c.firstName || ''} ${c.lastName || ''}`.trim() : 'Без имени'}</div>
+                            <div className="text-xs text-gray-600 flex gap-3">
+                              <span>{c.email}</span>
+                              {c.phone && <span>{c.phone}</span>}
+                            </div>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Дата</label>
+                    <input type="date" value={createForm.date} onChange={(e)=>setCreateForm((p:any)=>({...p, date: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Время</label>
+                    <input type="time" value={createForm.time} onChange={(e)=>setCreateForm((p:any)=>({...p, time: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" step={900} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Мастер</label>
+                    <select value={createForm.masterId} onChange={(e)=>setCreateForm((p:any)=>({...p, masterId: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                      {masters.map(m => (<option key={m.id} value={m.id}>{m.firstName} {m.lastName}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Услуга</label>
+                    <select value={createForm.serviceId} onChange={(e)=>setCreateForm((p:any)=>({...p, serviceId: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm">
+                      {services.map(s => (<option key={s.id} value={s.id}>{s.name}</option>))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Имя клиента</label>
+                    <input type="text" value={createForm.clientName} onChange={(e)=>setCreateForm((p:any)=>({...p, clientName: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="Иван Иванов" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" value={createForm.clientEmail} onChange={(e)=>setCreateForm((p:any)=>({...p, clientEmail: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="example@mail.com" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Телефон</label>
+                    <input type="tel" value={createForm.clientPhone} onChange={(e)=>setCreateForm((p:any)=>({...p, clientPhone: e.target.value}))} className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm" placeholder="+7 999 123-45-67" />
+                  </div>
+                </div>
+              </div>
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button onClick={()=>setCreateDialogOpen(false)} className="px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50">Отмена</button>
+                <button
+                  onClick={async ()=>{
+                    try {
+                      const token = localStorage.getItem('token')
+                      const startTime = `${createForm.date}T${createForm.time}`
+                      const res = await fetch('/api/bookings', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          teamSlug: team?.settings?.slug || team?.slug,
+                          serviceIds: [createForm.serviceId],
+                          masterId: createForm.masterId,
+                          startTime,
+                          clientData: {
+                            name: createForm.clientName,
+                            email: createForm.clientEmail,
+                            phone: createForm.clientPhone
+                          }
+                        })
+                      })
+                      if (!res.ok) {
+                        const data = await res.json().catch(()=>({}))
+                        alert(`Ошибка создания: ${data.error || res.statusText}`)
+                        return
+                      }
+                      setCreateDialogOpen(false)
+                      await loadData(true)
+                    } catch (e) {
+                      alert('Не удалось создать запись')
+                    }
+                  }}
+                  className="px-4 py-2 text-sm text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+                >
+                  Создать
                 </button>
               </div>
             </div>

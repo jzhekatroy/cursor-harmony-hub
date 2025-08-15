@@ -34,11 +34,8 @@ export default function LoginPage() {
         localStorage.setItem('token', data.token)
         
         // Перенаправляем в зависимости от роли
-        if (data.user.role === 'SUPER_ADMIN') {
-          router.push('/super-admin')
-        } else {
-          router.push('/admin')
-        }
+        // Всех ведём в /admin; доступ к /superadmin проверяется отдельно
+        router.push('/admin')
       } else {
         setError(data.error || 'Ошибка входа')
       }
@@ -137,7 +134,7 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center text-xs text-gray-500">
-          <Link href="/super-admin" className="hover:text-gray-700">
+          <Link href="/superadmin" className="hover:text-gray-700">
             Администрирование системы
           </Link>
         </div>

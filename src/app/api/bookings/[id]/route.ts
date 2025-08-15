@@ -36,7 +36,7 @@ export async function PUT(
 
     const bookingId = id
     const body = await request.json()
-    const { startTime, masterId, totalPrice, notes, duration } = body
+    const { startTime, masterId, totalPrice, notes, duration, serviceId, status, clientId, clientData } = body
 
     // Находим бронирование
     const existingBooking = await prisma.booking.findUnique({
@@ -124,8 +124,94 @@ export async function PUT(
       updateData.notes = notes
     }
 
-    // Если есть изменения, обновляем бронирование
-    if (Object.keys(updateData).length > 0) {
+    // Смена клиента: либо по clientId (существующий), либо по clientData (создать/найти)
+    let changedClient = false
+    if (clientId) {
+      // Проверяем, что клиент принадлежит команде
+      const targetClient = await prisma.client.findFirst({ where: { id: clientId, teamId: user.teamId } })
+      if (!targetClient) {
+        return NextResponse.json({ error: 'Клиент не найден' }, { status: 404 })
+      }
+      if (existingBooking.clientId !== clientId) {
+        updateData.clientId = clientId
+        changedClient = true
+      }
+    } else if (clientData && typeof clientData === 'object') {
+      const name: string = String(clientData.name || '').trim()
+      const emailTrim: string = String(clientData.email || '').trim()
+      const phoneRaw: string = String(clientData.phone || '')
+      // Требуем имя и телефон для нового клиента
+      const { createDateInSalonTimezone } = await import('@/lib/timezone')
+      const { toE164 } = await import('@/lib/phone')
+      const { e164: phoneE164 } = toE164(phoneRaw, (user.team as any).countryCode || 'RU')
+      if (!name) {
+        return NextResponse.json({ error: 'Укажите имя клиента' }, { status: 400 })
+      }
+      if (!phoneE164) {
+        return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
+      }
+      // Поиск существующего по email/телефону
+      let target = null as any
+      if (emailTrim) {
+        target = await prisma.client.findFirst({ where: { email: emailTrim, teamId: user.teamId } })
+      }
+      if (!target) {
+        target = await prisma.client.findFirst({ where: { phone: phoneE164, teamId: user.teamId } })
+      }
+      const [firstName, ...rest] = name.split(/\s+/)
+      const lastName = rest.join(' ') || null
+      if (!target) {
+        // Создаём нового клиента
+        const emailForCreate = emailTrim || `${String(phoneE164).replace('+','')}${String(user.teamId).slice(0,6)}@noemail.local`
+        try {
+          target = await prisma.client.create({
+            data: {
+              email: emailForCreate,
+              phone: phoneE164,
+              firstName,
+              lastName,
+              teamId: user.teamId
+            }
+          })
+        } catch (err: any) {
+          if (err && err.code === 'P2002') {
+            target = await prisma.client.findFirst({ where: { email: emailForCreate, teamId: user.teamId } })
+          } else {
+            throw err
+          }
+        }
+      } else {
+        // Обновляем недостающие поля
+        const needUpdate = (!target.firstName && firstName) || (!target.lastName && lastName) || (phoneE164 && target.phone !== phoneE164)
+        if (needUpdate) {
+          target = await prisma.client.update({ where: { id: target.id }, data: {
+            firstName: target.firstName || firstName,
+            lastName: target.lastName || lastName,
+            phone: phoneE164 || target.phone
+          } })
+        }
+      }
+      if (target && existingBooking.clientId !== target.id) {
+        updateData.clientId = target.id
+        changedClient = true
+      }
+    }
+
+    // Валидируем смену статуса: правила переходов
+    if (status && status !== existingBooking.status) {
+      const cur = existingBooking.status
+      const next = status as BookingStatus
+      if (cur === BookingStatus.NEW || cur === BookingStatus.CONFIRMED) {
+        const isAllowed = (next === BookingStatus.CANCELLED_BY_CLIENT) || (next === BookingStatus.CANCELLED_BY_SALON)
+        if (!isAllowed) {
+          return NextResponse.json({ error: 'Из статусов «Создана» и «Подтверждена» можно перейти только в «Отменена клиентом» или «Отменена салоном»' }, { status: 400 })
+        }
+      }
+      updateData.status = next
+    }
+
+    // Если есть изменения или смена услуги, обновляем бронирование
+    if (Object.keys(updateData).length > 0 || serviceId) {
       const updatedBooking = await prisma.$transaction(async (tx) => {
         // Обновляем бронирование
         const booking = await tx.booking.update({
@@ -140,12 +226,48 @@ export async function PUT(
           }
         })
 
+        // Смена услуги (перезаписываем состав услуг как одиночную услугу)
+        if (serviceId) {
+          // Проверяем, что услуга принадлежит команде
+          const service = await tx.service.findFirst({ where: { id: serviceId, teamId: user.teamId } })
+          if (!service) {
+            throw new Error('Услуга не найдена')
+          }
+          // Удаляем старые связи
+          await tx.bookingService.deleteMany({ where: { bookingId } })
+          // Добавляем новую связь
+          await tx.bookingService.create({
+            data: {
+              bookingId,
+              serviceId,
+              price: service.price
+            }
+          })
+          // Если не переданы duration/totalPrice — подставляем из услуги
+          const mustUpdate: any = {}
+          if (duration === undefined || Number(duration) <= 0) {
+            // Пересчёт времени по длительности услуги
+            const utcStart = new Date((booking as any).startTime)
+            const utcEnd = new Date(utcStart.getTime() + Number(service.duration) * 60 * 1000)
+            mustUpdate.endTime = utcEnd
+          }
+          if (totalPrice === undefined) {
+            mustUpdate.totalPrice = service.price
+          }
+          if (Object.keys(mustUpdate).length > 0) {
+            await tx.booking.update({ where: { id: bookingId }, data: mustUpdate })
+          }
+        }
+
         // Создаем лог изменений
-        const changes = []
+        const changes = [] as string[]
         if (startTime) changes.push('время')
         if (masterId && masterId !== existingBooking.masterId) changes.push('мастер')
         if (totalPrice !== undefined && totalPrice !== existingBooking.totalPrice) changes.push('цена')
+        if (serviceId) changes.push('услуга')
+        if (status && status !== existingBooking.status) changes.push('статус')
         if (notes !== undefined) changes.push('комментарий')
+        if (changedClient) changes.push('клиент')
 
         await tx.bookingLog.create({
           data: {

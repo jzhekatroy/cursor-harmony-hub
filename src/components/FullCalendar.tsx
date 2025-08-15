@@ -64,6 +64,7 @@ interface FullCalendarProps {
   onBookingClick?: (booking: Booking) => void
   salonTimezone?: string
   onBookingCancelled?: () => void
+  onEmptySlotClick?: (payload: { time: Date; master: Master }) => void
 }
 
 export default function FullCalendar({ 
@@ -73,7 +74,8 @@ export default function FullCalendar({
   masterAbsences = [],
   onBookingClick,
   salonTimezone = 'Europe/Moscow',
-  onBookingCancelled
+  onBookingCancelled,
+  onEmptySlotClick
 }: FullCalendarProps) {
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date()
@@ -588,8 +590,12 @@ export default function FullCalendar({
                         return (
                           <div
                             key={master.id}
-                            className={slotClass}
+                            className={slotClass + (isWorking && !isBreak && !absence ? ' hover:bg-blue-50 cursor-pointer' : '')}
                             style={{ width: masterColumnWidth }}
+                            onClick={() => {
+                              if (!isWorking || isBreak || absence) return
+                              if (onEmptySlotClick) onEmptySlotClick({ time: timeSlot, master })
+                            }}
                           >
                             {isPastSlot && (
                               <div className="absolute inset-0 bg-gray-100/70 pointer-events-none" />

@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
 
     const settings = {
       bookingStep: user.team.bookingStep,
+      maxBookingsPerDayPerClient: user.team.maxBookingsPerDayPerClient,
       masterLimit: user.team.masterLimit,
       webhooksEnabled: user.team.webhooksEnabled,
       fairMasterRotation: Boolean(user.team.fairMasterRotation), // Явно преобразуем в boolean
@@ -86,6 +87,7 @@ export async function PUT(request: NextRequest) {
     
     const {
       bookingStep,
+      maxBookingsPerDayPerClient,
       masterLimit,
       webhooksEnabled,
       fairMasterRotation,
@@ -104,6 +106,16 @@ export async function PUT(request: NextRequest) {
       if (!validSteps.includes(bookingStep)) {
         return NextResponse.json(
           { error: 'Интервал бронирования должен быть 15, 30 или 60 минут' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Валидация лимита записей на клиента
+    if (maxBookingsPerDayPerClient !== undefined) {
+      if (typeof maxBookingsPerDayPerClient !== 'number' || maxBookingsPerDayPerClient < 1 || maxBookingsPerDayPerClient > 20) {
+        return NextResponse.json(
+          { error: 'Лимит записей на клиента должен быть числом от 1 до 20' },
           { status: 400 }
         )
       }
@@ -196,6 +208,7 @@ export async function PUT(request: NextRequest) {
 
     const updateData: any = {}
     if (bookingStep !== undefined) updateData.bookingStep = bookingStep
+    if (maxBookingsPerDayPerClient !== undefined) updateData.maxBookingsPerDayPerClient = maxBookingsPerDayPerClient
     if (masterLimit !== undefined) updateData.masterLimit = masterLimit
     if (webhooksEnabled !== undefined) updateData.webhooksEnabled = webhooksEnabled
     if (fairMasterRotation !== undefined) updateData.fairMasterRotation = fairMasterRotation
@@ -216,6 +229,7 @@ export async function PUT(request: NextRequest) {
       message: 'Настройки обновлены',
       settings: {
         bookingStep: updatedTeam.bookingStep,
+        maxBookingsPerDayPerClient: updatedTeam.maxBookingsPerDayPerClient,
         masterLimit: updatedTeam.masterLimit,
         webhooksEnabled: updatedTeam.webhooksEnabled,
         fairMasterRotation: Boolean(updatedTeam.fairMasterRotation), // Явно преобразуем в boolean

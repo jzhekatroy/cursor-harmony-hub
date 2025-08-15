@@ -41,7 +41,20 @@ npm run dev
 - `/api/masters/*` - Управление мастерами
 - `/api/services/*` - Управление услугами
 - `/api/teams/*` - Информация о салонах
+ - `/api/superadmin/*` - БОГ‑админка (требуется роль SUPER_ADMIN)
 
 ## База данных
 
 Используется SQLite с Prisma ORM. Автоматические резервные копии при деплоях.
+
+## Документация
+
+- Пользовательские гайды:
+  - `docs/calendar-user.md`
+  - `docs/bookings-summary-user.md`
+  - `docs/superadmin-user.md`
+
+- Технические гайды:
+  - `docs/calendar-technical.md`
+  - `docs/bookings-summary-technical.md`
+  - `docs/superadmin-technical.md`

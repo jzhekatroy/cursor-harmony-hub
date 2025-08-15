@@ -89,29 +89,16 @@ export async function GET(request: NextRequest) {
       const count = await prisma.booking.count({
         where: { ...baseWhere, ...extraWhere, status }
       })
-      // Сумма по услугам, входящим в эти бронирования
-      const bookingFilter: any = { ...baseWhere, status }
-      if (extraWhere.masterId) bookingFilter.masterId = extraWhere.masterId
-      if (extraWhere.services) {
-        // При наличии фильтра по услугам суммируем только выбранные услуги
-        const serviceIdsForSum = serviceIds
-        const agg = await prisma.bookingService.aggregate({
-          _sum: { price: true },
-          where: {
-            serviceId: serviceIdsForSum.length > 0 ? { in: serviceIdsForSum } : undefined,
-            booking: bookingFilter
-          }
-        })
-        const amount = agg._sum.price ? Number(agg._sum.price) : 0
-        return { count, amount }
-      } else {
-        const agg = await prisma.bookingService.aggregate({
-          _sum: { price: true },
-          where: { booking: bookingFilter }
-        })
-        const amount = agg._sum.price ? Number(agg._sum.price) : 0
-        return { count, amount }
-      }
+      // Сумма по ИТОГОВОЙ цене брони (totalPrice), чтобы учитывать редактирование цен
+      const bookingSumWhere: any = { ...baseWhere, status }
+      if (extraWhere.masterId) bookingSumWhere.masterId = extraWhere.masterId
+      if (extraWhere.services) bookingSumWhere.services = extraWhere.services
+      const agg = await prisma.booking.aggregate({
+        _sum: { totalPrice: true },
+        where: bookingSumWhere
+      })
+      const amount = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
+      return { count, amount }
     }
 
     const [completed, confirmed, planned, noShow, cancelledByClient, cancelledBySalon] = await Promise.all([

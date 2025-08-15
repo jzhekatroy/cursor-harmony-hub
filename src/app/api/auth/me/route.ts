@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       role: userWithoutPassword.role,
       firstName: userWithoutPassword.firstName,
       lastName: userWithoutPassword.lastName,
+      impersonatedBy: (decoded as any).impersonatedBy || null,
       team: {
         id: userWithoutPassword.team.id,
         name: userWithoutPassword.team.name,

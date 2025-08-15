@@ -108,6 +108,26 @@ export default function AdminLayout({
   return (
     <ToastProvider>
     <div className="min-h-screen bg-gray-50">
+      {user && (user as any).impersonatedBy && (
+        <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-10 flex items-center justify-between text-sm">
+            <div>Impersonation: вы вошли как админ команды</div>
+            <button
+              className="px-2 py-1 border border-yellow-300 rounded hover:bg-yellow-200"
+              onClick={() => {
+                const original = sessionStorage.getItem('superadmin_original_token')
+                if (original) {
+                  localStorage.setItem('token', original)
+                  sessionStorage.removeItem('superadmin_original_token')
+                  window.location.reload()
+                } else {
+                  alert('Оригинальный токен не найден')
+                }
+              }}
+            >Вернуться к SUPER_ADMIN</button>
+          </div>
+        </div>
+      )}
       {/* Top header with horizontal navigation */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

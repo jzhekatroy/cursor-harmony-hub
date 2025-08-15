@@ -101,8 +101,6 @@ export default function BookingsPage() {
   // Состояние для отслеживания отмены бронирования
   const [cancellingBooking, setCancellingBooking] = useState<string | null>(null)
 
-  // Состояние для раскрываемых бронирований
-  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set())
   const [editingBookings, setEditingBookings] = useState<Set<string>>(new Set())
   const [editForms, setEditForms] = useState<Record<string, any>>({})
   const [overlaps, setOverlaps] = useState<Record<string, boolean>>({})
@@ -111,6 +109,8 @@ export default function BookingsPage() {
   const [dailySeries, setDailySeries] = useState<{ daysIso: string[]; labels: string[]; counts: number[]; revenueSalon: number[]; revenueLost: number[] }>({ daysIso: [], labels: [], counts: [], revenueSalon: [], revenueLost: [] })
   const [dailyLoading, setDailyLoading] = useState<boolean>(false)
   const [graphGroupBy, setGraphGroupBy] = useState<'day' | 'week' | 'month'>('day')
+  // Триггер принудительного обновления сводки/графиков после сохранения изменений
+  const [refreshTick, setRefreshTick] = useState<number>(0)
 
   // На странице бронирований оставляем только список (календарь убран)
 
@@ -141,7 +141,7 @@ export default function BookingsPage() {
       }
     }
     fetchSummary()
-  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses])
+  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses, refreshTick])
 
   // Загружаем дневные ряды для графиков (всегда, без кнопки загрузки списка)
   useEffect(() => {
@@ -172,7 +172,7 @@ export default function BookingsPage() {
       }
     }
     fetchDaily()
-  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses])
+  }, [viewMode, anchorDate, rangeStartStr, rangeEndStr, salonTimezone, selectedMasterIds, selectedServiceIds, selectedStatuses, refreshTick])
 
   // Агрегация рядов для графиков по дням/неделям/месяцам
   const aggregateGraphSeries = () => {
@@ -282,7 +282,7 @@ export default function BookingsPage() {
       setError(null)
       const token = localStorage.getItem('token')
       if (!token) throw new Error('Токен авторизации не найден')
-      const response = await fetch('/api/bookings', { headers: { Authorization: `Bearer ${token}` } })
+      const response = await fetch(`/api/bookings?t=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.error || 'Ошибка загрузки бронирований')
@@ -342,16 +342,7 @@ export default function BookingsPage() {
     }
   }
 
-  // Переключение раскрытия брони
-  const toggleExpanded = (bookingId: string) => {
-    const newExpanded = new Set(expandedBookings)
-    if (newExpanded.has(bookingId)) {
-      newExpanded.delete(bookingId)
-    } else {
-      newExpanded.add(bookingId)
-    }
-    setExpandedBookings(newExpanded)
-  }
+  // Убрали раскрытие брони по клику — оставляем только инлайн‑редактирование в строке
 
   // Начало редактирования
   const toLocalDateTimeInputValue = (date: Date) => {
@@ -363,16 +354,33 @@ export default function BookingsPage() {
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
   }
 
+  const toSalonLocalInputFromUtcIso = (utcIso: string, tz: string) => {
+    const d = new Date(utcIso)
+    const y = Number(d.toLocaleString('ru-RU', { timeZone: tz, year: 'numeric' }))
+    const m = Number(d.toLocaleString('ru-RU', { timeZone: tz, month: 'numeric' }))
+    const day = Number(d.toLocaleString('ru-RU', { timeZone: tz, day: 'numeric' }))
+    const hh = Number(d.toLocaleString('ru-RU', { timeZone: tz, hour: '2-digit', hour12: false }))
+    const mm = Number(d.toLocaleString('ru-RU', { timeZone: tz, minute: '2-digit' }))
+    const yStr = String(y)
+    const mStr = String(m).padStart(2, '0')
+    const dayStr = String(day).padStart(2, '0')
+    const hhStr = String(hh).padStart(2, '0')
+    const mmStr = String(mm).padStart(2, '0')
+    return `${yStr}-${mStr}-${dayStr}T${hhStr}:${mmStr}`
+  }
+
   const startEditing = (booking: Booking) => {
     setEditingBookings(prev => new Set(prev).add(booking.id))
     setEditForms(prev => ({
       ...prev,
       [booking.id]: {
-        startTime: toLocalDateTimeInputValue(new Date(booking.startTime)),
+        startTime: toSalonLocalInputFromUtcIso(booking.startTime, salonTimezone || 'Europe/Moscow'),
         masterId: booking.master.id,
         duration: booking.services?.reduce((sum, s) => sum + (s.duration || 0), 0) || 0,
         totalPrice: booking.totalPrice,
-        notes: booking.notes || ''
+        notes: booking.notes || '',
+        serviceId: (booking.services && (booking.services[0] as any)?.service?.id) || (booking.services && (booking.services[0] as any)?.id) || '',
+        status: booking.status
       }
     }))
   }
@@ -411,6 +419,8 @@ export default function BookingsPage() {
         await loadBookings()
         // Выходим из режима редактирования
         cancelEditing(bookingId)
+        // Принудительно обновляем сводный блок и мини‑графики
+        setRefreshTick(t => t + 1)
       } else {
         const errorData = await response.json()
         alert(`Ошибка сохранения: ${errorData.error || 'Неизвестная ошибка'}`)
@@ -658,7 +668,12 @@ export default function BookingsPage() {
     return count > 1 ? `${primary} +${count - 1}` : primary
   }
 
-  const getTotalDuration = (b: Booking) => (b.services || []).reduce((sum, s) => sum + (s.duration || 0), 0)
+  const getTotalDuration = (b: Booking) => {
+    const start = new Date(b.startTime).getTime()
+    const end = new Date(b.endTime).getTime()
+    if (isNaN(start) || isNaN(end) || end <= start) return 0
+    return Math.round((end - start) / 60000)
+  }
 
   const getStatusChipStyle = (status: string) => {
     const map: Record<string, string> = {
@@ -1151,7 +1166,6 @@ export default function BookingsPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {sortedBookings.map((b) => {
-                    const isExpanded = expandedBookings.has(b.id)
                     const isEditing = editingBookings.has(b.id)
                     const editForm = editForms[b.id] || {}
                     const isFinished = new Date(b.endTime).getTime() <= Date.now()
@@ -1161,10 +1175,21 @@ export default function BookingsPage() {
                     const created = b.createdAt ? formatDateTime(b.createdAt) : null
                   return (
                       <React.Fragment key={b.id}>
-                        <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleExpanded(b.id)}>
+                        <tr className="hover:bg-gray-50">
                           <td className="px-3 py-2 text-xs text-gray-900 break-words">
-                            {start.date} <br />
-                            <span className="text-gray-500">{start.time} - {end.time}</span>
+                            {isEditing ? (
+                              <input
+                                type="datetime-local"
+                                value={editForm.startTime || ''}
+                                onChange={(e) => updateEditForm(b.id, 'startTime', e.target.value)}
+                                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs"
+                              />
+                            ) : (
+                              <>
+                                {start.date} <br />
+                                <span className="text-gray-500">{start.time} - {end.time}</span>
+                              </>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-xs text-gray-500 break-words">
                             {created ? (
@@ -1174,10 +1199,83 @@ export default function BookingsPage() {
                               </>
                             ) : '—'}
                           </td>
-                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">{getPrimaryServiceLabel(b)}</td>
-                          <td className="px-3 py-2 text-xs text-gray-900 break-words">{b.master.firstName} {b.master.lastName}</td>
-                          <td className="px-3 py-2 text-xs text-gray-900">{getTotalDuration(b)} мин</td>
-                          <td className="px-3 py-2 text-xs text-gray-900">{b.totalPrice} ₽</td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">
+                            {isEditing ? (
+                              <select
+                                value={editForm.serviceId || ''}
+                                onChange={(e) => {
+                                  const newServiceId = e.target.value
+                                  const svc = services.find(s => s.id === newServiceId)
+                                  updateEditForm(b.id, 'serviceId', newServiceId)
+                                  if (svc) {
+                                    // Автоподстановка длительности/цены по услуге (можно потом отключить)
+                                    const svcDef = (b.services && b.services[0]) ? b.services[0] : null
+                                    updateEditForm(b.id, 'duration', (svc as any).duration ?? svcDef?.duration ?? editForm.duration ?? 0)
+                                    updateEditForm(b.id, 'totalPrice', (svc as any).price ?? editForm.totalPrice ?? 0)
+                                  }
+                                }}
+                                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs"
+                              >
+                                {services.map(s => (
+                                  <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              getPrimaryServiceLabel(b)
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900 break-words">
+                            {isEditing ? (
+                              <select
+                                value={editForm.masterId || ''}
+                                onChange={(e) => updateEditForm(b.id, 'masterId', e.target.value)}
+                                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs"
+                              >
+                                {masters.filter(m => m.isActive !== false).map(master => (
+                                  <option key={master.id} value={master.id}>{master.firstName} {master.lastName}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              `${b.master.firstName} ${b.master.lastName}`
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900">
+                            {isEditing ? (
+                              <div>
+                                <input
+                                  type="number"
+                                  min={15}
+                                  step={15}
+                                  value={editForm.duration || 0}
+                                  onChange={(e) => updateEditForm(b.id, 'duration', parseInt(e.target.value) || 0)}
+                                  className="border border-gray-300 rounded-md px-2 py-1.5 text-xs w-24 text-right"
+                                />
+                                {overlaps[b.id] && (
+                                  <div className="mt-1 text-[10px] text-orange-600">Возможный конфликт по времени</div>
+                                )}
+                              </div>
+                            ) : (
+                              `${getTotalDuration(b)} мин`
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-xs text-gray-900">
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={String(editForm.totalPrice ?? 0)}
+                                onChange={(e) => {
+                                  const v = e.target.value.replace(/[^\d.,]/g, '').replace(',', '.')
+                                  const num = v === '' ? 0 : Number(v)
+                                  updateEditForm(b.id, 'totalPrice', isNaN(num) ? 0 : num)
+                                }}
+                                className="border border-gray-300 rounded-md px-2 py-1.5 text-xs w-24 text-right"
+                                placeholder="0"
+                              />
+                            ) : (
+                              `${b.totalPrice} ₽`
+                            )}
+                          </td>
                           <td className="px-3 py-2 text-xs text-gray-900 break-words max-w-[180px]">
                             <a
                               href={`/admin/clients?id=${encodeURIComponent((b as any).clientId || '')}`}
@@ -1188,26 +1286,58 @@ export default function BookingsPage() {
                             </a>
                           </td>
                           <td className="px-3 py-2 text-xs">
-                            <span className="inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full" style={getStatusChipStyle(b.status)}>
-                              {statusNames[b.status as keyof typeof statusNames] || b.status}
-                                </span>
+                            {isEditing ? (
+                              <select
+                                value={editForm.status || b.status}
+                                onChange={(e) => updateEditForm(b.id, 'status', e.target.value)}
+                                className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-xs"
+                              >
+                                {(() => {
+                                  const current = b.status
+                                  const all: Array<{value:string,label:string}> = [
+                                    { value: 'NEW', label: statusNames['NEW'] },
+                                    { value: 'CONFIRMED', label: statusNames['CONFIRMED'] },
+                                    { value: 'COMPLETED', label: statusNames['COMPLETED'] },
+                                    { value: 'NO_SHOW', label: statusNames['NO_SHOW'] },
+                                    { value: 'CANCELLED_BY_CLIENT', label: statusNames['CANCELLED_BY_CLIENT'] },
+                                    { value: 'CANCELLED_BY_SALON', label: statusNames['CANCELLED_BY_SALON'] },
+                                  ]
+                                  let allowed: typeof all
+                                  if (current === 'NEW' || current === 'CONFIRMED') {
+                                    allowed = all.filter(o => o.value === 'CANCELLED_BY_SALON' || o.value === 'CANCELLED_BY_CLIENT')
+                                  } else {
+                                    allowed = all.filter(o => o.value !== 'NEW' && o.value !== 'CONFIRMED')
+                                  }
+                                  return allowed.map(o => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))
+                                })()}
+                              </select>
+                            ) : (
+                              <span className="inline-flex px-2 py-[2px] text-[10px] font-medium rounded-full" style={getStatusChipStyle(b.status)}>
+                                {statusNames[b.status as keyof typeof statusNames] || b.status}
+                              </span>
+                            )}
                           </td>
                           <td className="px-3 py-2 text-right text-xs font-medium w-16" onClick={(e) => e.stopPropagation()}>
-                            {(isCancellable || isFinished) ? (
-                              <button
-                                onClick={() => cancelBooking(b.id)}
-                                disabled={cancellingBooking === b.id}
-                                className="text-red-600 hover:text-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={isFinished ? 'Отметить как «Не пришёл»' : 'Отменить запись'}
-                              >
-                                {cancellingBooking === b.id ? (<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 inline-block"></div>) : (<X className="w-4 h-4" />)}
-                              </button>
+                            {isEditing ? (
+                              <div className="inline-flex gap-2">
+                                <button onClick={() => saveChanges(b.id)} className="text-blue-600 hover:text-blue-800" title="Сохранить"><Save className="w-4 h-4" /></button>
+                                <button onClick={() => cancelEditing(b.id)} className="text-gray-600 hover:text-gray-800" title="Отмена"><X className="w-4 h-4" /></button>
+                              </div>
                             ) : (
-                              <span className="text-gray-400">—</span>
+                              <button
+                                onClick={() => startEditing(b)}
+                                className="text-blue-600 hover:text-blue-800"
+                                title="Редактировать"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
                             )}
                           </td>
                         </tr>
-                        {isExpanded && (
+                        {/* раскрытие по клику отключено */}
+                        {false && (
                           <tr>
                             <td colSpan={9} className="px-3 py-3 bg-gray-50">
                               <div className="flex justify-end space-x-2 mb-4">

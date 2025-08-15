@@ -145,6 +145,9 @@ export async function POST(request: NextRequest) {
     // Нормализуем телефон в E.164
     const { e164: phoneE164 } = toE164(clientData.phone || '', (team as any).countryCode || 'RU')
 
+    // Если нового клиента не находим по email/телефону, потребуем имя и телефон
+    const emailTrim = (clientData.email || '').trim()
+
     let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)
     if (clientData.email) {
       client = await prisma.client.findFirst({
@@ -158,17 +161,43 @@ export async function POST(request: NextRequest) {
     }
 
     if (!client) {
-      client = await prisma.client.create({
-        data: {
-          email: clientData.email,
-          phone: phoneE164,
-          telegram: clientData.telegram,
-          firstName: clientData.firstName ?? parsedFirstName,
-          lastName: clientData.lastName ?? parsedLastName,
-          address: clientData.address,
-          teamId: team.id
+      if (!fullName) {
+        return NextResponse.json({ error: 'Укажите имя клиента' }, { status: 400 })
+      }
+      if (!phoneE164) {
+        return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
+      }
+      const emailForCreate = emailTrim || `${String(phoneE164).replace('+','')}${String(team.id).slice(0,6)}@noemail.local`
+      // Пытаемся создать клиента, если он не найден. На случай гонки (P2002) — перезапрашиваем существующего
+      try {
+        client = await prisma.client.create({
+          data: {
+            email: emailForCreate,
+            phone: phoneE164,
+            telegram: clientData.telegram,
+            firstName: clientData.firstName ?? parsedFirstName,
+            lastName: clientData.lastName ?? parsedLastName,
+            address: clientData.address,
+            teamId: team.id
+          }
+        })
+      } catch (err: any) {
+        // Если уникальный индекс email+teamId сработал — значит клиент уже есть. Пробуем найти по email/телефону
+        if (err && err.code === 'P2002') {
+          let existing = null as any
+          existing = await prisma.client.findFirst({ where: { email: emailTrim, teamId: team.id } })
+          if (!existing && phoneE164) {
+            existing = await prisma.client.findFirst({ where: { phone: phoneE164, teamId: team.id } })
+          }
+          if (existing) {
+            client = existing
+          } else {
+            throw err
+          }
+        } else {
+          throw err
         }
-      })
+      }
     } else if (((!client.firstName && parsedFirstName) || (!client.lastName && parsedLastName)) || (phoneE164 && client.phone !== phoneE164)) {
       // Обновляем отсутствующие ФИО, если пришло имя от клиента
       client = await prisma.client.update({
@@ -342,6 +371,9 @@ export async function GET(request: NextRequest) {
     const masterId = searchParams.get('masterId')
     const date = searchParams.get('date')
     const status = searchParams.get('status')
+    const clientId = searchParams.get('clientId')
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
 
     // Используем teamId из авторизованного пользователя
     const teamId = user.teamId
@@ -378,16 +410,20 @@ export async function GET(request: NextRequest) {
       whereClause.masterId = masterId
     }
 
-    if (date) {
+    if (clientId) {
+      whereClause.clientId = clientId
+    }
+
+    if (from || to) {
+      const gte = from ? new Date(from) : undefined
+      const lte = to ? new Date(to) : undefined
+      whereClause.startTime = { ...(gte ? { gte } : {}), ...(lte ? { lte } : {}) }
+    } else if (date) {
       const startOfDay = new Date(date)
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(date)
       endOfDay.setHours(23, 59, 59, 999)
-
-      whereClause.startTime = {
-        gte: startOfDay,
-        lte: endOfDay
-      }
+      whereClause.startTime = { gte: startOfDay, lte: endOfDay }
     }
 
     if (status) {

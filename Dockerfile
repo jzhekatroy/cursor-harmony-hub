@@ -8,7 +8,8 @@ WORKDIR /app
 
 # Копируем файлы зависимостей
 COPY package.json package-lock.json* ./
-RUN npm ci --only=production
+# Нужны dev-зависимости для сборки (tailwind/postcss и т.п.)
+RUN npm ci
 
 # Пересобираем исходный код только при необходимости
 FROM base AS builder

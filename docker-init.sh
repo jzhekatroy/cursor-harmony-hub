@@ -15,10 +15,9 @@ done
 
 echo "✅ Приложение запущено!"
 
-# Инициализируем базу данных (если нужно)
-echo "🗄️ Проверка базы данных..."
-docker exec beauty-booking-app npx prisma db push --accept-data-loss || true
-docker exec beauty-booking-app npm run db:seed || true
+echo "🗄️ Проверка базы данных... (только миграции в проде)"
+# В проде применяем только миграции, без db push
+docker exec beauty-booking-app npx prisma migrate deploy || true
 
 echo "🎉 Инициализация завершена!"
 echo ""

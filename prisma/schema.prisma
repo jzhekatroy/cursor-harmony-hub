@@ -12,8 +12,8 @@ datasource db {
 
 enum UserRole {
   SUPER_ADMIN // БОГ
-  ADMIN       // Администратор команды
-  MASTER      // Мастер
+  ADMIN // Администратор команды
+  MASTER // Мастер
 }
 
 enum TeamStatus {
@@ -22,12 +22,12 @@ enum TeamStatus {
 }
 
 enum BookingStatus {
-  NEW              // Новая (требует подтверждения)
-  CONFIRMED        // Подтверждена
-  COMPLETED        // Выполнена
+  NEW // Новая (требует подтверждения)
+  CONFIRMED // Подтверждена
+  COMPLETED // Выполнена
   CANCELLED_BY_CLIENT // Отменена клиентом
-  CANCELLED_BY_SALON   // Отменена салоном
-  NO_SHOW          // Не пришел
+  CANCELLED_BY_SALON // Отменена салоном
+  NO_SHOW // Не пришел
 }
 
 enum ActionType {
@@ -42,27 +42,27 @@ enum ActionType {
 
 // Команды (салоны)
 model Team {
-  id              String     @id @default(cuid())
-  teamNumber      String     @unique // B0XXXXXXX
-  name            String
-  slug            String     @unique // для публичного URL
-  bookingSlug     String?    // кастомная ссылка для бронирования (если null, используется slug)
-  contactPerson   String
-  email           String
-  logoUrl         String?
-  status          TeamStatus @default(ACTIVE)
-  disabledReason  String?
-  disabledAt      DateTime?
-  masterLimit     Int        @default(2)
-  bookingStep     Int        @default(15) // шаг бронирования в минутах
-  maxBookingsPerDayPerClient Int @default(3) // лимит записей на клиента в день
-  timezone        String     @default("Europe/Moscow") // часовой пояс салона
-  webhooksEnabled Boolean    @default(true)
-  fairMasterRotation Boolean @default(false) // Справедливое распределение мастеров
-  privacyPolicyUrl String?
-  telegramBotToken String?   // токен Telegram бота для WebApp
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id                         String     @id @default(cuid())
+  teamNumber                 String     @unique // B0XXXXXXX
+  name                       String
+  slug                       String     @unique // для публичного URL
+  bookingSlug                String? // кастомная ссылка для бронирования (если null, используется slug)
+  contactPerson              String
+  email                      String
+  logoUrl                    String?
+  status                     TeamStatus @default(ACTIVE)
+  disabledReason             String?
+  disabledAt                 DateTime?
+  masterLimit                Int        @default(2)
+  bookingStep                Int        @default(15) // шаг бронирования в минутах
+  maxBookingsPerDayPerClient Int        @default(3) // лимит записей на клиента в день
+  timezone                   String     @default("Europe/Moscow") // часовой пояс салона
+  webhooksEnabled            Boolean    @default(true)
+  fairMasterRotation         Boolean    @default(false) // Справедливое распределение мастеров
+  privacyPolicyUrl           String?
+  telegramBotToken           String? // токен Telegram бота для WebApp
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
 
   // Связи
   users           User[]
@@ -75,69 +75,71 @@ model Team {
   bookingLogs     BookingLog[]
   teamLogs        TeamLog[]
   masterRotations MasterRotation[]
+  loginLogs       UserLoginLog[]
 
   @@map("teams")
 }
 
 // Пользователи системы
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
+  id          String    @id @default(cuid())
+  email       String    @unique
   password    String
   role        UserRole
   firstName   String?
   lastName    String?
-  isActive    Boolean  @default(true)
+  isActive    Boolean   @default(true)
   lastLoginAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Связи
-  team        Team     @relation(fields: [teamId], references: [id])
+  team        Team           @relation(fields: [teamId], references: [id])
   teamId      String
-  master      Master?  // если пользователь является мастером
+  master      Master? // если пользователь является мастером
   bookingLogs BookingLog[]
   teamLogs    TeamLog[]
+  loginLogs   UserLoginLog[]
 
   @@map("users")
 }
 
 // Мастера
 model Master {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   firstName   String
   lastName    String
   description String?
   photoUrl    String?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   // Связи
-  user        User      @relation(fields: [userId], references: [id])
-  userId      String    @unique
-  team        Team      @relation(fields: [teamId], references: [id])
-  teamId      String
-  schedules   MasterSchedule[]
-  absences    MasterAbsence[]
-  bookings    Booking[]
-  services    Service[] @relation("MasterServices")
-  rotations   MasterRotation[]
+  user      User             @relation(fields: [userId], references: [id])
+  userId    String           @unique
+  team      Team             @relation(fields: [teamId], references: [id])
+  teamId    String
+  schedules MasterSchedule[]
+  absences  MasterAbsence[]
+  bookings  Booking[]
+  services  Service[]        @relation("MasterServices")
+  rotations MasterRotation[]
 
   @@map("masters")
 }
 
 // Расписание мастера
 model MasterSchedule {
-  id        String @id @default(cuid())
-  dayOfWeek Int    // 0-6, где 0 = воскресенье
-  startTime String // формат HH:mm
-  endTime   String // формат HH:mm
+  id         String  @id @default(cuid())
+  dayOfWeek  Int // 0-6, где 0 = воскресенье
+  startTime  String // формат HH:mm
+  endTime    String // формат HH:mm
   breakStart String? // формат HH:mm
   breakEnd   String? // формат HH:mm
 
-  master    Master @relation(fields: [masterId], references: [id])
-  masterId  String
+  master   Master @relation(fields: [masterId], references: [id])
+  masterId String
 
   @@unique([masterId, dayOfWeek])
   @@map("master_schedules")
@@ -154,48 +156,48 @@ model MasterAbsence {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  master      Master   @relation(fields: [masterId], references: [id])
-  masterId    String
+  master   Master @relation(fields: [masterId], references: [id])
+  masterId String
 
   @@map("master_absences")
 }
 
 // Группы услуг
 model ServiceGroup {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  order     Int       @default(0)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  team      Team      @relation(fields: [teamId], references: [id])
-  teamId    String
-  services  Service[]
+  team     Team      @relation(fields: [teamId], references: [id])
+  teamId   String
+  services Service[]
 
   @@map("service_groups")
 }
 
 // Услуги
 model Service {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  duration    Int      // продолжительность в минутах
-  price       Decimal  // базовая цена
-  photoUrl    String?
-  isArchived  Boolean  @default(false)
-  order       Int      @default(0)
-  requireConfirmation Boolean @default(false) // требовать подтверждение записи
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  name                String
+  description         String?
+  duration            Int // продолжительность в минутах
+  price               Decimal // базовая цена
+  photoUrl            String?
+  isArchived          Boolean  @default(false)
+  order               Int      @default(0)
+  requireConfirmation Boolean  @default(false) // требовать подтверждение записи
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // Связи
-  team        Team          @relation(fields: [teamId], references: [id])
-  teamId      String
-  group       ServiceGroup? @relation(fields: [groupId], references: [id])
-  groupId     String?
-  masters     Master[]      @relation("MasterServices")
-  bookings    BookingService[]
+  team     Team             @relation(fields: [teamId], references: [id])
+  teamId   String
+  group    ServiceGroup?    @relation(fields: [groupId], references: [id])
+  groupId  String?
+  masters  Master[]         @relation("MasterServices")
+  bookings BookingService[]
 
   @@map("services")
 }
@@ -213,10 +215,10 @@ model Client {
   updatedAt DateTime @updatedAt
 
   // Связи
-  team      Team      @relation(fields: [teamId], references: [id])
-  teamId    String
-  bookings  Booking[]
-  events    ClientEvent[]
+  team     Team          @relation(fields: [teamId], references: [id])
+  teamId   String
+  bookings Booking[]
+  events   ClientEvent[]
 
   @@unique([email, teamId])
   @@map("clients")
@@ -227,15 +229,15 @@ model ClientEvent {
   id        String   @id @default(cuid())
   teamId    String
   clientId  String?
-  source    String   // webapp | public | tg_callback | other
-  type      String   // page_open | booking_created | booking_rescheduled | booking_cancelled | ...
+  source    String // webapp | public | tg_callback | other
+  type      String // page_open | booking_created | booking_rescheduled | booking_cancelled | ...
   metadata  Json?
   ip        String?
   userAgent String?
   createdAt DateTime @default(now())
 
-  team      Team     @relation(fields: [teamId], references: [id])
-  client    Client?  @relation(fields: [clientId], references: [id])
+  team   Team    @relation(fields: [teamId], references: [id])
+  client Client? @relation(fields: [clientId], references: [id])
 
   @@index([teamId, createdAt])
   @@index([teamId, clientId, createdAt])
@@ -245,33 +247,33 @@ model ClientEvent {
 
 // Бронирования
 model Booking {
-  id          String        @id @default(cuid())
-  bookingNumber String      @unique // уникальный номер брони
-  startTime   DateTime
-  endTime     DateTime
-  totalPrice  Decimal
-  notes       String?
-  status      BookingStatus @default(NEW)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id            String        @id @default(cuid())
+  bookingNumber String        @unique // уникальный номер брони
+  startTime     DateTime
+  endTime       DateTime
+  totalPrice    Decimal
+  notes         String?
+  status        BookingStatus @default(NEW)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   // Связи
-  team        Team            @relation(fields: [teamId], references: [id])
-  teamId      String
-  client      Client          @relation(fields: [clientId], references: [id])
-  clientId    String
-  master      Master          @relation(fields: [masterId], references: [id])
-  masterId    String
-  services    BookingService[]
-  logs        BookingLog[]
+  team     Team             @relation(fields: [teamId], references: [id])
+  teamId   String
+  client   Client           @relation(fields: [clientId], references: [id])
+  clientId String
+  master   Master           @relation(fields: [masterId], references: [id])
+  masterId String
+  services BookingService[]
+  logs     BookingLog[]
 
   @@map("bookings")
 }
 
 // Связь бронирования с услугами (многие ко многим)
 model BookingService {
-  id        String  @id @default(cuid())
-  price     Decimal // цена на момент бронирования
+  id    String  @id @default(cuid())
+  price Decimal // цена на момент бронирования
 
   booking   Booking @relation(fields: [bookingId], references: [id])
   bookingId String
@@ -290,12 +292,12 @@ model BookingLog {
   createdAt   DateTime   @default(now())
 
   // Связи
-  booking     Booking    @relation(fields: [bookingId], references: [id])
-  bookingId   String
-  user        User?      @relation(fields: [userId], references: [id])
-  userId      String?
-  team        Team       @relation(fields: [teamId], references: [id])
-  teamId      String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId String
+  user      User?   @relation(fields: [userId], references: [id])
+  userId    String?
+  team      Team    @relation(fields: [teamId], references: [id])
+  teamId    String
 
   @@map("booking_logs")
 }
@@ -303,15 +305,15 @@ model BookingLog {
 // Логи операций с командами (для БОГ-админки)
 model TeamLog {
   id          String   @id @default(cuid())
-  action      String   // тип действия
+  action      String // тип действия
   description String
   createdAt   DateTime @default(now())
 
   // Связи
-  team        Team     @relation(fields: [teamId], references: [id])
-  teamId      String
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
+  team   Team   @relation(fields: [teamId], references: [id])
+  teamId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
 
   @@map("team_logs")
 }
@@ -321,31 +323,53 @@ model MasterRotation {
   id          String   @id @default(cuid())
   teamId      String
   masterId    String
-  position    Int      // текущая позиция в ротации
+  position    Int // текущая позиция в ротации
   showCount   Int      @default(0) // количество показов на этой позиции
   lastShownAt DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Связи
-  team        Team     @relation(fields: [teamId], references: [id])
-  master      Master   @relation(fields: [masterId], references: [id])
-  
+  team   Team   @relation(fields: [teamId], references: [id])
+  master Master @relation(fields: [masterId], references: [id])
+
   @@unique([teamId, masterId])
   @@map("master_rotations")
 }
 
 // Вебхуки
 model Webhook {
-  id          String   @id @default(cuid())
-  url         String
-  event       String   // тип события
-  isActive    Boolean  @default(true)
-  secretKey   String?
-  retryCount  Int      @default(0)
-  lastSentAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String    @id @default(cuid())
+  url        String
+  event      String // тип события
+  isActive   Boolean   @default(true)
+  secretKey  String?
+  retryCount Int       @default(0)
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@map("webhooks")
+}
+
+// Журнал входов пользователей
+model UserLoginLog {
+  id            String   @id @default(cuid())
+  userId        String?
+  teamId        String?
+  email         String
+  success       Boolean
+  failureReason String?
+  ip            String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+  team Team? @relation(fields: [teamId], references: [id])
+
+  @@index([createdAt])
+  @@index([email, createdAt])
+  @@index([userId, createdAt])
+  @@index([teamId, createdAt])
+  @@map("user_login_logs")
 }

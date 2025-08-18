@@ -6,9 +6,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || request.headers.get('x-client-ip') || null
+    const userAgent = request.headers.get('user-agent') || null
 
     // Валидация
     if (!email || !password) {
+      // Логируем неуспешную попытку входа (валидация)
+      try {
+        await prisma.userLoginLog.create({
+          data: {
+            email: email || '',
+            success: false,
+            failureReason: 'VALIDATION_ERROR',
+            ip: ip || undefined,
+            userAgent: userAgent || undefined,
+          }
+        })
+      } catch {}
       return NextResponse.json(
         { error: 'Email и пароль обязательны для заполнения' },
         { status: 400 }
@@ -25,6 +39,18 @@ export async function POST(request: NextRequest) {
     })
 
     if (!user) {
+      // Логируем неуспешную попытку входа (пользователь не найден)
+      try {
+        await prisma.userLoginLog.create({
+          data: {
+            email,
+            success: false,
+            failureReason: 'USER_NOT_FOUND',
+            ip: ip || undefined,
+            userAgent: userAgent || undefined,
+          }
+        })
+      } catch {}
       return NextResponse.json(
         { error: 'Неверный email или пароль' },
         { status: 401 }
@@ -33,6 +59,19 @@ export async function POST(request: NextRequest) {
 
     // Проверка активности пользователя
     if (!user.isActive) {
+      try {
+        await prisma.userLoginLog.create({
+          data: {
+            email,
+            userId: user.id,
+            teamId: user.teamId,
+            success: false,
+            failureReason: 'USER_INACTIVE',
+            ip: ip || undefined,
+            userAgent: userAgent || undefined,
+          }
+        })
+      } catch {}
       return NextResponse.json(
         { error: 'Аккаунт заблокирован' },
         { status: 403 }
@@ -41,6 +80,19 @@ export async function POST(request: NextRequest) {
 
     // Проверка статуса команды
     if (user.team.status === 'DISABLED') {
+      try {
+        await prisma.userLoginLog.create({
+          data: {
+            email,
+            userId: user.id,
+            teamId: user.teamId,
+            success: false,
+            failureReason: 'TEAM_DISABLED',
+            ip: ip || undefined,
+            userAgent: userAgent || undefined,
+          }
+        })
+      } catch {}
       return NextResponse.json(
         { error: 'Команда временно отключена' },
         { status: 403 }
@@ -50,6 +102,19 @@ export async function POST(request: NextRequest) {
     // Проверка пароля
     const isPasswordValid = await verifyPassword(password, user.password)
     if (!isPasswordValid) {
+      try {
+        await prisma.userLoginLog.create({
+          data: {
+            email,
+            userId: user.id,
+            teamId: user.teamId,
+            success: false,
+            failureReason: 'INVALID_PASSWORD',
+            ip: ip || undefined,
+            userAgent: userAgent || undefined,
+          }
+        })
+      } catch {}
       return NextResponse.json(
         { error: 'Неверный email или пароль' },
         { status: 401 }
@@ -61,6 +126,20 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       data: { lastLoginAt: new Date() }
     })
+
+    // Логируем успешный вход
+    try {
+      await prisma.userLoginLog.create({
+        data: {
+          email,
+          userId: user.id,
+          teamId: user.teamId,
+          success: true,
+          ip: ip || undefined,
+          userAgent: userAgent || undefined,
+        }
+      })
+    } catch {}
 
     // Генерация токена
     const token = generateToken({

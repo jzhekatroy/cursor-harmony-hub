@@ -133,11 +133,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="text-center text-xs text-gray-500">
-          <Link href="/superadmin" className="hover:text-gray-700">
-            Администрирование системы
-          </Link>
-        </div>
+        {/* Удалено по требованию: ссылка "Администрирование системы" */}
       </div>
     </div>
   )

@@ -353,6 +353,8 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
               setFormData({
                 startDate: '',
                 endDate: '',
+                startTime: '09:00',
+                endTime: '18:00',
                 reason: 'VACATION',
                 description: '',
                 isRecurring: false

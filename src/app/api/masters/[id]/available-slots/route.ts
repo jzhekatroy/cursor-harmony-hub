@@ -92,22 +92,7 @@ export async function GET(
     const requestDate = new Date(date)
     const dayOfWeek = requestDate.getDay() // 0 = Sunday, 1 = Monday, etc.
 
-    // Проверяем отпуска/отсутствия
-    const hasAbsence = master.absences.some(absence => {
-      const startDate = new Date(absence.startDate)
-      const endDate = new Date(absence.endDate)
-      return requestDate >= startDate && requestDate <= endDate
-    })
-
-    if (hasAbsence) {
-      return NextResponse.json({
-        date,
-        masterId,
-        masterName: `${master.firstName} ${master.lastName}`,
-        availableSlots: [],
-        message: 'Мастер отсутствует в этот день'
-      })
-    }
+    // Ранний возврат не используем: учитываем частичные отсутствия по времени ниже
 
     // Получаем расписание на этот день недели
     const daySchedule = master.schedules.find(schedule => 
@@ -150,6 +135,22 @@ export async function GET(
       start: formatTimeForSalon(booking.startTime),
       end: formatTimeForSalon(booking.endTime)
     }))
+
+    // Добавляем отсутствия мастера как занятые интервалы только для выбранной даты
+    const absenceOccupied = master.absences
+      .filter(abs => {
+        const s = utcToSalonTime(new Date(abs.startDate), master.team.timezone || 'Europe/Moscow')
+        const e = utcToSalonTime(new Date(abs.endDate), master.team.timezone || 'Europe/Moscow')
+        const d = new Date(date + 'T00:00:00')
+        const salonDayStr = d.toLocaleDateString('en-CA', { timeZone: master.team.timezone || 'Europe/Moscow' })
+        const sStr = s.toLocaleDateString('en-CA', { timeZone: master.team.timezone || 'Europe/Moscow' })
+        const eStr = e.toLocaleDateString('en-CA', { timeZone: master.team.timezone || 'Europe/Moscow' })
+        return sStr <= salonDayStr && eStr >= salonDayStr
+      })
+      .map(abs => ({
+        start: formatTimeForSalon(abs.startDate as any),
+        end: formatTimeForSalon(abs.endDate as any)
+      }))
     
     console.log('📅 ЗАНЯТЫЕ СЛОТЫ:')
     master.bookings.forEach((booking, i) => {
@@ -170,9 +171,11 @@ export async function GET(
     console.log('   - Сегодня ли:', isToday)
     console.log('   - Количество бронирований:', master.bookings.length)
 
+    const occupiedWithAbsences = occupiedSlots.concat(absenceOccupied)
+
     const availableSlots = workingSlots.filter(slot => {
       // Исключаем занятые слоты
-      if (isSlotOccupied(slot, occupiedSlots, serviceDuration)) {
+      if (isSlotOccupied(slot, occupiedWithAbsences, serviceDuration)) {
         console.log('❌ Слот занят:', slot.start)
         return false
       }

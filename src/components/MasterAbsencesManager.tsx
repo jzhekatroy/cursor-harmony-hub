@@ -45,7 +45,9 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
   const [formData, setFormData] = useState({
     startDate: '',
     endDate: '',
-    reason: 'VACATION',
+    startTime: '09:00',
+    endTime: '18:00',
+    reason: '',
     description: '',
     isRecurring: false
   })
@@ -100,6 +102,9 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
         : `/api/masters/${masterId}/absences`
       
       const method = editingAbsence ? 'PUT' : 'POST'
+      // Собираем ISO-строки с учетом времени (по умолчанию 00:00 и 23:59)
+      const startDateTime = `${formData.startDate}T${(formData.startTime || '00:00')}:00`
+      const endDateTime = `${formData.endDate}T${(formData.endTime || '23:59')}:00`
 
       const response = await fetch(url, {
         method,
@@ -107,7 +112,13 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          startDate: startDateTime,
+          endDate: endDateTime,
+          reason: formData.reason?.trim() || null,
+          description: formData.description?.trim() || null,
+          isRecurring: formData.isRecurring
+        })
       })
 
       if (!response.ok) {
@@ -122,7 +133,9 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
       setFormData({
         startDate: '',
         endDate: '',
-        reason: 'VACATION',
+        startTime: '09:00',
+        endTime: '18:00',
+        reason: '',
         description: '',
         isRecurring: false
       })
@@ -191,10 +204,25 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
       }
     }
     
+    // Вытаскиваем время HH:mm из ISO
+    const extractTime = (dateInput: string | Date): string => {
+      try {
+        const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput
+        if (isNaN(d.getTime())) return '00:00'
+        const hh = d.getHours().toString().padStart(2, '0')
+        const mm = d.getMinutes().toString().padStart(2, '0')
+        return `${hh}:${mm}`
+      } catch {
+        return '00:00'
+      }
+    }
+    
     setFormData({
       startDate: formatDateForInput(absence.startDate),
       endDate: formatDateForInput(absence.endDate),
-      reason: absence.reason,
+      startTime: extractTime(absence.startDate),
+      endTime: extractTime(absence.endDate),
+      reason: absence.reason || '',
       description: absence.description || '',
       isRecurring: absence.isRecurring
     })
@@ -371,21 +399,42 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Время начала
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.startTime || ''}
+                    onChange={(e) => setFormData({...formData, startTime: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Время окончания
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.endTime || ''}
+                    onChange={(e) => setFormData({...formData, endTime: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Причина отсутствия
                 </label>
-                <select
-                  value={formData.reason}
+                <input
+                  type="text"
+                  value={formData.reason || ''}
                   onChange={(e) => setFormData({...formData, reason: e.target.value})}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {ABSENCE_REASONS.map(reason => (
-                    <option key={reason.value} value={reason.value}>
-                      {reason.label}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Например: личные дела, визит к врачу и т.п."
+                />
               </div>
 
               <div>
@@ -446,7 +495,7 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
             </div>
           ) : (
             absences.map((absence) => {
-              const reasonInfo = getReasonInfo(absence.reason)
+              const reasonText = (absence.reason && absence.reason.trim()) ? absence.reason : 'Отсутствие'
               const isCurrent = isCurrentAbsence(absence)
               
               return (
@@ -457,8 +506,8 @@ const MasterAbsencesManager: React.FC<MasterAbsencesManagerProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${reasonInfo.color}`}>
-                          {reasonInfo.label}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800`}>
+                          {reasonText}
                         </span>
                         {isCurrent && (
                           <span className="flex items-center text-xs text-orange-600">

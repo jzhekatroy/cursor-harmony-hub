@@ -50,9 +50,9 @@ interface MasterSchedule {
 
 interface MasterAbsence {
   masterId: string
-  startDate: string // ISO date string
-  endDate: string // ISO date string
-  reason: string
+  startDate: string // ISO
+  endDate: string   // ISO
+  reason?: string
   description?: string
 }
 
@@ -148,7 +148,7 @@ export default function FullCalendar({
   }
 
   const getMasterAbsence = (masterId: string, date: Date) => {
-    // Сравнение дат в часовом поясе салона (YYYY-MM-DD)
+    // Оставляем как определение наличия отсутствия в дате (не по времени)
     const target = getSalonDateYYYYMMDD(date)
     return absences.find(absence => {
       const start = new Date(absence.startDate)
@@ -163,20 +163,38 @@ export default function FullCalendar({
     })
   }
 
-  // Человекочитаемые метки причин отсутствий, как в интерфейсе "Отсутствия"
-  const getAbsenceReasonLabel = (reason: string) => {
-    switch (reason) {
-      case 'VACATION':
-        return '🏖️ Отпуск'
-      case 'SICK_LEAVE':
-        return '🤒 Больничный'
-      case 'PERSONAL':
-        return '👤 Личные дела'
-      case 'TRAINING':
-        return '📚 Обучение'
-      default:
-        return '❓ Отсутствие'
+  // Точный чек: отсутствует ли мастер в конкретное время слота
+  const isMasterAbsentAt = (masterId: string, slotTime: Date) => {
+    const dayStr = getSalonDateYYYYMMDD(slotTime)
+    const slotLabel = formatHHmmInSalon(slotTime) // HH:mm в часовом поясе салона
+
+    for (const absence of absences) {
+      if (absence.masterId !== masterId) continue
+      const aStart = new Date(absence.startDate)
+      const aEnd = new Date(absence.endDate)
+
+      const aStartDay = getSalonDateYYYYMMDD(aStart)
+      const aEndDay = getSalonDateYYYYMMDD(aEnd)
+
+      // Дата слота должна попадать в диапазон дат отсутствия
+      if (aStartDay > dayStr || aEndDay < dayStr) continue
+
+      // Вычисляем эффективные границы времени на текущий день
+      const startLabel = aStartDay === dayStr ? formatHHmmInSalon(aStart) : '00:00'
+      const endLabel = aEndDay === dayStr ? formatHHmmInSalon(aEnd) : '23:59'
+
+      if (slotLabel >= startLabel && slotLabel < endLabel) {
+        return { absent: true, reason: absence.reason || absence.description }
+      }
     }
+
+    return { absent: false as const }
+  }
+
+  // Человекочитаемые метки причин отсутствий, как в интерфейсе "Отсутствия"
+  const getAbsenceReasonLabel = (reason?: string) => {
+    const text = (reason && reason.trim()) ? reason : 'Отсутствие'
+    return text
   }
 
   const cancelBooking = async (bookingId: string) => {
@@ -550,6 +568,7 @@ export default function FullCalendar({
                       {activeMasters.map(master => {
                         const schedule = getMasterSchedule(master.id, selectedDate)
                         const absence = getMasterAbsence(master.id, selectedDate)
+                        const absenceAtTime = isMasterAbsentAt(master.id, timeSlot)
                         const isWorking = isWorkingTime(master.id, timeSlot, selectedDate)
                         const isBreak = isBreakTime(master.id, timeSlot, selectedDate)
                         
@@ -557,10 +576,10 @@ export default function FullCalendar({
                         let slotContent = null
                         const isPastSlot = isSameDay(selectedDate, now) && isBefore(timeSlot, now)
                         
-                        if (absence) {
+                        if (absenceAtTime.absent) {
                           // Мастер отсутствует - серый слот с подписью причины
                           slotClass += " bg-gray-300"
-                          const reasonLabel = getAbsenceReasonLabel(absence.reason)
+                          const reasonLabel = getAbsenceReasonLabel(absenceAtTime.reason)
                           slotContent = (
                             <div className="absolute inset-0 flex items-center justify-center text-[11px] sm:text-xs text-gray-700 text-center px-1">
                               <div className="font-medium truncate max-w-full">{reasonLabel}</div>
@@ -593,7 +612,7 @@ export default function FullCalendar({
                             className={slotClass + (isWorking && !isBreak && !absence ? ' hover:bg-blue-50 cursor-pointer' : '')}
                             style={{ width: masterColumnWidth }}
                             onClick={() => {
-                              if (!isWorking || isBreak || absence) return
+                              if (!isWorking || isBreak || absenceAtTime.absent) return
                               if (onEmptySlotClick) onEmptySlotClick({ time: timeSlot, master })
                             }}
                           >

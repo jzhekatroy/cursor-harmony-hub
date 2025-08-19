@@ -47,6 +47,14 @@ jobs:
           git fetch origin
           git reset --hard origin/main
           echo "✅ Код обновлен до коммита: $(git rev-parse --short HEAD)"
+
+          echo "🧹 Чистим возможные дубли проекта (архивы/вложенные папки)..."
+          [ -d beauty-booking-mvp ] && rm -rf beauty-booking-mvp || true
+
+          echo "🛠️ Нормализуем docker-compose.yml (порт/healthcheck/DATABASE_URL для контейнера)..."
+          sed -i 's|"3000:3000"|"127.0.0.1:3000:3000"|' docker-compose.yml || true
+          sed -i 's|http://localhost:3000/api/health|http://127.0.0.1:3000/api/health|' docker-compose.yml || true
+          sed -i 's|- DATABASE_URL=${DATABASE_URL}|- DATABASE_URL=postgresql://postgres:postgres@postgres:5432/beauty?schema=public|' docker-compose.yml || true
           
           echo "🐳 Поднимаем инфраструктуру Docker..."
           docker compose up -d postgres || true
@@ -58,7 +66,8 @@ jobs:
           docker compose up -d --remove-orphans beauty-booking
           
           echo "🗄️ Применяем миграции (в контейнере)..."
-          docker compose exec beauty-booking npx prisma migrate deploy || { echo "❌ Ошибка миграций"; exit 1; }
+          # Внутри контейнера Postgres доступен по хосту "postgres"
+          docker compose exec beauty-booking sh -lc 'export DATABASE_URL="postgresql://postgres:postgres@postgres:5432/beauty?schema=public"; npx prisma migrate deploy' || { echo "❌ Ошибка миграций"; exit 1; }
           
           echo "📊 Текущий статус сервисов:" && docker compose ps
           

@@ -42,8 +42,9 @@ export async function GET(
 
     const fileBuffer = await readFile(filePath)
     const contentType = getContentType(filename)
-    // Отдаём бинарные данные через Blob, чтобы удовлетворить тип BodyInit
-    const res = new NextResponse(new Blob([fileBuffer]), {
+    // Отдаём бинарные данные как Uint8Array (совместимо с BodyInit)
+    const bytes = Uint8Array.from(fileBuffer)
+    const res = new NextResponse(bytes, {
       status: 200,
       headers: {
         'Content-Type': contentType,

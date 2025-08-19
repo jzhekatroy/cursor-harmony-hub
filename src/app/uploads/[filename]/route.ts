@@ -42,9 +42,8 @@ export async function GET(
 
     const fileBuffer = await readFile(filePath)
     const contentType = getContentType(filename)
-    // Преобразуем Node.js Buffer в ArrayBuffer, совместимый с Web Response API
-    const arrayBuffer = fileBuffer.buffer.slice(fileBuffer.byteOffset, fileBuffer.byteOffset + fileBuffer.byteLength)
-    const res = new NextResponse(arrayBuffer, {
+    // Отдаём бинарные данные через Blob, чтобы удовлетворить тип BodyInit
+    const res = new NextResponse(new Blob([fileBuffer]), {
       status: 200,
       headers: {
         'Content-Type': contentType,

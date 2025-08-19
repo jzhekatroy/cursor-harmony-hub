@@ -22,8 +22,7 @@ jobs:
     - name: 📦 Install dependencies
       run: npm ci
     
-    - name: 🗄️ Prisma migrate (PostgreSQL)
-      run: npx prisma migrate deploy
+    # Миграции запускаем на сервере (ниже), где есть .env с DATABASE_URL
       
     - name: 🔨 Build application
       run: npm run build
@@ -52,6 +51,11 @@ jobs:
           echo "📦 Устанавливаем зависимости..."
           npm ci --production=false
           echo "✅ Зависимости установлены"
+          
+          echo "🗄️ Применяем Prisma миграции на сервере..."
+          # Подхватываем переменные из .env (включая DATABASE_URL) и применяем миграции
+          sudo -u beautyapp bash -lc 'set -o allexport; source .env; set +o allexport; npx prisma migrate deploy' || { echo "❌ Ошибка применения миграций"; exit 1; }
+          echo "✅ Миграции применены"
           
           echo "🔧 Исправляем права доступа..."
           sudo chown -R beautyapp:beautyapp /home/beautyapp/beauty-booking

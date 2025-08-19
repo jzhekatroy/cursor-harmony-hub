@@ -230,9 +230,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Проверяем, есть ли услуги, требующие подтверждения
-    const hasServicesRequiringConfirmation = services.some(service => service.requireConfirmation)
-
     // Создаем бронирование в транзакции
     const result = await prisma.$transaction(async (tx) => {
       // Создаем бронирование
@@ -243,7 +240,7 @@ export async function POST(request: NextRequest) {
           endTime: utcEndDateTime,
           totalPrice: totalPrice,
           notes: clientData.notes,
-          status: hasServicesRequiringConfirmation ? BookingStatus.NEW : BookingStatus.CONFIRMED,
+          status: BookingStatus.CONFIRMED,
           teamId: team.id,
           clientId: client.id,
           masterId: masterId
@@ -265,10 +262,8 @@ export async function POST(request: NextRequest) {
       await tx.bookingLog.create({
         data: {
           bookingId: booking.id,
-          action: hasServicesRequiringConfirmation ? 'NEW' : 'CONFIRMED',
-          description: hasServicesRequiringConfirmation 
-            ? 'Бронирование создано клиентом через виджет записи (требует подтверждения)'
-            : 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
+          action: 'CONFIRMED',
+          description: 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
           teamId: team.id
         }
       })

@@ -693,23 +693,7 @@ export default function ServicesPage() {
                 onPhotoRemove={() => setServiceForm({...serviceForm, photoUrl: ''})}
               />
             </div>
-            <div className="md:col-span-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="requireConfirmation"
-                  checked={serviceForm.requireConfirmation}
-                  onChange={(e) => setServiceForm({...serviceForm, requireConfirmation: e.target.checked})}
-                  className="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="requireConfirmation" className="ml-3 text-sm text-gray-700">
-                  Требовать подтверждение записи
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Если включено, записи на эту услугу будут требовать подтверждения от администратора
-              </p>
-            </div>
+            {/* Убрали опцию "Требовать подтверждение записи" в MVP */}
           </div>
           <div className="flex justify-end space-x-3 mt-6">
             <button
@@ -839,9 +823,6 @@ export default function ServicesPage() {
                               <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                                 <span>{formatDurationRu(service.duration)}</span>
                                 <span>{service.price} ₽</span>
-                                {service.requireConfirmation && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Требует подтверждения</span>
-                                )}
                               </div>
                             </div>
                           </div>

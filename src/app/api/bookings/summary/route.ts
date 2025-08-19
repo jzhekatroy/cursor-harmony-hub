@@ -101,10 +101,9 @@ export async function GET(request: NextRequest) {
       return { count, amount }
     }
 
-    const [completed, confirmed, planned, noShow, cancelledByClient, cancelledBySalon] = await Promise.all([
+    const [completed, confirmed, noShow, cancelledByClient, cancelledBySalon] = await Promise.all([
       statsFor('COMPLETED'),
       statsFor('CONFIRMED'),
-      statsFor('NEW'),
       statsFor('NO_SHOW'),
       statsFor('CANCELLED_BY_CLIENT'),
       statsFor('CANCELLED_BY_SALON'),
@@ -114,7 +113,6 @@ export async function GET(request: NextRequest) {
       summary: {
         COMPLETED: completed,
         CONFIRMED: confirmed,
-        NEW: planned,
         NO_SHOW: noShow,
         CANCELLED_BY_CLIENT: cancelledByClient,
         CANCELLED_BY_SALON: cancelledBySalon

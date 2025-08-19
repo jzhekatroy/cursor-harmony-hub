@@ -75,8 +75,8 @@ export async function GET(request: NextRequest) {
       }
       const count = await prisma.booking.count({ where: countWhere })
 
-      // Revenue: planned (NEW + CONFIRMED) — используем итоговую цену брони (totalPrice)
-      const plannedStatuses = inStatuses(['NEW', 'CONFIRMED'])
+      // Revenue: planned (CONFIRMED) — используем итоговую цену брони (totalPrice)
+      const plannedStatuses = inStatuses(['CONFIRMED'])
       let sumPlanned = 0
       if (plannedStatuses.length > 0) {
         const wherePlanned: any = { ...baseBookingWhere, status: { in: plannedStatuses } }
@@ -97,22 +97,34 @@ export async function GET(request: NextRequest) {
         sumCompleted = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
       }
 
-      // Revenue: lost (NO_SHOW + CANCELLED_*) — используем итоговую цену брони (totalPrice)
-      const lostStatuses = inStatuses(['NO_SHOW', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON'])
-      let sumLost = 0
-      if (lostStatuses.length > 0) {
-        const whereLost: any = { ...baseBookingWhere, status: { in: lostStatuses } }
-        if (masterIds.length > 0) whereLost.masterId = { in: masterIds }
-        if (serviceIds.length > 0) whereLost.services = { some: { serviceId: { in: serviceIds } } }
-        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: whereLost })
-        sumLost = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
+      // Revenue: lost breakdown
+      // NO_SHOW
+      const noShowStatuses = inStatuses(['NO_SHOW'])
+      let sumNoShow = 0
+      if (noShowStatuses.length > 0) {
+        const whereNoShow: any = { ...baseBookingWhere, status: { in: noShowStatuses } }
+        if (masterIds.length > 0) whereNoShow.masterId = { in: masterIds }
+        if (serviceIds.length > 0) whereNoShow.services = { some: { serviceId: { in: serviceIds } } }
+        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: whereNoShow })
+        sumNoShow = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
+      }
+      // CANCELLED (by client + by salon)
+      const cancelledStatuses = inStatuses(['CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON'])
+      let sumCancelled = 0
+      if (cancelledStatuses.length > 0) {
+        const whereCancelled: any = { ...baseBookingWhere, status: { in: cancelledStatuses } }
+        if (masterIds.length > 0) whereCancelled.masterId = { in: masterIds }
+        if (serviceIds.length > 0) whereCancelled.services = { some: { serviceId: { in: serviceIds } } }
+        const agg = await prisma.booking.aggregate({ _sum: { totalPrice: true }, where: whereCancelled })
+        sumCancelled = agg._sum.totalPrice ? Number(agg._sum.totalPrice) : 0
       }
 
       results.push({
         day: start.toISOString(),
         count,
         revenueSalon: sumPlanned + sumCompleted,
-        revenueLost: sumLost
+        revenueNoShow: sumNoShow,
+        revenueCancelled: sumCancelled
       })
     }
 

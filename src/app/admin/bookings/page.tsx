@@ -106,7 +106,7 @@ export default function BookingsPage() {
   const [overlaps, setOverlaps] = useState<Record<string, boolean>>({})
 
   // Данные для мини‑графиков (грузим всегда с сервера, не зависят от списка)
-  const [dailySeries, setDailySeries] = useState<{ daysIso: string[]; labels: string[]; counts: number[]; revenueSalon: number[]; revenueLost: number[] }>({ daysIso: [], labels: [], counts: [], revenueSalon: [], revenueLost: [] })
+  const [dailySeries, setDailySeries] = useState<{ daysIso: string[]; labels: string[]; counts: number[]; revenueSalon: number[]; revenueNoShow: number[]; revenueCancelled: number[] }>({ daysIso: [], labels: [], counts: [], revenueSalon: [], revenueNoShow: [], revenueCancelled: [] })
   const [dailyLoading, setDailyLoading] = useState<boolean>(false)
   const [graphGroupBy, setGraphGroupBy] = useState<'day' | 'week' | 'month'>('day')
   // Триггер принудительного обновления сводки/графиков после сохранения изменений
@@ -164,8 +164,9 @@ export default function BookingsPage() {
           const labels: string[] = daysIso.map((iso: string) => new Date(iso).toLocaleDateString('ru-RU', { timeZone: tz, day: '2-digit', month: 'short' }))
           const counts: number[] = arr.map((d: any) => Number(d.count) || 0)
           const revenueSalon: number[] = arr.map((d: any) => Number(d.revenueSalon) || 0)
-          const revenueLost: number[] = arr.map((d: any) => Number(d.revenueLost) || 0)
-          setDailySeries({ daysIso, labels, counts, revenueSalon, revenueLost })
+          const revenueNoShow: number[] = arr.map((d: any) => Number(d.revenueNoShow) || 0)
+          const revenueCancelled: number[] = arr.map((d: any) => Number(d.revenueCancelled) || 0)
+          setDailySeries({ daysIso, labels, counts, revenueSalon, revenueNoShow, revenueCancelled })
         }
       } finally {
         setDailyLoading(false)
@@ -181,12 +182,13 @@ export default function BookingsPage() {
       return dailySeries
     }
     // Строим словари по ключам
-    const map: Record<string, { label: string; count: number; revenueSalon: number; revenueLost: number }> = {}
+    const map: Record<string, { label: string; count: number; revenueSalon: number; revenueNoShow: number; revenueCancelled: number }> = {}
     const addToKey = (key: string, label: string, i: number) => {
-      if (!map[key]) map[key] = { label, count: 0, revenueSalon: 0, revenueLost: 0 }
+      if (!map[key]) map[key] = { label, count: 0, revenueSalon: 0, revenueNoShow: 0, revenueCancelled: 0 }
       map[key].count += dailySeries.counts[i] || 0
       map[key].revenueSalon += dailySeries.revenueSalon[i] || 0
-      map[key].revenueLost += dailySeries.revenueLost[i] || 0
+      map[key].revenueNoShow += (dailySeries as any).revenueNoShow?.[i] || 0
+      map[key].revenueCancelled += (dailySeries as any).revenueCancelled?.[i] || 0
     }
     dailySeries.daysIso.forEach((iso, i) => {
       const d = new Date(iso)
@@ -216,8 +218,9 @@ export default function BookingsPage() {
     const labels = keys.map(k => map[k].label)
     const counts = keys.map(k => map[k].count)
     const revenueSalon = keys.map(k => Math.round(map[k].revenueSalon))
-    const revenueLost = keys.map(k => Math.round(map[k].revenueLost))
-    return { daysIso: keys, labels, counts, revenueSalon, revenueLost }
+    const revenueNoShow = keys.map(k => Math.round(map[k].revenueNoShow))
+    const revenueCancelled = keys.map(k => Math.round(map[k].revenueCancelled))
+    return { daysIso: keys, labels, counts, revenueSalon, revenueNoShow, revenueCancelled }
   }
 
   // Загрузка данных
@@ -951,7 +954,7 @@ export default function BookingsPage() {
         <div className="mt-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           {/* Мини‑графики: всегда показываем, две панели */}
           {(() => {
-            const { labels, counts, revenueSalon, revenueLost } = aggregateGraphSeries()
+            const { labels, counts, revenueSalon, revenueNoShow, revenueCancelled } = aggregateGraphSeries()
             const width = 240
             const height = 80
             const stepX = (n: number) => (n > 1 ? width / (n - 1) : width)
@@ -961,7 +964,7 @@ export default function BookingsPage() {
             const countTicks = [0, Math.round(maxCount / 2), maxCount]
 
             // Выручка: тики по Y
-            const maxRevenue = Math.max(1, ...revenueSalon, ...revenueLost)
+            const maxRevenue = Math.max(1, ...revenueSalon, ...revenueNoShow, ...revenueCancelled)
             const revenueTicks = [0, Math.round(maxRevenue / 2), maxRevenue]
 
             // Метки по оси X (дни): начало, середина, конец
@@ -988,9 +991,8 @@ export default function BookingsPage() {
                   <div className="flex items-start gap-2">
                     {/* Ось Y с подписями вне графика */}
                     <div>
-                      <div className="text-[10px] text-gray-400 mb-1">шт</div>
                       <div className="flex flex-col justify-between text-[10px] text-gray-400" style={{ height: `${height}px` }}>
-                        <div>{maxCount}</div>
+                        <div className="flex items-center gap-1"><span>{maxCount}</span><span>шт</span></div>
                         <div>{Math.round(maxCount / 2)}</div>
                         <div>0</div>
                       </div>
@@ -1018,13 +1020,14 @@ export default function BookingsPage() {
                 </div>
                 {/* График 2: выручка (зелёная) и упущенная (красная) */}
                 <div className="border border-gray-200 rounded p-3">
-                  <div className="text-xs text-gray-600 mb-2">Выручка (зелёная) и упущенная (красная) по дням</div>
+                  <div className="text-xs text-gray-600 mb-2">
+                    По дням: <span className="text-[#16a34a] font-medium">Выручка</span>, <span className="text-[#ef4444] font-medium">Клиент не пришёл</span>, <span className="text-[#f59e0b] font-medium">Отмены</span>
+                  </div>
                   <div className="flex items-start gap-2">
                     {/* Ось Y с подписями вне графика */}
                     <div>
-                      <div className="text-[10px] text-gray-400 mb-1">₽</div>
                       <div className="flex flex-col justify-between text-[10px] text-gray-400" style={{ height: `${height}px` }}>
-                        <div>{maxRevenue.toLocaleString('ru-RU')}</div>
+                        <div className="flex items-center gap-1"><span>{maxRevenue.toLocaleString('ru-RU')}</span><span>₽</span></div>
                         <div>{Math.round(maxRevenue / 2).toLocaleString('ru-RU')}</div>
                         <div>0</div>
                       </div>
@@ -1036,8 +1039,11 @@ export default function BookingsPage() {
                         <line x1={0} y1={0} x2={width} y2={0} stroke="#e5e7eb" strokeWidth="1" />
                         <line x1={0} y1={height/2} x2={width} y2={height/2} stroke="#f1f5f9" strokeWidth="1" />
                         <line x1={0} y1={height} x2={width} y2={height} stroke="#e5e7eb" strokeWidth="1" />
-                        <path d={buildSparklinePath(revenueSalon, width, height, maxRevenue)} stroke="#16a34a" strokeWidth="2" fill="none" />
-                        <path d={buildSparklinePath(revenueLost, width, height, maxRevenue)} stroke="#ef4444" strokeWidth="2" fill="none" />
+                        {/* Упущенная: красная (NO_SHOW) и оранжевая (отмены) */}
+                        <path d={buildSparklinePath(revenueNoShow, width, height, maxRevenue)} stroke="#ef4444" strokeWidth="2" fill="none" strokeLinecap="round" />
+                        <path d={buildSparklinePath(revenueCancelled, width, height, maxRevenue)} stroke="#f59e0b" strokeWidth="2" fill="none" strokeLinecap="round" />
+                        {/* Выручка: зелёная */}
+                        <path d={buildSparklinePath(revenueSalon, width, height, maxRevenue)} stroke="#16a34a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
                       </svg>
                       {/* Ось X с метками вне графика */}
                       <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
@@ -1059,14 +1065,13 @@ export default function BookingsPage() {
             <div className="text-sm font-medium text-gray-900">{getSummaryTitle()}</div>
             <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">на сумму</div>
             <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200"></div>
-            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200">Упущенная выручка</div>
+            <div className="text-sm font-medium text-gray-900 md:border-l md:pl-4 border-gray-200"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-sm">
             {/* Колонка 1: статусы и количества */}
             <div>
               {[
                 { key: 'COMPLETED', label: 'Выполнено' },
-                { key: 'NEW', label: 'Создана' },
                 { key: 'CONFIRMED', label: 'Подтверждено' },
                 { key: 'NO_SHOW', label: 'Клиент не пришел' },
                 { key: 'CANCELLED_BY_CLIENT', label: 'Отменено клиентом' },
@@ -1082,7 +1087,6 @@ export default function BookingsPage() {
             <div className="md:border-l md:pl-4 border-gray-200">
               {[
                 { key: 'COMPLETED' },
-                { key: 'NEW' },
                 { key: 'CONFIRMED' },
                 { key: 'NO_SHOW' },
                 { key: 'CANCELLED_BY_CLIENT' },
@@ -1097,7 +1101,7 @@ export default function BookingsPage() {
             <div className="md:border-l md:pl-4 border-gray-200">
               {(() => {
                 const completed = Number(summary.COMPLETED?.amount ?? 0)
-                const planned = Number((summary.NEW?.amount ?? 0) + (summary.CONFIRMED?.amount ?? 0))
+                const planned = Number((summary.CONFIRMED?.amount ?? 0))
                 const total = completed + planned
                 return (
                   <div>
@@ -1111,18 +1115,22 @@ export default function BookingsPage() {
                       <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${completed.toLocaleString('ru-RU')} ₽`}</span>
                     </div>
                     <div className="flex items-center justify-between py-0.5">
-                      <span className="text-gray-700">Планируемая (создана + подтверждено)</span>
+                      <span className="text-gray-700">Планируемая (подтверждено)</span>
                       <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${planned.toLocaleString('ru-RU')} ₽`}</span>
                     </div>
                   </div>
                 )
               })()}
             </div>
-            {/* Колонка 4: Упущенная выручка */}
+            {/* Колонка 4: Упущенная выручка (отдельно) */}
             <div className="md:border-l md:pl-4 border-gray-200">
               <div className="flex items-center justify-between py-0.5">
-                <span className="text-gray-700">Всего (не пришел + отмены)</span>
-                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(((summary.NO_SHOW?.amount ?? 0) + (summary.CANCELLED_BY_CLIENT?.amount ?? 0) + (summary.CANCELLED_BY_SALON?.amount ?? 0)) as number).toLocaleString('ru-RU')} ₽`}</span>
+                <span className="text-red-600">Клиент не пришёл</span>
+                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(Number(summary.NO_SHOW?.amount ?? 0)).toLocaleString('ru-RU')} ₽`}</span>
+              </div>
+              <div className="flex items-center justify-between py-0.5">
+                <span className="text-orange-600">Отмены</span>
+                <span className="font-semibold tabular-nums">{summaryLoading ? '' : `${(Number(summary.CANCELLED_BY_CLIENT?.amount ?? 0) + Number(summary.CANCELLED_BY_SALON?.amount ?? 0)).toLocaleString('ru-RU')} ₽`}</span>
               </div>
             </div>
           </div>

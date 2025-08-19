@@ -21,6 +21,16 @@ export default function HomePage() {
   const [domain, setDomain] = useState('')
   const router = useRouter()
 
+  // Редирект авторизованных сразу в админку
+  useEffect(() => {
+    try {
+      const token = localStorage.getItem('token')
+      if (token) {
+        router.replace('/admin')
+      }
+    } catch {}
+  }, [router])
+
   // Функция транслитерации кириллицы в латиницу
   const transliterate = (text: string): string => {
     const translitMap: { [key: string]: string } = {

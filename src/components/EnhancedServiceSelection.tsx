@@ -169,11 +169,7 @@ export function EnhancedServiceSelection({
             </div>
           </div>
 
-          {service.requireConfirmation && (
-            <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">
-              Требует подтверждения
-            </div>
-          )}
+          {/* Флаг подтверждения скрыт в MVP */}
         </div>
       </div>
     );

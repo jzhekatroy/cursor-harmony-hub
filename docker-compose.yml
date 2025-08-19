@@ -51,21 +51,7 @@ services:
     networks:
       - beauty_booking_network
 
-  # Nginx reverse proxy (опционально)
-  nginx:
-    image: nginx:alpine
-    container_name: beauty-booking-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - beauty-booking
-    networks:
-      - beauty_booking_network
+  
 
 volumes:
   beauty_booking_data:

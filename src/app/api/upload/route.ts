@@ -38,8 +38,12 @@ export async function POST(request: NextRequest) {
     const extension = file.name.split('.').pop()
     const fileName = `photo_${timestamp}.${extension}`
 
-    // Создаем директорию для загрузок, если её нет
-    const uploadsDir = join(process.cwd(), 'public', 'uploads')
+    // Определяем директорию загрузок:
+    // - в dev по умолчанию пишем в public/uploads, чтобы файлы были доступны статически
+    // - в prod — пишем в /tmp/uploads (или в UPLOAD_DIR), т.к. public в образе может быть read-only
+    const defaultDevDir = join(process.cwd(), 'public', 'uploads')
+    const defaultProdDir = '/tmp/uploads'
+    const uploadsDir = process.env.UPLOAD_DIR || (process.env.NODE_ENV === 'development' ? defaultDevDir : defaultProdDir)
     if (!existsSync(uploadsDir)) {
       await mkdir(uploadsDir, { recursive: true })
     }
@@ -52,6 +56,9 @@ export async function POST(request: NextRequest) {
     await writeFile(filePath, buffer)
 
     // Возвращаем URL файла
+    // Всегда отдаем /uploads/<name> —
+    // - в dev это статический файл из public/uploads
+    // - в prod этот путь обслуживается route handler'ом (см. app/uploads/[filename]/route.ts)
     const fileUrl = `/uploads/${fileName}`
 
     return NextResponse.json({

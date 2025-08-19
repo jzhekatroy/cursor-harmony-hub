@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       return candidate.filter(s => statusesFilter.includes(s))
     }
 
-    const results: Array<{ day: string, count: number, revenueSalon: number, revenueLost: number }> = []
+    const results: Array<{ day: string, count: number, revenueSalon: number, revenueNoShow: number, revenueCancelled: number }> = []
 
     for (const day of days) {
       const start = new Date(day)

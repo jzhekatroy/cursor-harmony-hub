@@ -74,19 +74,17 @@ curl http://localhost:3000/api/debug
 curl http://test.2minutes.ru/api/status
 ```
 
-### Проверка базы данных:
+### Проверка базы данных (PostgreSQL):
 ```bash
-# Размер базы данных
-ls -lh prisma/dev.db
+# Проверка подключения приложением
+node check-database.js
 
-# Подключение к базе
-sqlite3 prisma/dev.db
+# Применение миграций (prod)
+npx prisma migrate deploy
 
-# Количество пользователей
-sqlite3 prisma/dev.db "SELECT COUNT(*) FROM User;"
-
-# Последние записи
-sqlite3 prisma/dev.db "SELECT * FROM User ORDER BY createdAt DESC LIMIT 5;"
+# Ручные проверки через psql (если установлен):
+# sudo -u postgres psql -c "\l"   # список баз
+# sudo -u postgres psql -d beauty -c "SELECT COUNT(*) FROM users;"
 ```
 
 ## 🔄 Управление приложением
@@ -197,16 +195,10 @@ ls -la /home/beautyapp/db-backups/
 cp prisma/dev.db /home/beautyapp/manual-backup-$(date +%Y%m%d_%H%M%S).db
 ```
 
-### Исправление проблем с базой:
+### Исправление проблем с базой (PostgreSQL):
 ```bash
-# Исправить права доступа
-./scripts/fix-database-permissions.sh
-
-# Обновить схему без потери данных
-npx prisma db push
-
-# Заполнить недостающие данные
-npm run db:seed
+# Применить миграции
+npx prisma migrate deploy
 ```
 
 ### Сброс базы данных (ОСТОРОЖНО!):

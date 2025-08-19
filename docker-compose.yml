@@ -21,11 +21,12 @@ services:
       - APP_URL=http://localhost:3000
       - SUPER_ADMIN_EMAIL=admin@beauty-booking.com
       - SUPER_ADMIN_PASSWORD=admin123
+      - UPLOAD_DIR=/tmp/uploads
     volumes:
       # Монтируем директорию для базы данных
       - beauty_booking_data:/app/data
-      # Монтируем директорию для загрузок
-      - beauty_booking_uploads:/app/public/uploads
+      # Монтируем директорию для загрузок (персистентное хранение)
+      - beauty_booking_uploads:/tmp/uploads
     networks:
       - beauty_booking_network
     healthcheck:

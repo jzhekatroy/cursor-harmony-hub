@@ -65,8 +65,8 @@ export default function PhotoUpload({
     setUploadError(null)
     try {
       const formData = new FormData()
-      const fileName = originalFileName.endsWith('.png') ? originalFileName : 'photo.jpg'
-      formData.append('file', new File([blob], fileName, { type: blob.type }))
+      const fileName = 'photo.jpg'
+      formData.append('file', new File([blob], fileName, { type: 'image/jpeg' }))
 
       const response = await fetch('/api/upload', {
         method: 'POST',

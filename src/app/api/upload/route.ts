@@ -35,8 +35,15 @@ export async function POST(request: NextRequest) {
 
     // Создаем уникальное имя файла
     const timestamp = Date.now()
-    const extension = file.name.split('.').pop()
-    const fileName = `photo_${timestamp}.${extension}`
+    // Определяем расширение по MIME
+    const mimeToExt: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    }
+    const ext = mimeToExt[file.type] || 'jpg'
+    const fileName = `photo_${timestamp}.${ext}`
 
     // Определяем директорию загрузок:
     // - в dev по умолчанию пишем в public/uploads, чтобы файлы были доступны статически

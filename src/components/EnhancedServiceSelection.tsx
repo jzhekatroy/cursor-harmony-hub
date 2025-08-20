@@ -116,9 +116,17 @@ export function EnhancedServiceSelection({
     if (!url) return null
     try {
       const u = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
-      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
-        // используем путь относительно текущего домена
-        return u.pathname.startsWith('/') ? u.pathname : `/${u.pathname}`
+      if (typeof window !== 'undefined') {
+        const cur = window.location
+        // Приводим localhost/127.0.0.1 к относительному
+        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          return u.pathname.startsWith('/') ? u.pathname : `/${u.pathname}`
+        }
+        // Избегаем mixed-content: если страница https, поднимаем до https для того же хоста
+        if (cur.protocol === 'https:' && u.protocol === 'http:' && u.hostname === cur.hostname) {
+          u.protocol = 'https:'
+          return u.href
+        }
       }
       return u.href
     } catch {

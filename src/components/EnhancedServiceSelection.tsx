@@ -103,26 +103,59 @@ export function EnhancedServiceSelection({
     }
   }
 
+  const getHueFromString = (str: string) => {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i)
+      hash |= 0
+    }
+    return Math.abs(hash) % 360
+  }
+
   const ServiceCard = ({ service }: { service: Service }) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
     const imageUrl = service.image || service.photoUrl;
  
+    const hue = getHueFromString(service.id || service.name || 'service')
+    const fallbackGradient = `linear-gradient(135deg, hsl(${hue} 70% 70%), hsl(${(hue + 30) % 360} 70% 55%))`
+
     return (
-      <div onClick={() => toggleService(service)} className={`relative cursor-pointer transition-all duration-300 rounded-2xl border overflow-hidden ${isSelected ? 'border-[#f59e0b] shadow-lg' : 'border-gray-200 hover:border-gray-300'}`}>
-        <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-          {imageUrl ? (
-            <img src={imageUrl} alt={service.name} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-          ) : (
-            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center"><span className="text-xs text-gray-400">Нет фото</span></div>
-          )}
-          <div className={`absolute top-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white text-gray-600'}`}><Check className="w-4 h-4" /></div>
-        </div>
-        <div className="p-4">
-          <h3 className="font-semibold text-gray-900 text-base mb-1 line-clamp-2">{service.name}</h3>
-          {service.description && (<p className="text-sm text-gray-600 mb-3 line-clamp-2">{service.description}</p>)}
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-1 text-gray-600"><Clock className="w-4 h-4" /><span>{formatDuration(service.duration)}</span></div>
-            <div className="font-semibold text-[#f59e0b]">{formatCurrency(Number(service.price))}</div>
+      <div
+        onClick={() => toggleService(service)}
+        className={`relative cursor-pointer transition-all duration-300 rounded-2xl border overflow-hidden ${isSelected ? 'border-[#f59e0b] shadow-lg' : 'border-gray-200 hover:border-gray-300'}`}
+      >
+        {/* Фон: фото или тёплый градиент */}
+        <div
+          className="relative w-full"
+          style={{ paddingTop: '56.25%' }}
+        >
+          <div
+            className="absolute inset-0 w-full h-full"
+            style={{
+              backgroundImage: imageUrl ? `url(${imageUrl})` : fallbackGradient,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
+            }}
+          />
+          {/* Верхние чипсы: длительность и цена */}
+          <div className="absolute top-2 left-2 flex items-center gap-2">
+            <span className="px-2 py-1 rounded-full text-xs bg-white/90 text-gray-800 shadow flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5" /> {formatDuration(service.duration)}
+            </span>
+          </div>
+          <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs bg-white/90 text-[#b45309] font-semibold shadow">
+            {formatCurrency(Number(service.price))}
+          </div>
+          {/* Индикатор выбранного */}
+          <div className={`absolute bottom-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white/90 text-gray-600'}`}>
+            <Check className="w-4 h-4" />
+          </div>
+          {/* Низ: градиент + текст */}
+          <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
+            <h3 className="font-semibold text-white text-base mb-1 line-clamp-2">{service.name}</h3>
+            {service.description && (
+              <p className="text-[13px] leading-snug text-gray-100 line-clamp-2">{service.description}</p>
+            )}
           </div>
         </div>
       </div>

@@ -129,14 +129,21 @@ export function EnhancedServiceSelection({
           className="relative w-full"
           style={{ paddingTop: '56.25%' }}
         >
-          <div
-            className="absolute inset-0 w-full h-full"
-            style={{
-              backgroundImage: imageUrl ? `url(${imageUrl})` : fallbackGradient,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          />
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt={service.name}
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div
+              className="absolute inset-0 w-full h-full"
+              style={{
+                background: fallbackGradient
+              }}
+            />
+          )}
           {/* Верхние чипсы: длительность и цена */}
           <div className="absolute top-2 left-2 flex items-center gap-2">
             <span className="px-2 py-1 rounded-full text-xs bg-white/90 text-gray-800 shadow flex items-center gap-1">

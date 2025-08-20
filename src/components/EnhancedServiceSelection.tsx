@@ -113,24 +113,34 @@ export function EnhancedServiceSelection({
   }
 
   const getDisplayImageUrl = (url?: string | null) => {
-    if (!url) return null
-    try {
-      const u = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+     if (!url) return null
+     try {
+       const u = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+       if (typeof window !== 'undefined') {
+         const cur = window.location
+         // Приводим localhost/127.0.0.1 к относительному
+         if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+          const path = u.pathname.startsWith('/') ? u.pathname : `/${u.pathname}`
+          return `${cur.protocol}//${cur.host}${path}`
+         }
+         // Избегаем mixed-content: если страница https, поднимаем до https для того же хоста
+         if (cur.protocol === 'https:' && u.protocol === 'http:' && u.hostname === cur.hostname) {
+           u.protocol = 'https:'
+           return u.href
+         }
+         // Если относительный путь или тот же хост — возвращаем абсолютный URL
+         if (u.hostname === cur.hostname) {
+           return `${cur.protocol}//${cur.host}${u.pathname}`
+         }
+       }
+       return u.href
+     } catch {
       if (typeof window !== 'undefined') {
         const cur = window.location
-        // Приводим localhost/127.0.0.1 к относительному
-        if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
-          return u.pathname.startsWith('/') ? u.pathname : `/${u.pathname}`
-        }
-        // Избегаем mixed-content: если страница https, поднимаем до https для того же хоста
-        if (cur.protocol === 'https:' && u.protocol === 'http:' && u.hostname === cur.hostname) {
-          u.protocol = 'https:'
-          return u.href
-        }
+        const path = url.startsWith('/') ? url : `/${url}`
+        return `${cur.protocol}//${cur.host}${path}`
       }
-      return u.href
-    } catch {
-      return url.startsWith('/') ? url : `/${url}`
+      return url
     }
   }
 

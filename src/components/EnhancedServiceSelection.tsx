@@ -154,7 +154,11 @@ export function EnhancedServiceSelection({
     return (
       <div
         onClick={() => toggleService(service)}
-        className={`relative cursor-pointer transition-all duration-300 rounded-2xl border overflow-hidden ${isSelected ? 'border-[#f59e0b] shadow-lg' : 'border-gray-200 hover:border-gray-300'}`}
+        className={`relative cursor-pointer transition-all duration-200 rounded-2xl border overflow-hidden ${
+          isSelected
+            ? 'border-[#f59e0b] shadow-[0_6px_16px_rgba(245,158,11,0.35)]'
+            : 'border-gray-200 hover:border-[#f59e0b] hover:shadow-[0_6px_16px_rgba(245,158,11,0.25)] active:border-[#ea580c] active:shadow-[0_8px_20px_rgba(234,88,12,0.35)]'
+        }`}
       >
         {/* Фон: фото или тёплый градиент */}
         <div className="relative w-full">

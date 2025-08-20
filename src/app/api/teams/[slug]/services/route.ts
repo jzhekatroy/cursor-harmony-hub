@@ -9,9 +9,14 @@ export async function GET(
   try {
     const { slug } = await params
 
-    // Находим команду по slug
-    const team = await prisma.team.findUnique({
-      where: { slug }
+    // Находим команду по основному slug или bookingSlug
+    const team = await prisma.team.findFirst({
+      where: {
+        OR: [
+          { slug },
+          { bookingSlug: slug }
+        ]
+      }
     })
 
     if (!team) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
-import { ProgressIndicator } from '@/components/ProgressIndicator'
+// ProgressIndicator убран по требованию дизайна
 import { EnhancedServiceSelection } from '@/components/EnhancedServiceSelection'
 import { EnhancedDateMasterTimeSelection } from '@/components/EnhancedDateMasterTimeSelection'
 import { EnhancedClientInfoAndConfirmation } from '@/components/EnhancedClientInfoAndConfirmation'
@@ -261,58 +261,6 @@ export default function BookingWidget() {
                           <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
 
                           {/* Debug панель скрыта в продакшене */}
-
-        <ProgressIndicator currentStep={currentStep} />
-
-        <div className="relative min-h-[400px]"> {/* Минимальная высота для контента */}
-          {currentStep === 'select-services' && (
-            <EnhancedServiceSelection
-              serviceGroups={serviceGroups}
-              selectedServices={bookingData.services}
-              onServiceSelect={handleServiceSelect}
-              onNext={handleNext}
-              className="animate-fade-in"
-            />
-          )}
-          {currentStep === 'select-date-time' && team && team.team && masters.length > 0 && (
-            (() => {
-              return (
-                <EnhancedDateMasterTimeSelection
-                  masters={masters}
-                  selectedServices={bookingData.services}
-                  selectedDate={bookingData.date}
-                  selectedMaster={bookingData.master}
-                  selectedTimeSlot={bookingData.timeSlot}
-                  onDateTimeSelect={handleDateTimeSelect}
-                  bookingStep={team.team.bookingStep}
-                  salonTimezone={team.team.timezone}
-                  className="animate-fade-in"
-                />
-              )
-            })()
-          )}
-          {currentStep === 'select-date-time' && (!team || !team.team || masters.length === 0) && (
-            (() => {
-              console.log('🔍 LOADING: team =', team)
-              console.log('🔍 LOADING: team.team =', team?.team)
-              console.log('🔍 LOADING: masters.length =', masters.length)
-              return (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00acf4] mx-auto mb-4"></div>
-                  <p className="text-gray-600">Загрузка данных...</p>
-                </div>
-              )
-            })()
-          )}
-                    {currentStep === 'client-info' && (
-            <EnhancedClientInfoAndConfirmation
-              bookingData={bookingData}
-              onClientInfoChange={handleClientInfoChange}
-              onBookingConfirmed={handleBookingConfirmed}
-              className="animate-fade-in"
-            />
-          )}
-          </div>
 
         {/* Нижняя панель навигации удалена, чтобы не дублировать кнопку Continue на шаге услуг */}
       </Card>

@@ -112,9 +112,23 @@ export function EnhancedServiceSelection({
     return Math.abs(hash) % 360
   }
 
+  const getDisplayImageUrl = (url?: string | null) => {
+    if (!url) return null
+    try {
+      const u = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+      if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') {
+        // используем путь относительно текущего домена
+        return u.pathname.startsWith('/') ? u.pathname : `/${u.pathname}`
+      }
+      return u.href
+    } catch {
+      return url.startsWith('/') ? url : `/${url}`
+    }
+  }
+
   const ServiceCard = ({ service }: { service: Service }) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
-    const imageUrl = service.image || service.photoUrl;
+    const imageUrl = getDisplayImageUrl(service.image || service.photoUrl);
  
     const hue = getHueFromString(service.id || service.name || 'service')
     const fallbackGradient = `linear-gradient(135deg, hsl(${hue} 70% 70%), hsl(${(hue + 30) % 360} 70% 55%))`

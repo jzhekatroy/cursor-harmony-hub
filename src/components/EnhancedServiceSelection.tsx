@@ -125,24 +125,11 @@ export function EnhancedServiceSelection({
         className={`relative cursor-pointer transition-all duration-300 rounded-2xl border overflow-hidden ${isSelected ? 'border-[#f59e0b] shadow-lg' : 'border-gray-200 hover:border-gray-300'}`}
       >
         {/* Фон: фото или тёплый градиент */}
-        <div
-          className="relative w-full"
-          style={{ paddingTop: '56.25%' }}
-        >
+        <div className="relative w-full">
           {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={service.name}
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-            />
+            <img src={imageUrl} alt={service.name} className="w-full aspect-video object-cover block" loading="lazy" />
           ) : (
-            <div
-              className="absolute inset-0 w-full h-full"
-              style={{
-                background: fallbackGradient
-              }}
-            />
+            <div className="w-full aspect-video" style={{ background: fallbackGradient }} />
           )}
           {/* Верхние чипсы: длительность и цена */}
           <div className="absolute top-2 left-2 flex items-center gap-2">

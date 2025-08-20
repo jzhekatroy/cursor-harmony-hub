@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Search, Clock, DollarSign, Grid, List, Check, X, Star, Info, XCircle, ArrowRight } from 'lucide-react'
+import { Search, Clock, DollarSign, Check, X, ArrowRight } from 'lucide-react'
 import { Service, ServiceGroup } from '@/types/booking'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -17,8 +17,7 @@ interface EnhancedServiceSelectionProps {
   className?: string;
 }
 
-type ViewMode = 'grid' | 'list';
-type PriceFilter = 'all' | 'budget' | 'standard' | 'premium';
+// Упрощённый UI: без переключателя вида и фильтра по цене
 
 export function EnhancedServiceSelection({
   serviceGroups,
@@ -34,8 +33,7 @@ export function EnhancedServiceSelection({
   });
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
+  // Переключатели вида и фильтр цены убраны
 
   // Объединяем все услуги из групп
   const allServices = useMemo(() => {
@@ -65,19 +63,8 @@ export function EnhancedServiceSelection({
         service.description.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-
-    // Фильтр по цене
-    if (priceFilter !== 'all') {
-      filtered = filtered.filter(service => {
-        if (priceFilter === 'budget') return service.price <= 1000;
-        if (priceFilter === 'standard') return service.price > 1000 && service.price <= 3000;
-        if (priceFilter === 'premium') return service.price > 3000;
-        return true;
-      });
-    }
-
     return filtered;
-  }, [allServices, searchQuery, priceFilter]);
+  }, [allServices, searchQuery]);
 
   // Вычисления для выбранных услуг
   const totalPrice = useMemo(
@@ -108,68 +95,35 @@ export function EnhancedServiceSelection({
     return mins > 0 ? `${hours}ч ${mins}м` : `${hours}ч`;
   };
 
+  const formatCurrency = (value: number) => {
+    try {
+      return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(value || 0)
+    } catch {
+      return `${Math.round(value || 0).toLocaleString('ru-RU')} ₽`
+    }
+  }
+
   const ServiceCard = ({ service }: { service: Service }) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
     const imageUrl = service.image || service.photoUrl;
-
+ 
     return (
-      <div
-        onClick={() => toggleService(service)}
-        className={`
-          relative cursor-pointer transition-all duration-300 rounded-2xl p-4 border
-          hover:scale-[1.02] hover:shadow-lg
-          ${isSelected 
-            ? 'border-[#00acf4] bg-gradient-to-r from-blue-50 to-purple-50 shadow-lg scale-[1.02]' 
-            : 'border-gray-200 bg-white/80 backdrop-blur-sm hover:border-gray-300'
-          }
-        `}
-      >
-        {/* Checkmark для выбранных услуг */}
-        {isSelected && (
-          <div className="absolute -top-2 -right-2 w-6 h-6 bg-[#00acf4] text-white rounded-full flex items-center justify-center shadow-lg z-10">
-            <Check className="w-4 h-4" />
-          </div>
-        )}
-
-        {/* Изображение услуги */}
-        {imageUrl && (
-          <div className="w-16 h-16 rounded-xl overflow-hidden mb-3 mx-auto">
-            <img
-              src={imageUrl}
-              alt={service.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-          </div>
-        )}
-
-        {/* Информация об услуге */}
-        <div className="text-center">
-          <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
-            {service.name}
-          </h3>
-          
-          {service.description && (
-            <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-              {service.description}
-            </p>
+      <div onClick={() => toggleService(service)} className={`relative cursor-pointer transition-all duration-300 rounded-2xl border overflow-hidden ${isSelected ? 'border-[#f59e0b] shadow-lg' : 'border-gray-200 hover:border-gray-300'}`}>
+        <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+          {imageUrl ? (
+            <img src={imageUrl} alt={service.name} className="absolute inset-0 w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+          ) : (
+            <div className="absolute inset-0 bg-gray-100 flex items-center justify-center"><span className="text-xs text-gray-400">Нет фото</span></div>
           )}
-
-          <div className="flex items-center justify-center gap-3 text-sm">
-            <div className="flex items-center gap-1 text-gray-600">
-              <Clock className="w-4 h-4" />
-              <span>{formatDuration(service.duration)}</span>
-            </div>
-            
-            <div className="flex items-center gap-1 font-semibold text-[#00acf4]">
-              <DollarSign className="w-4 h-4" />
-              <span>{service.price.toLocaleString()}</span>
-            </div>
+          <div className={`absolute top-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white text-gray-600'}`}><Check className="w-4 h-4" /></div>
+        </div>
+        <div className="p-4">
+          <h3 className="font-semibold text-gray-900 text-base mb-1 line-clamp-2">{service.name}</h3>
+          {service.description && (<p className="text-sm text-gray-600 mb-3 line-clamp-2">{service.description}</p>)}
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-1 text-gray-600"><Clock className="w-4 h-4" /><span>{formatDuration(service.duration)}</span></div>
+            <div className="font-semibold text-[#f59e0b]">{formatCurrency(Number(service.price))}</div>
           </div>
-
-          {/* Флаг подтверждения скрыт в MVP */}
         </div>
       </div>
     );
@@ -177,7 +131,7 @@ export function EnhancedServiceSelection({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Поиск и фильтры */}
+      {/* Поиск */}
       <div className="space-y-4">
         {/* Поиск */}
         <div className="relative">
@@ -191,84 +145,11 @@ export function EnhancedServiceSelection({
           />
         </div>
 
-        {/* Фильтры и переключатель вида */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setPriceFilter('all')}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                priceFilter === 'all' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              Все
-            </button>
-            <button
-              onClick={() => setPriceFilter('budget')}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                priceFilter === 'budget' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              до 1000₽
-            </button>
-            <button
-              onClick={() => setPriceFilter('standard')}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                priceFilter === 'standard' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              1000-3000₽
-            </button>
-            <button
-              onClick={() => setPriceFilter('premium')}
-              className={`px-3 py-2 rounded-lg text-sm transition-colors ${
-                priceFilter === 'premium' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              от 3000₽
-            </button>
-          </div>
-
-          <div className="flex border border-gray-300 rounded-lg overflow-hidden">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 transition-colors ${
-                viewMode === 'grid' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <Grid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 transition-colors ${
-                viewMode === 'list' 
-                  ? 'bg-[#00acf4] text-white' 
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        {/* Фильтры и переключатель вида удалены */}
       </div>
 
-      {/* Услуги */}
-      <div className={`
-        grid gap-4 
-        ${viewMode === 'grid' 
-          ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
-          : 'grid-cols-1'
-        }
-      `}>
+      {/* Услуги — адаптивная сетка */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
         {filteredServices.map((service) => (
           <ServiceCard key={service.id} service={service} />
         ))}
@@ -294,9 +175,8 @@ export function EnhancedServiceSelection({
                   <Clock className="w-4 h-4 text-gray-500" />
                   {formatDuration(totalDuration)}
                 </span>
-                <span className="flex items-center gap-1 font-semibold text-[#00acf4]">
-                  <DollarSign className="w-4 h-4" />
-                  {totalPrice.toLocaleString()}
+                <span className="font-semibold text-[#f59e0b]">
+                  {formatCurrency(Number(totalPrice))}
                 </span>
               </div>
             </div>
@@ -318,7 +198,7 @@ export function EnhancedServiceSelection({
                   console.log('🔍 EnhancedServiceSelection: onNext clicked');
                   onNext();
                 }}
-                className="bg-[#00acf4] hover:bg-[#0095d9] text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+                className="bg-[#f59e0b] hover:bg-[#ea580c] text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
               >
                 <span>Продолжить</span>
                 <ArrowRight className="w-4 h-4" />

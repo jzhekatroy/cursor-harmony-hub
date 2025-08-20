@@ -4,11 +4,10 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { Master, Service, TimeSlot } from '@/types/booking'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Calendar, Clock, User, Globe } from 'lucide-react'
+import { Calendar, Clock, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useClientTimezone } from '@/hooks/useClientTimezone'
-import { TimezoneDisplay } from '@/components/TimezoneDisplay'
-import { getTimezoneDifference } from '@/lib/timezone'
+// Убрали отображение информации о временных зонах в публичном виджете
 
 interface EnhancedDateMasterTimeSelectionProps {
   masters: Master[];
@@ -299,27 +298,7 @@ export function EnhancedDateMasterTimeSelection({
   }
 
   // Показываем информацию о временных зонах
-  const renderTimezoneInfo = () => {
-    if (timezoneLoading || !clientTimezone) return null
-    
-    return (
-      <div className="mb-4">
-        <TimezoneDisplay
-          salonTimezone={salonTimezone}
-          clientTimezone={clientTimezone}
-          difference={getTimezoneDifference(salonTimezone, clientTimezone)}
-          className="mb-4"
-        />
-        {/* Отладочная информация */}
-        <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
-          <div>DEBUG: salonTimezone = {salonTimezone}</div>
-          <div>DEBUG: clientTimezone = {clientTimezone}</div>
-          <div>DEBUG: selectedTimeSlot = {selectedTimeSlot ? `${selectedTimeSlot.time}` : 'null'}</div>
-          <div>DEBUG: availableSlots count = {availableSlots.length}</div>
-        </div>
-      </div>
-    )
-  }
+  const renderTimezoneInfo = () => null
 
   return (
     <Card className={cn("w-full", className)}>
@@ -330,7 +309,7 @@ export function EnhancedDateMasterTimeSelection({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Информация о временных зонах */}
+        {/* Информация о временных зонах скрыта */}
         {renderTimezoneInfo()}
 
         {/* Выбор даты */}
@@ -434,52 +413,49 @@ export function EnhancedDateMasterTimeSelection({
         </Card>
 
         {/* Выбор времени */}
-        {selectedDate && selectedMaster && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Выберите время
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00acf4]"></div>
-                </div>
-              ) : availableSlots.length > 0 ? (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                  {availableSlots.map((slot, index) => {
-                    const isSelected = selectedTimeSlot?.time === slot.time
-                    
-                    return (
-                      <Button
-                        key={`${slot.time}-${index}-${slot.timezoneInfo?.salonTime || 'no-tz'}`}
-                        variant="outline"
-                        onClick={() => handleTimeSlotSelect(slot)}
-                        disabled={!slot.available}
-                        className={cn(
-                          "text-sm border",
-                          isSelected
-                            ? 'bg-[#00acf4] hover:bg-[#0099f4] text-white border-[#00acf4]' 
-                            : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300',
-                          !slot.available && 'opacity-50 cursor-not-allowed'
-                        )}
-                        title={slot.timezoneInfo ? `Время салона: ${slot.timezoneInfo.salonTime}` : undefined}
-                      >
-                        {slot.time}
-                      </Button>
-                    )
-                  })}
-                </div>
-              ) : (
-                <p className="text-center text-gray-500 py-8">
-                  На выбранную дату нет доступных слотов
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Выберите время
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!selectedDate || !selectedMaster ? (
+              <p className="text-center text-gray-500 py-8">Сначала выберите дату и мастера</p>
+            ) : loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#00acf4]"></div>
+              </div>
+            ) : availableSlots.length > 0 ? (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {availableSlots.map((slot, index) => {
+                  const isSelected = selectedTimeSlot?.time === slot.time
+                  
+                  return (
+                    <Button
+                      key={`${slot.time}-${index}`}
+                      variant="outline"
+                      onClick={() => handleTimeSlotSelect(slot)}
+                      disabled={!slot.available}
+                      className={cn(
+                        "text-sm border",
+                        isSelected
+                          ? 'bg-[#00acf4] hover:bg-[#0099f4] text-white border-[#00acf4]'
+                          : 'bg-white hover:bg-gray-50 text-gray-900 border-gray-300',
+                        !slot.available && 'opacity-50 cursor-not-allowed'
+                      )}
+                    >
+                      {slot.time}
+                    </Button>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-center text-gray-500 py-8">На выбранную дату нет доступных слотов</p>
+            )}
+          </CardContent>
+        </Card>
       </CardContent>
     </Card>
   )

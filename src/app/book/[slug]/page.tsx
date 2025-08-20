@@ -260,17 +260,7 @@ export default function BookingWidget() {
         )}
                           <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
 
-                          {/* Отладочная информация */}
-                  <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded mb-4">
-                    <div>DEBUG: team.team.id = {team.team?.id}</div>
-                    <div>DEBUG: team.team.name = {team.team?.name}</div>
-                    <div>DEBUG: team.team.timezone = {team.team?.timezone}</div>
-                    <div>DEBUG: team.team.timezone type = {typeof team.team?.timezone}</div>
-                    <div>DEBUG: team.team.timezone length = {team.team?.timezone?.length}</div>
-                    <div>DEBUG: currentStep = {currentStep}</div>
-                    <div>DEBUG: team state type = {typeof team}</div>
-                    <div>DEBUG: team keys = {team ? Object.keys(team).join(', ') : 'null'}</div>
-                  </div>
+                          {/* Debug панель скрыта в продакшене */}
 
         <ProgressIndicator currentStep={currentStep} />
 
@@ -284,9 +274,8 @@ export default function BookingWidget() {
               className="animate-fade-in"
             />
           )}
-          {currentStep === 'select-date-time' && team && team.team && team.team.timezone && masters.length > 0 && (
+          {currentStep === 'select-date-time' && team && team.team && masters.length > 0 && (
             (() => {
-              console.log('🔍 RENDERING: EnhancedDateMasterTimeSelection with timezone:', team.team.timezone)
               return (
                 <EnhancedDateMasterTimeSelection
                   masters={masters}
@@ -302,11 +291,10 @@ export default function BookingWidget() {
               )
             })()
           )}
-          {currentStep === 'select-date-time' && (!team || !team.team || !team.team.timezone || masters.length === 0) && (
+          {currentStep === 'select-date-time' && (!team || !team.team || masters.length === 0) && (
             (() => {
               console.log('🔍 LOADING: team =', team)
               console.log('🔍 LOADING: team.team =', team?.team)
-              console.log('🔍 LOADING: team.team.timezone =', team?.team?.timezone)
               console.log('🔍 LOADING: masters.length =', masters.length)
               return (
                 <div className="text-center py-8">
@@ -326,37 +314,7 @@ export default function BookingWidget() {
           )}
           </div>
 
-        <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-          {currentStep !== 'select-services' && (
-            <Button
-              onClick={handleBack}
-              variant="outline"
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Назад</span>
-            </Button>
-          )}
-
-          {currentStep !== 'client-info' && (
-            <Button
-              onClick={handleNext}
-              className={`ml-auto flex items-center space-x-2 bg-[#00acf4] hover:bg-[#0099e0] text-white ${
-                (currentStep === 'select-services' && bookingData.services.length === 0) ||
-                (currentStep === 'select-date-time' && (!bookingData.date || !bookingData.master || !bookingData.timeSlot))
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
-              }`}
-              disabled={
-                (currentStep === 'select-services' && bookingData.services.length === 0) ||
-                (currentStep === 'select-date-time' && (!bookingData.date || !bookingData.master || !bookingData.timeSlot))
-              }
-            >
-              <span>Далее</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+        {/* Нижняя панель навигации удалена, чтобы не дублировать кнопку Continue на шаге услуг */}
       </Card>
     </div>
   )

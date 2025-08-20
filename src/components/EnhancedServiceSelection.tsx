@@ -162,11 +162,13 @@ export function EnhancedServiceSelection({
       >
         {/* Фон: фото или тёплый градиент */}
         <div className="relative w-full">
-          {imageUrl ? (
-            <img src={imageUrl} alt={service.name} className="w-full aspect-video object-cover block" loading="lazy" />
-          ) : (
-            <div className="w-full aspect-video" style={{ background: fallbackGradient }} />
-          )}
+          <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+            {imageUrl ? (
+              <img src={imageUrl} alt={service.name} className="absolute inset-0 w-full h-full object-cover block" loading="lazy" />
+            ) : (
+              <div className="absolute inset-0 w-full h-full" style={{ background: fallbackGradient }} />
+            )}
+          </div>
           {/* Верхние чипсы: длительность и цена */}
           <div className="absolute top-2 left-2 flex items-center gap-2">
             <span className="px-2 py-1 rounded-full text-xs bg-white/90 text-gray-800 shadow flex items-center gap-1">
@@ -222,6 +224,26 @@ export function EnhancedServiceSelection({
         <div className="text-center py-12">
           <div className="text-gray-400 text-lg mb-2">Услуги не найдены</div>
           <p className="text-gray-500">Попробуйте изменить параметры поиска</p>
+        </div>
+      )}
+
+      {/* Простой текстовый список (fallback), чтобы всегда было что показать */}
+      {filteredServices.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <div className="text-sm text-gray-500">Список услуг (fallback):</div>
+          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100 bg-white/70">
+            {filteredServices.map(s => (
+              <li key={`fallback-${s.id}`} className="p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium text-gray-900">{s.name}</span>
+                  <span className="text-[#b45309] font-semibold text-sm">{formatCurrency(Number(s.price))}</span>
+                </div>
+                {s.description && (
+                  <div className="mt-1 text-sm text-gray-600 line-clamp-2">{s.description}</div>
+                )}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

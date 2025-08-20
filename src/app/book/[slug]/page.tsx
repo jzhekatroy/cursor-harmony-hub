@@ -259,8 +259,51 @@ export default function BookingWidget() {
           />
         )}
                           <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
+ 
+                           {/* Debug панель скрыта в продакшене */}
+ 
+        {/* Контент шагов */}
+        <div className="relative min-h-[400px]">
+          {currentStep === 'select-services' && (
+            <EnhancedServiceSelection
+              serviceGroups={[...(team?.serviceGroups || []), ...(team?.ungroupedServices?.length ? [{ id: 'ungrouped', name: 'Услуги', services: team.ungroupedServices, order: 999 } as any] : [])] as any}
+              selectedServices={bookingData.services}
+              onServiceSelect={handleServiceSelect}
+              onNext={handleNext}
+              className="animate-fade-in"
+            />
+          )}
 
-                          {/* Debug панель скрыта в продакшене */}
+          {currentStep === 'select-date-time' && team && masters.length > 0 && (
+            <EnhancedDateMasterTimeSelection
+              masters={masters}
+              selectedServices={bookingData.services}
+              selectedDate={bookingData.date}
+              selectedMaster={bookingData.master}
+              selectedTimeSlot={bookingData.timeSlot}
+              onDateTimeSelect={handleDateTimeSelect}
+              bookingStep={team.team.bookingStep}
+              salonTimezone={team.team.timezone || 'Europe/Moscow'}
+              className="animate-fade-in"
+            />
+          )}
+
+          {currentStep === 'select-date-time' && (!team || masters.length === 0) && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f59e0b] mx-auto mb-4"></div>
+              <p className="text-gray-600">Загрузка данных...</p>
+            </div>
+          )}
+
+          {currentStep === 'client-info' && (
+            <EnhancedClientInfoAndConfirmation
+              bookingData={bookingData}
+              onClientInfoChange={handleClientInfoChange}
+              onBookingConfirmed={handleBookingConfirmed}
+              className="animate-fade-in"
+            />
+          )}
+        </div>
 
         {/* Нижняя панель навигации удалена, чтобы не дублировать кнопку Continue на шаге услуг */}
       </Card>

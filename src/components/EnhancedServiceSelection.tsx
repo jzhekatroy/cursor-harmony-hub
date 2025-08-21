@@ -182,12 +182,14 @@ export function EnhancedServiceSelection({
           <div className={`absolute bottom-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white/90 text-gray-600'}`}>
             <Check className="w-4 h-4" />
           </div>
-          {/* Низ: градиент + текст */}
-          <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/60 via-black/30 to-transparent">
-            <h3 className="font-semibold text-white text-base mb-1 line-clamp-2">{service.name}</h3>
-            {service.description && (
-              <p className="text-[13px] leading-snug text-gray-100 line-clamp-2">{service.description}</p>
-            )}
+          {/* Низ: светлый стикер с названием и описанием */}
+          <div className="absolute inset-x-2 bottom-2">
+            <div className="rounded-lg bg-white/95 backdrop-blur px-3 py-2 shadow-sm border border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2">{service.name}</h3>
+              {service.description && (
+                <p className="mt-0.5 text-xs sm:text-[13px] leading-snug text-gray-600 line-clamp-2">{service.description}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -8,13 +8,15 @@ interface PhotoUploadProps {
   onPhotoChange: (photoUrl: string) => void
   onPhotoRemove: () => void
   className?: string
+  label?: string
 }
 
 export default function PhotoUpload({ 
   currentPhotoUrl, 
   onPhotoChange, 
   onPhotoRemove,
-  className = ''
+  className = '',
+  label = 'Фото'
 }: PhotoUploadProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -23,6 +25,23 @@ export default function PhotoUpload({
   const [rawImage, setRawImage] = useState<HTMLImageElement | null>(null)
   const [zoom, setZoom] = useState<number>(1)
   const [originalFileName, setOriginalFileName] = useState<string>('photo.jpg')
+  const [offsetX, setOffsetX] = useState<number>(0)
+  const [offsetY, setOffsetY] = useState<number>(0)
+  const [isDragging, setIsDragging] = useState<boolean>(false)
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null)
+  const previewRef = useRef<HTMLDivElement | null>(null)
+
+  const beginCropForSource = (src: string) => {
+    setSelectedSrc(src)
+    const img = new Image()
+    img.onload = () => {
+      setRawImage(img)
+      setZoom(1)
+      setOffsetX(0)
+      setOffsetY(0)
+    }
+    img.src = src
+  }
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -42,31 +61,28 @@ export default function PhotoUpload({
       return
     }
 
-    // Переходим в режим предварительного просмотра и обрезки 1:1
-    setUploadError(null)
-    setOriginalFileName(file.name || 'photo.jpg')
-    const reader = new FileReader()
-    reader.onload = () => {
-      const src = reader.result as string
-      setSelectedSrc(src)
-      const img = new Image()
-      img.onload = () => {
-        setRawImage(img)
-        setZoom(1)
-      }
-      img.src = src
+    // Загружаем файл сразу без обрезки/масштабирования
+    try {
+      setUploadError(null)
+      setOriginalFileName(file.name || 'photo.jpg')
+      await uploadCroppedBlob(file)
+    } catch (e) {
+      console.error(e)
     }
-    reader.readAsDataURL(file)
   }
 
-  // Загрузка уже обрезанного (квадратного) изображения на сервер
+  const handleEditExistingPhoto = () => {
+    // Редактирование отключено: загружаем новое фото вместо обрезки
+    fileInputRef.current?.click()
+  }
+
+  // Загрузка файла на сервер (без обрезки/масштаба)
   const uploadCroppedBlob = async (blob: Blob) => {
     setIsUploading(true)
     setUploadError(null)
     try {
       const formData = new FormData()
-      const fileName = 'photo.jpg'
-      formData.append('file', new File([blob], fileName, { type: 'image/jpeg' }))
+      formData.append('file', blob)
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -95,41 +111,15 @@ export default function PhotoUpload({
     }
   }
 
-  // Подтвердить обрезку 1:1 и загрузить
-  const handleConfirmCropAndUpload = async () => {
-    if (!rawImage) return
-
-    // Рисуем квадрат 1:1, 512x512 для хорошего качества
-    const SIZE = 512
-    const canvas = document.createElement('canvas')
-    canvas.width = SIZE
-    canvas.height = SIZE
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Базовый масштаб, чтобы картинка покрыла квадрат (cover)
-    const baseScale = Math.max(SIZE / rawImage.width, SIZE / rawImage.height)
-    const scale = baseScale * zoom
-    const drawWidth = rawImage.width * scale
-    const drawHeight = rawImage.height * scale
-    const dx = (SIZE - drawWidth) / 2
-    const dy = (SIZE - drawHeight) / 2
-
-    ctx.clearRect(0, 0, SIZE, SIZE)
-    ctx.imageSmoothingEnabled = true
-    ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(rawImage, dx, dy, drawWidth, drawHeight)
-
-    canvas.toBlob(async (blob) => {
-      if (!blob) return
-      await uploadCroppedBlob(blob)
-    }, 'image/jpeg', 0.92)
-  }
+  // Подтверждение отключено
+  const handleConfirmCropAndUpload = async () => { /* no-op */ }
 
   const handleCancelCrop = () => {
     setSelectedSrc(null)
     setRawImage(null)
     setZoom(1)
+    setOffsetX(0)
+    setOffsetY(0)
     setUploadError(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
@@ -141,10 +131,31 @@ export default function PhotoUpload({
     setUploadError(null)
   }
 
+  const handlePointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+    setIsDragging(true)
+    dragStartRef.current = { x: e.clientX, y: e.clientY }
+  }
+
+  const handlePointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    if (!isDragging || !dragStartRef.current) return
+    const dx = e.clientX - dragStartRef.current.x
+    const dy = e.clientY - dragStartRef.current.y
+    dragStartRef.current = { x: e.clientX, y: e.clientY }
+    setOffsetX((prev) => prev + dx)
+    setOffsetY((prev) => prev + dy)
+  }
+
+  const handlePointerUp: React.PointerEventHandler<HTMLDivElement> = (e) => {
+    ;(e.target as HTMLElement).releasePointerCapture?.(e.pointerId)
+    setIsDragging(false)
+    dragStartRef.current = null
+  }
+
   return (
     <div className={className}>
       <label className="block text-sm font-medium text-gray-700 mb-2">
-        Фото мастера
+        {label}
       </label>
       
       <div className="flex items-start space-x-4">
@@ -154,7 +165,7 @@ export default function PhotoUpload({
             <div className="relative">
               <img
                 src={currentPhotoUrl}
-                alt="Фото мастера"
+                alt={label}
                 className="h-24 w-24 rounded-full object-cover border-2 border-gray-300"
               />
               <button
@@ -191,11 +202,13 @@ export default function PhotoUpload({
                 ) : (
                   <>
                     <Upload className="h-4 w-4 mr-2" />
-                    {currentPhotoUrl ? 'Изменить фото' : 'Загрузить фото'}
+                    {currentPhotoUrl ? 'Заменить фото' : 'Загрузить фото'}
                   </>
                 )}
               </button>
             )}
+
+            {/* Кнопка обрезки/масштаба удалена по требованиям: используем только замену фото */}
             
             <input
               ref={fileInputRef}
@@ -219,13 +232,21 @@ export default function PhotoUpload({
           {/* Режим предпросмотра и обрезки 1:1 */}
           {selectedSrc && (
             <div className="mt-4">
-              <div className="w-64 h-64 bg-gray-100 rounded-md overflow-hidden relative">
+              <div
+                ref={previewRef}
+                className={`w-64 h-64 bg-gray-100 rounded-md overflow-hidden relative ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerLeave={handlePointerUp}
+              >
                 <img
                   src={selectedSrc}
                   alt="Предпросмотр"
-                  className="absolute top-1/2 left-1/2"
+                  className="absolute top-1/2 left-1/2 select-none"
+                  draggable={false}
                   style={{
-                    transform: `translate(-50%, -50%) scale(${zoom})`,
+                    transform: `translate(-50%, -50%) translate(${offsetX}px, ${offsetY}px) scale(${zoom})`,
                     width: '100%',
                     height: '100%',
                     objectFit: 'cover'
@@ -243,6 +264,16 @@ export default function PhotoUpload({
                   onChange={(e) => setZoom(parseFloat(e.target.value))}
                   className="w-full"
                 />
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setOffsetX(0); setOffsetY(0); }}
+                    className="px-2 py-1 border border-gray-300 rounded-md text-xs text-gray-700 hover:bg-gray-50"
+                  >
+                    Сбросить позицию
+                  </button>
+                  <span className="text-xs text-gray-500">Можно увеличивать и двигать изображение</span>
+                </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <button

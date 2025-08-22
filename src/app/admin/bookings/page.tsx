@@ -285,7 +285,15 @@ export default function BookingsPage() {
       setError(null)
       const token = localStorage.getItem('token')
       if (!token) throw new Error('Токен авторизации не найден')
-      const response = await fetch(`/api/bookings?t=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      // Грузим только текущий диапазон дат, чтобы уменьшить объём данных и ускорить ответ
+      const { startUtc, endUtc } = getCurrentRangeUtc()
+      const qs = new URLSearchParams({
+        from: startUtc.toISOString(),
+        to: endUtc.toISOString(),
+        t: String(Date.now()),
+      })
+      const response = await fetch(`/api/bookings?${qs.toString()}`,
+        { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       if (!response.ok) {
         const err = await response.json()
         throw new Error(err.error || 'Ошибка загрузки бронирований')

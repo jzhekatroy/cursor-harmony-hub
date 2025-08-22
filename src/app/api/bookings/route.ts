@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Вычисляем общую продолжительность и стоимость
+    // Вычисляем общую продолжительность и стоимость (для проверки конфликта и итогов)
     const totalDuration = services.reduce((sum, service) => sum + service.duration, 0)
     const totalPrice = services.reduce((sum, service) => sum + Number(service.price), 0)
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 DEBUG utcStartDateTime:', utcStartDateTime)
     console.log('🔍 DEBUG utcEndDateTime:', utcEndDateTime)
 
-    // Проверяем конфликты с существующими бронированиями
+    // Проверяем конфликты с существующими бронированиями для всего блока времени
     const conflictingBooking = await prisma.booking.findFirst({
       where: {
         masterId: masterId,
@@ -223,32 +223,52 @@ export async function POST(request: NextRequest) {
         startTime: { gte: dayStartUtc, lte: dayEndUtc }
       }
     })
-    if (existingCount >= limit) {
+    const newBookingsNeeded = services.length
+    if (existingCount + newBookingsNeeded > limit) {
       return NextResponse.json(
-        { error: `Лимит записей на день: ${limit}. У клиента уже ${existingCount} записей в этот день.` },
+        { error: `Лимит записей на день: ${limit}. Запрошено ${newBookingsNeeded} записей, уже есть ${existingCount}.` },
         { status: 429 }
       )
     }
 
-    // Создаем бронирование в транзакции
-    const result = await prisma.$transaction(async (tx) => {
-      // Создаем бронирование
-      const booking = await tx.booking.create({
-        data: {
-          bookingNumber: generateBookingNumber(),
-          startTime: utcStartDateTime,
-          endTime: utcEndDateTime,
-          totalPrice: totalPrice,
-          notes: clientData.notes,
-          status: BookingStatus.CONFIRMED,
-          teamId: team.id,
-          clientId: client.id,
-          masterId: masterId
-        }
-      })
-
-      // Связываем с услугами
+    // Создаем НЕСКОЛЬКО бронирований подряд (по одной услуге на бронь) в транзакции
+    const createdIds = await prisma.$transaction(async (tx) => {
+      const created: string[] = []
+      let currentStart = new Date(utcStartDateTime)
       for (const service of services) {
+        const segDurationMin = service.duration
+        const segEnd = new Date(currentStart.getTime() + segDurationMin * 60 * 1000)
+        // Дополнительная точечная проверка конфликта сегмента
+        const segConflict = await tx.booking.findFirst({
+          where: {
+            masterId,
+            status: { in: ['NEW', 'CONFIRMED'] },
+            OR: [
+              { startTime: { lte: currentStart }, endTime: { gt: currentStart } },
+              { startTime: { lt: segEnd }, endTime: { gte: segEnd } },
+              { startTime: { gte: currentStart }, endTime: { lte: segEnd } }
+            ]
+          },
+          select: { id: true }
+        })
+        if (segConflict) {
+          throw new Error('Выбранное время занято для одной из услуг')
+        }
+
+        const booking = await tx.booking.create({
+          data: {
+            bookingNumber: generateBookingNumber(),
+            startTime: currentStart,
+            endTime: segEnd,
+            totalPrice: service.price as any,
+            notes: clientData.notes,
+            status: BookingStatus.CONFIRMED,
+            teamId: team.id,
+            clientId: client.id,
+            masterId: masterId
+          }
+        })
+
         await tx.bookingService.create({
           data: {
             bookingId: booking.id,
@@ -256,76 +276,75 @@ export async function POST(request: NextRequest) {
             price: service.price
           }
         })
-      }
 
-      // Создаем лог
-      await tx.bookingLog.create({
-        data: {
-          bookingId: booking.id,
-          action: 'CONFIRMED',
-          description: 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
-          teamId: team.id
-        }
-      })
-
-      // Событие клиента (аналитика)
-      await (tx as any).clientEvent.create({
-        data: {
-          teamId: team.id,
-          clientId: client.id,
-          source: 'public',
-          type: 'booking_created',
-          metadata: {
+        await tx.bookingLog.create({
+          data: {
             bookingId: booking.id,
-            masterId,
-            serviceIds,
-            timezone: (team as any).timezone || 'Europe/Moscow',
-            // Город лучше определять на фронте (Geolocation API) или по IP на бэке через GeoIP, пока пишем tz
-          },
-          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
-          userAgent: request.headers.get('user-agent') || null
-        }
-      })
+            action: 'CONFIRMED',
+            description: 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
+            teamId: team.id
+          }
+        })
 
-      return booking
+        await (tx as any).clientEvent.create({
+          data: {
+            teamId: team.id,
+            clientId: client.id,
+            source: 'public',
+            type: 'booking_created',
+            metadata: {
+              bookingId: booking.id,
+              masterId,
+              serviceId: service.id,
+              timezone: (team as any).timezone || 'Europe/Moscow',
+            },
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || null,
+            userAgent: request.headers.get('user-agent') || null
+          }
+        })
+
+        created.push(booking.id)
+        currentStart = segEnd
+      }
+      return created
     })
 
-    // Получаем полную информацию о бронировании
-    const fullBooking = await prisma.booking.findUnique({
-      where: { id: result.id },
+    // Загружаем созданные брони целиком
+    const fullBookings = await prisma.booking.findMany({
+      where: { id: { in: createdIds } },
       include: {
         client: true,
         master: true,
-        services: {
-          include: { service: true }
-        }
-      }
+        services: { include: { service: true } }
+      },
+      orderBy: { startTime: 'asc' }
     })
 
     return NextResponse.json({
       success: true,
-      booking: {
-        id: fullBooking!.id,
-        bookingNumber: fullBooking!.bookingNumber,
-        startTime: fullBooking!.startTime,
-        endTime: fullBooking!.endTime,
-        totalPrice: fullBooking!.totalPrice,
-        status: fullBooking!.status,
+      count: fullBookings.length,
+      bookings: fullBookings.map((b) => ({
+        id: b.id,
+        bookingNumber: b.bookingNumber,
+        startTime: b.startTime,
+        endTime: b.endTime,
+        totalPrice: b.totalPrice,
+        status: b.status,
         client: {
-          firstName: fullBooking!.client.firstName,
-          lastName: fullBooking!.client.lastName,
-          email: fullBooking!.client.email
+          firstName: b.client.firstName,
+          lastName: b.client.lastName,
+          email: b.client.email
         },
         master: {
-          firstName: fullBooking!.master.firstName,
-          lastName: fullBooking!.master.lastName
+          firstName: b.master.firstName,
+          lastName: b.master.lastName
         },
-        services: fullBooking!.services.map(bs => ({
+        services: b.services.map(bs => ({
           name: bs.service.name,
           duration: bs.service.duration,
           price: bs.price
         }))
-      }
+      }))
     })
 
   } catch (error) {

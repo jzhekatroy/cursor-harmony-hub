@@ -19,6 +19,7 @@ interface EnhancedDateMasterTimeSelectionProps {
   bookingStep: number;
   salonTimezone: string;
   className?: string;
+  onNext?: () => void;
 }
 
 export function EnhancedDateMasterTimeSelection({
@@ -30,7 +31,8 @@ export function EnhancedDateMasterTimeSelection({
   onDateTimeSelect,
   bookingStep,
   salonTimezone,
-  className
+  className,
+  onNext
 }: EnhancedDateMasterTimeSelectionProps) {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(false)
@@ -456,6 +458,21 @@ export function EnhancedDateMasterTimeSelection({
             )}
           </CardContent>
         </Card>
+
+        {/* Кнопка Далее */}
+        <div className="flex justify-end pt-2">
+          <Button
+            disabled={!selectedDate || !selectedMaster || !selectedTimeSlot}
+            onClick={() => {
+              if (selectedDate && selectedMaster && selectedTimeSlot) {
+                onNext && onNext()
+              }
+            }}
+            className="bg-[#00acf4] hover:bg-[#0099e0] text-white"
+          >
+            Далее
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

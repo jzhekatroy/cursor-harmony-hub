@@ -284,6 +284,7 @@ export default function BookingWidget() {
               onDateTimeSelect={handleDateTimeSelect}
               bookingStep={team.team.bookingStep}
               salonTimezone={team.team.timezone || 'Europe/Moscow'}
+              onNext={handleNext}
               className="animate-fade-in"
             />
           )}

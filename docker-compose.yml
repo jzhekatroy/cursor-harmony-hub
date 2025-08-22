@@ -9,12 +9,12 @@ services:
     container_name: beauty-booking-app
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - NODE_ENV=production
       # Для production через Postgres переопределите переменную окружения DATABASE_URL
       # Пример: postgresql://postgres:postgres@postgres:5432/beauty?schema=public
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://postgres:2MinUtesSP_22_082025@postgres:5432/beauty?schema=public
       - NEXTAUTH_SECRET=your-super-secure-secret-key-for-production-2024
       - NEXTAUTH_URL=http://localhost:3000
       - JWT_SECRET=your-jwt-secret-for-production-2024
@@ -46,7 +46,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-beauty}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:

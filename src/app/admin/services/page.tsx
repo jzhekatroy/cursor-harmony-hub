@@ -735,7 +735,7 @@ export default function ServicesPage() {
               {ungroupedServices.length === 0 ? (
                 <div className="text-sm text-gray-500">Нет услуг в этой вкладке.</div>
               ) : (
-                <div className="grid gap-5">
+                <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   {ungroupedServices.map(service => (
                     <div key={service.id} className="grid grid-cols-[1fr_auto] gap-3 items-stretch">
                       {/* Карточка как на публичной странице: фото 16:9 с оверлеями */}
@@ -812,7 +812,7 @@ export default function ServicesPage() {
                 const list = group?.services || []
                 if (list.length === 0) return (<div className="text-sm text-gray-500">Нет услуг в этой вкладке.</div>)
                 return (
-                  <div className="grid gap-5">
+                  <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                     {list.map(service => (
                       <div key={service.id} className="grid grid-cols-[1fr_auto] gap-3 items-stretch">
                         <div className={`relative rounded-2xl overflow-hidden border ${service.isArchived ? 'opacity-75' : ''}`}>

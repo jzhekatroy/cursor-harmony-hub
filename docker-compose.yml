@@ -14,7 +14,7 @@ services:
       - NODE_ENV=production
       # Для production через Postgres переопределите переменную окружения DATABASE_URL
       # Пример: postgresql://postgres:postgres@postgres:5432/beauty?schema=public
-      - DATABASE_URL=postgresql://postgres:2MinUtesSP_22_082025@postgres:5432/beauty?schema=public
+      - DATABASE_URL=${DATABASE_URL}
       - NEXTAUTH_SECRET=your-super-secure-secret-key-for-production-2024
       - NEXTAUTH_URL=http://localhost:3000
       - JWT_SECRET=your-jwt-secret-for-production-2024

@@ -12,6 +12,7 @@ interface CheckResult {
   title: string
   status: 'pass' | 'fail' | 'warn'
   details?: string
+  detailsList?: Array<{ human: string; tech: string }>
 }
 
 export default function SuperadminBookingQCPage() {
@@ -23,6 +24,8 @@ export default function SuperadminBookingQCPage() {
   const [error, setError] = useState<string>('')
   const [results, setResults] = useState<CheckResult[] | null>(null)
   const [useSample, setUseSample] = useState(false)
+  const [step, setStep] = useState<string>('')
+  const [rangePreset, setRangePreset] = useState<string>('')
 
   useEffect(() => {
     const loadTeams = async () => {
@@ -52,6 +55,7 @@ export default function SuperadminBookingQCPage() {
       if (useSample) params.set('sample', '1')
       if (from) params.set('from', from)
       if (to) params.set('to', to)
+      if (step) params.set('step', step)
       const res = await fetch(`/api/superadmin/booking-qc/run?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -62,6 +66,47 @@ export default function SuperadminBookingQCPage() {
       setError(e?.message || 'Ошибка запуска проверок')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const formatYmd = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const applyRangePreset = (preset: string) => {
+    setRangePreset(preset)
+    if (!preset) return
+    const now = new Date()
+    if (preset === 'week') {
+      // Неделя: Пн-Вс
+      const dow = now.getDay() // 0..6, 0=Вс
+      const shiftToMonday = (dow + 6) % 7
+      const start = new Date(now)
+      start.setDate(now.getDate() - shiftToMonday)
+      start.setHours(0,0,0,0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 6)
+      end.setHours(23,59,59,999)
+      setFrom(formatYmd(start))
+      setTo(formatYmd(end))
+      return
+    }
+    if (preset === 'month') {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1)
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      setFrom(formatYmd(start))
+      setTo(formatYmd(end))
+      return
+    }
+    if (preset === 'year') {
+      const start = new Date(now.getFullYear(), 0, 1)
+      const end = new Date(now.getFullYear(), 11, 31)
+      setFrom(formatYmd(start))
+      setTo(formatYmd(end))
+      return
     }
   }
 
@@ -109,6 +154,41 @@ export default function SuperadminBookingQCPage() {
           <div>
             <label className="block text-sm text-gray-700 mb-1">По дату</label>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[40px] focus:ring-blue-500 focus:border-blue-500" />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Быстрый диапазон</label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => applyRangePreset('week')}
+                className={`px-3 py-2 rounded-md border text-sm ${rangePreset==='week' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                Эта неделя
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRangePreset('month')}
+                className={`px-3 py-2 rounded-md border text-sm ${rangePreset==='month' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                Этот месяц
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRangePreset('year')}
+                className={`px-3 py-2 rounded-md border text-sm ${rangePreset==='year' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+              >
+                Этот год
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm text-gray-700 mb-1">Интервал бронирования (мин)</label>
+            <select value={step} onChange={(e) => setStep(e.target.value)} className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[40px] focus:ring-blue-500 focus:border-blue-500">
+              <option value="">— как в команде —</option>
+              <option value="15">15</option>
+              <option value="30">30</option>
+              <option value="60">60</option>
+            </select>
           </div>
         </div>
 
@@ -159,9 +239,20 @@ export default function SuperadminBookingQCPage() {
                 >
                   {c.status.toUpperCase()}
                 </span>
-                <div>
+                <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">{c.title}</div>
-                  {c.details && <div className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">{c.details}</div>}
+                  {c.detailsList && c.detailsList.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {c.detailsList.slice(0, 20).map((d, idx) => (
+                        <li key={idx} className="text-sm text-gray-700" title={d.tech}>{d.human}</li>
+                      ))}
+                      {c.detailsList.length > 20 && (
+                        <li className="text-xs text-gray-500">и ещё {c.detailsList.length - 20}…</li>
+                      )}
+                    </ul>
+                  ) : (
+                    c.details && <div className="text-sm text-gray-600 mt-0.5 whitespace-pre-wrap">{c.details}</div>
+                  )}
                 </div>
               </li>
             ))}

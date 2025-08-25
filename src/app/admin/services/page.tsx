@@ -749,7 +749,7 @@ export default function ServicesPage() {
                             )}
                           </div>
                           <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
-                            <div className="max-w-[70%] rounded-lg bg-white/95 backdrop-blur px-3 py-2 shadow-sm border border-gray-100">
+                            <div className="max-w-[70%] rounded-lg bg-white/60 backdrop-blur px-3 py-2 shadow-sm border border-gray-100 w-fit max-w-[70%]">
                               <h4 className={`font-medium text-gray-900 text-sm sm:text-base leading-snug line-clamp-2 ${service.isArchived ? 'opacity-60' : ''}`}>{service.name}</h4>
                               {service.description && (
                                 <p className="mt-0.5 text-xs sm:text-[13px] leading-snug text-gray-600 line-clamp-2">{service.description}</p>
@@ -825,7 +825,7 @@ export default function ServicesPage() {
                               )}
                             </div>
                             <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
-                              <div className="max-w-[70%] rounded-lg bg-white/95 backdrop-blur px-3 py-2 shadow-sm border border-gray-100">
+                              <div className="max-w-[70%] rounded-lg bg-white/60 backdrop-blur px-3 py-2 shadow-sm border border-gray-100 w-fit max-w-[70%]">
                                 <h4 className={`font-medium text-gray-900 text-sm sm:text-base leading-snug line-clamp-2 ${service.isArchived ? 'opacity-60' : ''}`}>{service.name}</h4>
                                 {service.description && (
                                   <p className="mt-0.5 text-xs sm:text-[13px] leading-snug text-gray-600 line-clamp-2">{service.description}</p>

@@ -182,9 +182,9 @@ export function EnhancedServiceSelection({
           <div className={`absolute bottom-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white/90 text-gray-600'}`}>
             <Check className="w-4 h-4" />
           </div>
-          {/* Низ: светлый стикер с названием и описанием */}
+          {/* Низ: светлый полупрозрачный стикер с названием и описанием (адаптивная ширина) */}
           <div className="absolute inset-x-2 bottom-2">
-            <div className="rounded-lg bg-white/95 backdrop-blur px-3 py-2 shadow-sm border border-gray-100">
+            <div className="rounded-lg bg-white/60 backdrop-blur px-3 py-2 shadow-sm border border-gray-100 w-fit max-w-[80%]">
               <h3 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2">{service.name}</h3>
               {service.description && (
                 <p className="mt-0.5 text-xs sm:text-[13px] leading-snug text-gray-600 line-clamp-2">{service.description}</p>
@@ -229,25 +229,7 @@ export function EnhancedServiceSelection({
         </div>
       )}
 
-      {/* Простой текстовый список (fallback), чтобы всегда было что показать */}
-      {filteredServices.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <div className="text-sm text-gray-500">Список услуг (fallback):</div>
-          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100 bg-white/70">
-            {filteredServices.map(s => (
-              <li key={`fallback-${s.id}`} className="p-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="font-medium text-gray-900">{s.name}</span>
-                  <span className="text-[#b45309] font-semibold text-sm">{formatCurrency(Number(s.price))}</span>
-                </div>
-                {s.description && (
-                  <div className="mt-1 text-sm text-gray-600 line-clamp-2">{s.description}</div>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {/* Удалён fallback-список по требованию */}
 
       {/* Итоговая информация и кнопки */}
       {selectedServices.length > 0 && (

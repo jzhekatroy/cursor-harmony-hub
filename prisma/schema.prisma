@@ -59,6 +59,7 @@ model Team {
   timezone                   String     @default("Europe/Moscow") // часовой пояс салона
   webhooksEnabled            Boolean    @default(true)
   fairMasterRotation         Boolean    @default(false) // Справедливое распределение мастеров
+  ungroupedGroupName         String     @default("Основные услуги") // Название для услуг без группы
   privacyPolicyUrl           String?
   telegramBotToken           String? // токен Telegram бота для WebApp
   createdAt                  DateTime   @default(now())

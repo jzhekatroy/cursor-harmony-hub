@@ -39,7 +39,8 @@ export async function GET(request: NextRequest) {
       slug: user.team.slug,
       bookingSlug: user.team.bookingSlug || user.team.slug,
       timezone: user.team.timezone,
-      telegramBotToken: user.team.telegramBotToken
+      telegramBotToken: user.team.telegramBotToken,
+      ungroupedGroupName: (user.team as any).ungroupedGroupName || 'Основные услуги'
     }
 
     return NextResponse.json({ settings })
@@ -97,7 +98,8 @@ export async function PUT(request: NextRequest) {
       logoUrl,
       bookingSlug,
       timezone,
-      telegramBotToken
+      telegramBotToken,
+      ungroupedGroupName
     } = body
 
     // Валидация интервала бронирования
@@ -219,6 +221,7 @@ export async function PUT(request: NextRequest) {
     if (bookingSlug !== undefined) updateData.bookingSlug = bookingSlug?.trim() || null
     if (timezone !== undefined) updateData.timezone = timezone
     if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken?.trim() || null
+    if (ungroupedGroupName !== undefined) updateData.ungroupedGroupName = (ungroupedGroupName || 'Основные услуги').trim()
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -240,7 +243,8 @@ export async function PUT(request: NextRequest) {
         slug: updatedTeam.slug,
         bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug,
         timezone: updatedTeam.timezone,
-        telegramBotToken: updatedTeam.telegramBotToken
+        telegramBotToken: updatedTeam.telegramBotToken,
+        ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги'
       }
     })
 

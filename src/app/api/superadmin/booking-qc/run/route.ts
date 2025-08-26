@@ -145,6 +145,7 @@ export async function GET(req: NextRequest) {
     }
 
     const withinIssues: string[] = []
+    const withinDetailsList: Array<{ human: string; tech: string }> = []
     let withinFail = 0
     const schedulesByMaster: Record<string, any[]> = {}
     for (const m of masters) schedulesByMaster[m.id] = m.schedules || []
@@ -165,20 +166,26 @@ export async function GET(req: NextRequest) {
       if (!daySchedule) {
         withinFail++
         withinIssues.push(`• master=${b.masterId} booking=${b.id} without day schedule`)
+        const human = `${masterName[b.masterId] || b.masterId}: бронь ${fmt(b.startTime)}–${fmt(b.endTime)} — нет расписания на этот день`
+        withinDetailsList.push({ human, tech: `master=${b.masterId} booking=${b.id} no_day_schedule` })
         continue
       }
       const hhmmStart = toHHMMInTz(b.startTime, tz)
       const hhmmEnd = toHHMMInTz(b.endTime, tz)
       if (!inWorkWindow(hhmmStart, hhmmEnd, daySchedule)) {
         withinFail++
-        withinIssues.push(`• master=${b.masterId} booking=${b.id} out of working window or in break (${daySchedule.startTime}-${daySchedule.endTime}${daySchedule.breakStart ? `, break ${daySchedule.breakStart}-${daySchedule.breakEnd}` : ''})`)
+        const breakStr = daySchedule.breakStart && daySchedule.breakEnd ? `, перерыв ${daySchedule.breakStart}-${daySchedule.breakEnd}` : ''
+        withinIssues.push(`• master=${b.masterId} booking=${b.id} out of working window or in break (${daySchedule.startTime}-${daySchedule.endTime}${breakStr})`)
+        const human = `${masterName[b.masterId] || b.masterId}: бронь ${fmt(b.startTime)}–${fmt(b.endTime)} вне рабочего окна ${daySchedule.startTime}-${daySchedule.endTime}${breakStr}`
+        withinDetailsList.push({ human, tech: `master=${b.masterId} booking=${b.id} window=${daySchedule.startTime}-${daySchedule.endTime}${breakStr}` })
       }
     }
     checks.push({
       key: 'withinWorkingHours',
       title: withinFail === 0 ? 'Все брони в пределах рабочего времени' : `Нарушений рабочего времени: ${withinFail}`,
       status: withinFail === 0 ? 'pass' : 'fail',
-      details: withinIssues.length ? withinIssues.slice(0, 50).join('\n') : undefined
+      details: withinIssues.length ? withinIssues.slice(0, 50).join('\n') : undefined,
+      detailsList: withinDetailsList
     })
 
     // Проверка: теоретическая доступность слотов (по расписанию, без учёта броней/отсутствий)

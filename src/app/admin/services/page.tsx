@@ -37,6 +37,7 @@ export default function ServicesPage() {
   const [services, setServices] = useState<Service[]>([])
   const [masters, setMasters] = useState<Master[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [ungroupedName, setUngroupedName] = useState<string>('Основные услуги')
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [editingGroup, setEditingGroup] = useState<ServiceGroup | null>(null)
   const [isCreatingService, setIsCreatingService] = useState(false)
@@ -114,6 +115,15 @@ export default function ServicesPage() {
         const mastersData = await mastersResponse.json()
         setMasters(mastersData.masters || mastersData)
       } else {
+      // Подтягиваем имя "Основные услуги" из настроек команды
+      try {
+        const token2 = localStorage.getItem('token')
+        const r2 = await fetch('/api/team/settings', { headers: { 'Authorization': `Bearer ${token2}` } })
+        if (r2.ok) {
+          const d2 = await r2.json()
+          setUngroupedName(d2.settings?.ungroupedGroupName || 'Основные услуги')
+        }
+      } catch {}
         const errorData = await mastersResponse.json()
         setError(`Ошибка загрузки мастеров: ${errorData.error || 'Неизвестная ошибка'}`)
       }
@@ -301,6 +311,33 @@ export default function ServicesPage() {
     setDeleteTargetGroupId('')
   }
 
+  // Переименование раздела без группы ("Основные услуги")
+  const renameUngrouped = async () => {
+    try {
+      const current = ungroupedName || 'Основные услуги'
+      const input = prompt('Новое название для раздела без группы', current)
+      if (input === null) return
+      const newName = input.trim()
+      if (!newName || newName === current) return
+      const token = localStorage.getItem('token')
+      const res = await fetch('/api/team/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ungroupedGroupName: newName })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'Не удалось переименовать раздел')
+      }
+      setUngroupedName(data.settings?.ungroupedGroupName || newName)
+    } catch (e: any) {
+      setError(e?.message || 'Ошибка переименования')
+    }
+  }
+
   // Фильтруем услуги по статусу архивирования
   const filteredServices = services.filter(service => showArchived ? service.isArchived : !service.isArchived)
 
@@ -394,16 +431,30 @@ export default function ServicesPage() {
             onClick={() => handleSelectTab('ungrouped')}
             className={`${activeTab === 'ungrouped' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
           >
-            Без группы ({ungroupedServices.length})
+            {ungroupedName} ({ungroupedServices.length})
+          </button>
+          <button
+            onClick={renameUngrouped}
+            className="p-1 rounded hover:bg-gray-200 text-gray-500"
+            title="Переименовать раздел без группы"
+          >
+            <Edit className="w-4 h-4" />
           </button>
           {orderedGroups.map(group => (
-            <div key={group.id} className="inline-flex items-center">
+            <div key={group.id} className="inline-flex items-center gap-1">
               <button
                 onClick={() => handleSelectTab(group.id)}
                 className={`${activeTab === group.id ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'} px-3 py-1.5 rounded-md text-sm whitespace-nowrap`}
                 title={group.name}
               >
                 {group.name} ({group.servicesCount})
+              </button>
+              <button
+                onClick={() => startEditingGroup(group)}
+                className="p-1 rounded hover:bg-gray-200 text-gray-500"
+                title="Переименовать группу"
+              >
+                <Edit className="w-4 h-4" />
               </button>
             </div>
           ))}
@@ -478,7 +529,7 @@ export default function ServicesPage() {
                       value={deleteTargetGroupId}
                       onChange={(e) => setDeleteTargetGroupId(e.target.value)}
                     >
-                      <option value="">Без группы</option>
+                      <option value="">{ungroupedName}</option>
                       {serviceGroups.filter(g => g.id !== editingGroup.id).map(g => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
@@ -603,7 +654,7 @@ export default function ServicesPage() {
                  onChange={(e) => setServiceForm({...serviceForm, groupId: e.target.value})}
                  className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
                >
-                <option value="">Без группы</option>
+                <option value="">{ungroupedName}</option>
                 {serviceGroups.map(group => (
                   <option key={group.id} value={group.id}>{group.name}</option>
                 ))}
@@ -723,7 +774,7 @@ export default function ServicesPage() {
         {activeTab === 'ungrouped' ? (
           <div className="bg-white rounded-lg border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center">
-              <h3 className="text-lg font-medium text-gray-900">Без группы {showArchived && '(Архив)'}</h3>
+              <h3 className="text-lg font-medium text-gray-900">{ungroupedName} {showArchived && '(Архив)'}</h3>
               <button
                 onClick={() => startCreatingService('')}
                 className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center"

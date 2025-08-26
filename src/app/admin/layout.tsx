@@ -91,6 +91,7 @@ export default function AdminLayout({
     { name: 'Услуги', href: '/admin/services', icon: Scissors },
     { name: 'Мастера', href: '/admin/masters', icon: User },
     { name: 'Настройки', href: '/admin/settings', icon: Settings },
+    { name: 'Настройки страницы записи', href: '/admin/booking-page-settings', icon: BookOpen },
   ]
 
   if (isLoading) {
@@ -163,17 +164,7 @@ export default function AdminLayout({
 
             {/* Right side - Public page link + User menu */}
             <div className="flex items-center space-x-4">
-              {/* Public page link */}
-              {user.team.slug && (
-                <Link
-                  href={`/book/${user.team.bookingSlug || user.team.slug}`}
-                  target="_blank"
-                  className="flex items-center px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Страница записи
-                </Link>
-              )}
+              {/* Public page link removed by request */}
 
               {/* User info and logout */}
               <div className="flex items-center space-x-3">

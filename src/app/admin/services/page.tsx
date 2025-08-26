@@ -42,6 +42,7 @@ export default function ServicesPage() {
   const [editingGroup, setEditingGroup] = useState<ServiceGroup | null>(null)
   const [isCreatingService, setIsCreatingService] = useState(false)
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>('ungrouped')
@@ -285,6 +286,8 @@ export default function ServicesPage() {
     setError(null)
     setShowDeleteGroupOptions(false)
     setDeleteTargetGroupId('')
+    // Открываем модалку редактирования
+    setIsGroupModalOpen(true)
   }
 
   const startCreatingService = (defaultGroupId?: string) => {
@@ -309,6 +312,7 @@ export default function ServicesPage() {
     setError(null)
     setShowDeleteGroupOptions(false)
     setDeleteTargetGroupId('')
+    setIsGroupModalOpen(false)
   }
 
   // Переименование раздела без группы ("Основные услуги")
@@ -495,11 +499,11 @@ export default function ServicesPage() {
         </div>
       )}
 
-      {/* Форма создания/редактирования группы */}
-      {(isCreatingGroup || editingGroup) && (
+      {/* Форма создания группы (инлайн) */}
+      {isCreatingGroup && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">
-            {editingGroup ? 'Редактировать группу' : 'Новая группа'}
+            Новая группа
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -516,97 +520,6 @@ export default function ServicesPage() {
             </div>
             {/* Порядок скрыт — управляется переносом вкладок или ↑/↓ */}
           </div>
-          {editingGroup && (
-            <div className="mt-6 border-t border-gray-200 pt-6">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Удаление группы</h4>
-              {editingGroup.services && editingGroup.services.length > 0 ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">В группе есть услуги. Выберите, куда их перенести перед удалением группы.</p>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-700">Перенести услуги в:</label>
-                    <select
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
-                      value={deleteTargetGroupId}
-                      onChange={(e) => setDeleteTargetGroupId(e.target.value)}
-                    >
-                      <option value="">{ungroupedName}</option>
-                      {serviceGroups.filter(g => g.id !== editingGroup.id).map(g => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Удалить группу и перенести услуги?')) return
-                      setIsProcessingGroupDelete(true)
-                      try {
-                        const token = localStorage.getItem('token')
-                        if (!token) return
-                        // Перенос услуг: если целевая пустая => в без группы
-                        if (deleteTargetGroupId !== undefined) {
-                          await fetch('/api/services/move-group', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                            body: JSON.stringify({ fromGroupId: editingGroup.id, toGroupId: deleteTargetGroupId || null })
-                          })
-                        }
-                        // Удаляем группу
-                        const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
-                          method: 'DELETE',
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        })
-                        if (!resp.ok) {
-                          const ed = await resp.json()
-                          throw new Error(ed.error || 'Ошибка удаления группы')
-                        }
-                        await loadData()
-                        setEditingGroup(null)
-                        setShowDeleteGroupOptions(false)
-                        setDeleteTargetGroupId('')
-                      } catch (err) {
-                        console.error(err)
-                        setError('Ошибка при удалении группы')
-                      } finally {
-                        setIsProcessingGroupDelete(false)
-                      }
-                    }}
-                    disabled={isProcessingGroupDelete}
-                    className={`px-4 py-2 rounded-md text-white ${isProcessingGroupDelete ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}
-                  >
-                    {isProcessingGroupDelete ? 'Удаление...' : 'Удалить группу'}
-                  </button>
-                </div>
-              ) : (
-                <div className="mt-2">
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Удалить пустую группу?')) return
-                      try {
-                        const token = localStorage.getItem('token')
-                        if (!token) return
-                        const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
-                          method: 'DELETE',
-                          headers: { 'Authorization': `Bearer ${token}` }
-                        })
-                        if (!resp.ok) {
-                          const ed = await resp.json()
-                          throw new Error(ed.error || 'Ошибка удаления группы')
-                        }
-                        await loadData()
-                        setEditingGroup(null)
-                      } catch (err) {
-                        console.error(err)
-                        setError('Ошибка при удалении группы')
-                      }
-                    }}
-                    className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700"
-                  >
-                    Удалить группу
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
           <div className="flex justify-end space-x-3 mt-6">
             <button
               onClick={cancelEditing}
@@ -622,6 +535,138 @@ export default function ServicesPage() {
               <Save className="w-4 h-4 mr-2" />
               Сохранить
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Редактирование группы (модальное окно) */}
+      {editingGroup && isGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={cancelEditing} />
+          <div className="relative bg-white rounded-lg border border-gray-200 p-6 w-full max-w-lg shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Редактировать группу</h3>
+              <button onClick={cancelEditing} className="p-1.5 rounded hover:bg-gray-100 text-gray-500">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Название группы *</label>
+                <input
+                  type="text"
+                  value={groupForm.name}
+                  onChange={(e) => setGroupForm({...groupForm, name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Например: Парикмахерские услуги"
+                />
+              </div>
+              <div className="mt-2 border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Удаление группы</h4>
+                {editingGroup.services && editingGroup.services.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600">В группе есть услуги. Выберите, куда их перенести перед удалением группы.</p>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-700">Перенести услуги в:</label>
+                      <select
+                        className="border border-gray-300 rounded-md px-3 py-2 text-sm min-h-[44px] focus:ring-blue-500 focus:border-blue-500"
+                        value={deleteTargetGroupId}
+                        onChange={(e) => setDeleteTargetGroupId(e.target.value)}
+                      >
+                        <option value="">{ungroupedName}</option>
+                        {serviceGroups.filter(g => g.id !== editingGroup.id).map(g => (
+                          <option key={g.id} value={g.id}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Удалить группу и перенести услуги?')) return
+                        setIsProcessingGroupDelete(true)
+                        try {
+                          const token = localStorage.getItem('token')
+                          if (!token) return
+                          if (deleteTargetGroupId !== undefined) {
+                            await fetch('/api/services/move-group', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                              body: JSON.stringify({ fromGroupId: editingGroup.id, toGroupId: deleteTargetGroupId || null })
+                            })
+                          }
+                          const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          })
+                          if (!resp.ok) {
+                            const ed = await resp.json()
+                            throw new Error(ed.error || 'Ошибка удаления группы')
+                          }
+                          await loadData()
+                          setEditingGroup(null)
+                          setShowDeleteGroupOptions(false)
+                          setDeleteTargetGroupId('')
+                          setIsGroupModalOpen(false)
+                        } catch (err) {
+                          console.error(err)
+                          setError('Ошибка при удалении группы')
+                        } finally {
+                          setIsProcessingGroupDelete(false)
+                        }
+                      }}
+                      disabled={isProcessingGroupDelete}
+                      className={`px-4 py-2 rounded-md text-white ${isProcessingGroupDelete ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'}`}
+                    >
+                      {isProcessingGroupDelete ? 'Удаление...' : 'Удалить группу'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Удалить пустую группу?')) return
+                        try {
+                          const token = localStorage.getItem('token')
+                          if (!token) return
+                          const resp = await fetch(`/api/service-groups/${editingGroup.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}` }
+                          })
+                          if (!resp.ok) {
+                            const ed = await resp.json()
+                            throw new Error(ed.error || 'Ошибка удаления группы')
+                          }
+                          await loadData()
+                          setEditingGroup(null)
+                          setIsGroupModalOpen(false)
+                        } catch (err) {
+                          console.error(err)
+                          setError('Ошибка при удалении группы')
+                        }
+                      }}
+                      className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700"
+                    >
+                      Удалить группу
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={cancelEditing}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleSaveGroup}
+                disabled={!groupForm.name.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 flex items-center"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Сохранить
+              </button>
+            </div>
           </div>
         </div>
       )}

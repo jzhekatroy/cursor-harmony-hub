@@ -834,7 +834,7 @@ export default function ServicesPage() {
                 <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                   {ungroupedServices.map(service => (
                     <div key={service.id} className="grid grid-cols-[1fr_auto] gap-3 items-stretch">
-                      {/* Карточка как на публичной странице: фото 16:9 с оверлеями */}
+                      {/* Карточка как на публичной странице (предыдущий вариант с 16:9 и оверлеем) */}
                       <div className={`relative rounded-2xl overflow-hidden border ${service.isArchived ? 'opacity-75' : ''}`}>
                         <div className="relative w-full">
                           <div className="pt-[56.25%] bg-gray-100">

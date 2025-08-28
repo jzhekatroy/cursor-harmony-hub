@@ -38,6 +38,16 @@ export function EnhancedDateMasterTimeSelection({
   const [loading, setLoading] = useState(false)
   const { clientTimezone, loading: timezoneLoading } = useClientTimezone()
 
+  // Подсумма по выбранным услугам для шапки
+  const totalDuration = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + (s?.duration || 0), 0),
+    [selectedServices]
+  )
+  const totalPrice = useMemo(
+    () => selectedServices.reduce((sum, s) => sum + Number(s?.price || 0), 0),
+    [selectedServices]
+  )
+
   // Отладочная информация для salonTimezone
   // console.log('🔍 EnhancedDateMasterTimeSelection: RENDER START - salonTimezone =', salonTimezone)
   // console.log('🔍 EnhancedDateMasterTimeSelection: selectedTimeSlot =', selectedTimeSlot?.time)
@@ -305,10 +315,20 @@ export function EnhancedDateMasterTimeSelection({
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="w-5 h-5" />
-          Выбор даты и времени
-        </CardTitle>
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Выбор даты и времени
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+            <span>Услуг: {selectedServices.length}</span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-4 h-4" />
+              {totalDuration} мин
+            </span>
+            <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(totalPrice)} ₽</span>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Информация о временных зонах скрыта */}
@@ -323,7 +343,7 @@ export function EnhancedDateMasterTimeSelection({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-7 gap-2">
               {dates.map((date, index) => {
                 const isToday = date.value === new Date().toISOString().split('T')[0]
                 const isSelected = selectedDate === date.value || (!selectedDate && isToday)
@@ -334,7 +354,7 @@ export function EnhancedDateMasterTimeSelection({
                     variant={isSelected ? 'default' : 'outline'}
                     onClick={() => handleDateSelect(date.value)}
                     className={cn(
-                      "text-sm flex flex-col",
+                      "text-sm flex flex-col py-3",
                       isSelected && 'bg-[#00acf4] hover:bg-[#0099e0]',
                       isToday && !selectedDate && 'ring-2 ring-[#00acf4] ring-opacity-30'
                     )}

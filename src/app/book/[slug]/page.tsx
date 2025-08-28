@@ -11,6 +11,7 @@ import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, Clie
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 interface TeamData {
   team: {
@@ -38,6 +39,7 @@ export default function BookingWidget() {
   const [team, setTeam] = useState<TeamData | null>(null)
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [masters, setMasters] = useState<Master[]>([])
+  const [isDarkLocal, setIsDarkLocal] = useState(false)
 
   const [bookingData, setBookingData] = useState<BookingData>({
     services: [],
@@ -200,6 +202,21 @@ export default function BookingWidget() {
     setCurrentStep('select-services') // Вернуться к началу
   }
 
+  // Слушаем смену темы
+  useEffect(() => {
+    const handler = (e: any) => setIsDarkLocal(Boolean(e?.detail?.isDark))
+    if (typeof window !== 'undefined') {
+      window.addEventListener('theme-changed', handler)
+      try {
+        const saved = localStorage.getItem('theme')
+        setIsDarkLocal(saved === 'dark')
+      } catch {}
+    }
+    return () => {
+      if (typeof window !== 'undefined') window.removeEventListener('theme-changed', handler)
+    }
+  }, [])
+
   if (loading) {
     console.log('🔍 RENDER: showing loading state');
     return (
@@ -248,9 +265,41 @@ export default function BookingWidget() {
 
 
   console.log('🔍 RENDER: main render, currentStep =', currentStep);
+  // Отдельный лейаут для шага выбора услуг — как в архиве (без Card, max-w-6xl контейнер)
+  if (currentStep === 'select-services') {
+    return (
+      <div className={isDarkLocal ? 'min-h-screen bg-neutral-900 text-neutral-100' : 'min-h-screen bg-background text-foreground'}>
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="flex items-center justify-end mb-4">
+            <ThemeToggle />
+          </div>
+          {team?.team?.logoUrl && (
+            <img
+              src={team.team.logoUrl}
+              alt={`${team.team.name} Logo`}
+              className="h-16 w-auto mx-auto mb-6"
+            />
+          )}
+          <h1 className="text-2xl sm:text-3xl font-bold text-center mb-8">{team.team?.name}</h1>
+          <EnhancedServiceSelection
+            serviceGroups={[...(team?.serviceGroups || []), ...(team?.ungroupedServices?.length ? [{ id: 'ungrouped', name: 'Услуги', services: team.ungroupedServices, order: 999 } as any] : [])] as any}
+            selectedServices={bookingData.services}
+            onServiceSelect={handleServiceSelect}
+            onNext={handleNext}
+            className="animate-fade-in"
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Лейаут для остальных шагов остаётся прежним в Card
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
-      <Card className="w-full max-w-4xl bg-white/80 backdrop-blur-lg shadow-xl rounded-xl p-6 sm:p-8 space-y-6 border border-gray-200 relative overflow-hidden">
+    <div className={isDarkLocal ? 'min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8' : 'min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8'}>
+      <Card className={isDarkLocal ? 'w-full max-w-4xl bg-neutral-800/80 backdrop-blur-lg shadow-xl rounded-xl p-6 sm:p-8 space-y-6 border border-neutral-700 relative overflow-hidden' : 'w-full max-w-4xl bg-white/80 backdrop-blur-lg shadow-xl rounded-xl p-6 sm:p-8 space-y-6 border border-gray-200 relative overflow-hidden'}>
+        <div className="flex items-center justify-end -mt-2">
+          <ThemeToggle />
+        </div>
         {team?.team?.logoUrl && (
           <img
             src={team.team.logoUrl}
@@ -258,22 +307,9 @@ export default function BookingWidget() {
             className="h-16 w-auto mx-auto mb-4"
           />
         )}
-                          <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
- 
-                           {/* Debug панель скрыта в продакшене */}
- 
-        {/* Контент шагов */}
-        <div className="relative min-h-[400px]">
-          {currentStep === 'select-services' && (
-            <EnhancedServiceSelection
-              serviceGroups={[...(team?.serviceGroups || []), ...(team?.ungroupedServices?.length ? [{ id: 'ungrouped', name: 'Услуги', services: team.ungroupedServices, order: 999 } as any] : [])] as any}
-              selectedServices={bookingData.services}
-              onServiceSelect={handleServiceSelect}
-              onNext={handleNext}
-              className="animate-fade-in"
-            />
-          )}
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
 
+        <div className="relative min-h-[400px]">
           {currentStep === 'select-date-time' && team && masters.length > 0 && (
             <EnhancedDateMasterTimeSelection
               masters={masters}
@@ -305,8 +341,6 @@ export default function BookingWidget() {
             />
           )}
         </div>
-
-        {/* Нижняя панель навигации удалена, чтобы не дублировать кнопку Continue на шаге услуг */}
       </Card>
     </div>
   )

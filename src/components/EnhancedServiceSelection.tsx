@@ -1,7 +1,8 @@
 'use client'
 
 import React, { useState, useMemo } from 'react'
-import { Search, Clock, DollarSign, Check, X, ArrowRight } from 'lucide-react'
+import { Search, Clock, DollarSign, Check, X, ArrowRight, Image as ImageIcon, List } from 'lucide-react'
+import { ImageWithFallback } from '@/components/ImageWithFallback'
 import { Service, ServiceGroup } from '@/types/booking'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -33,7 +34,7 @@ export function EnhancedServiceSelection({
   });
   
   const [searchQuery, setSearchQuery] = useState('');
-  // Переключатели вида и фильтр цены убраны
+  const [showImages, setShowImages] = useState(true);
 
   // Объединяем все услуги из групп
   const allServices = useMemo(() => {
@@ -147,78 +148,166 @@ export function EnhancedServiceSelection({
   const ServiceCard = ({ service }: { service: Service }) => {
     const isSelected = selectedServices.some(s => s.id === service.id);
     const imageUrl = getDisplayImageUrl(service.image || service.photoUrl);
- 
+
     const hue = getHueFromString(service.id || service.name || 'service')
     const fallbackGradient = `linear-gradient(135deg, hsl(${hue} 70% 70%), hsl(${(hue + 30) % 360} 70% 55%))`
 
     return (
       <div
         onClick={() => toggleService(service)}
-        className={`relative cursor-pointer transition-all duration-200 rounded-2xl border overflow-hidden ${
+        className={`group relative cursor-pointer transition-all rounded-lg border overflow-hidden ${
           isSelected
-            ? 'border-[#f59e0b] shadow-[0_6px_16px_rgba(245,158,11,0.35)]'
-            : 'border-gray-200 hover:border-[#f59e0b] hover:shadow-[0_6px_16px_rgba(245,158,11,0.25)] active:border-[#ea580c] active:shadow-[0_8px_20px_rgba(234,88,12,0.35)]'
+            ? 'ring-2 ring-primary shadow-lg'
+            : 'border-gray-200 hover:shadow-lg'
         }`}
       >
-        {/* Фон: фото или тёплый градиент */}
-        <div className="relative w-full">
-          <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-            {imageUrl ? (
-              <img src={imageUrl} alt={service.name} className="absolute inset-0 w-full h-full object-cover block" loading="lazy" />
+        {/* Блок изображения 4:3 с оверлеями */}
+        <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
+          {showImages ? (
+            imageUrl ? (
+              <ImageWithFallback src={imageUrl} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             ) : (
-              <div className="absolute inset-0 w-full h-full" style={{ background: fallbackGradient }} />
-            )}
-          </div>
-          {/* Верхние чипсы: длительность и цена */}
-          <div className="absolute top-2 left-2 flex items-center gap-2">
-            <span className="px-2 py-1 rounded-full text-xs bg-white/90 text-gray-800 shadow flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" /> {formatDuration(service.duration)}
-            </span>
-          </div>
-          <div className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs bg-white/90 text-[#b45309] font-semibold shadow">
-            {formatCurrency(Number(service.price))}
-          </div>
-          {/* Индикатор выбранного */}
-          <div className={`absolute bottom-2 right-2 rounded-full p-1.5 shadow ${isSelected ? 'bg-[#f59e0b] text-white' : 'bg-white/90 text-gray-600'}`}>
-            <Check className="w-4 h-4" />
-          </div>
-          {/* Низ: светлый полупрозрачный стикер с названием и описанием (адаптивная ширина) */}
-          <div className="absolute inset-x-2 bottom-2">
-            <div className="rounded-lg bg-white/60 backdrop-blur px-3 py-2 shadow-sm border border-gray-100 w-fit max-w-[80%]">
-              <h3 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2">{service.name}</h3>
-              {service.description && (
-                <p className="mt-0.5 text-xs sm:text-[13px] leading-snug text-gray-600 line-clamp-2">{service.description}</p>
-              )}
+              <div className="w-full h-full" style={{ background: fallbackGradient }} />
+            )
+          ) : (
+            <div className="w-full h-full bg-white" />
+          )}
+
+          {/* Индикатор выбранного в левом верхнем углу, как в макете */}
+          {isSelected && (
+            <div className="absolute top-3 left-3 z-10">
+              <div className="w-7 h-7 bg-primary rounded-full flex items-center justify-center shadow-lg">
+                <Check className="w-4 h-4 text-primary-foreground" />
+              </div>
+            </div>
+          )}
+
+          {/* Оверлеи: название, затем чипы времени и цены */}
+          <div className="absolute bottom-3 left-3 right-3 space-y-2">
+            <div className="flex flex-wrap gap-1">
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1">
+                {service.name}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1 flex items-center">
+                <Clock className="w-3 h-3 mr-1" /> {service.duration} мин
+              </span>
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1">
+                {formatCurrency(Number(service.price))}
+              </span>
             </div>
           </div>
         </div>
+
+        {/* Описание под фото */}
+        {service.description && (
+          <div className="p-3">
+            <p className="text-sm leading-relaxed text-gray-600 line-clamp-2">{service.description}</p>
+          </div>
+        )}
       </div>
     );
   };
 
+  const ServiceCardNoImage = ({ service }: { service: Service }) => {
+    const isSelected = selectedServices.some(s => s.id === service.id);
+    return (
+      <div
+        onClick={() => toggleService(service)}
+        className={`group relative cursor-pointer transition-all rounded-lg border overflow-hidden ${
+          isSelected ? 'ring-2 ring-primary shadow-lg' : 'border-gray-200 hover:shadow-lg'
+        }`}
+      >
+        <div className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium mb-2 leading-relaxed truncate text-foreground">{service.name}</h3>
+              {service.description && (
+                <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2">{service.description}</p>
+              )}
+            </div>
+            {isSelected && (
+              <div className="ml-3">
+                <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow">
+                  <Check className="w-4 h-4 text-primary-foreground" />
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              <span className="text-xs font-medium rounded px-2 py-1 inline-flex items-center" style={{ backgroundColor: '#f1f5f9', color: '#0f172a' }}>
+                <Clock className="w-3 h-3 mr-1" /> {service.duration} мин
+              </span>
+              <span className="text-xs font-medium rounded px-2 py-1" style={{ backgroundColor: '#f1f5f9', color: '#0f172a' }}>
+                {formatCurrency(Number(service.price))}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Поиск */}
+      {/* Поиск и переключатель вида */}
       <div className="space-y-4">
-        {/* Поиск */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Поиск услуг..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00acf4] focus:border-transparent transition-all"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Поиск услуг..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00acf4] focus:border-transparent transition-all"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowImages(v => !v)}
+            className="px-3 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+            title={showImages ? 'Показать без фото' : 'Показать с фото'}
+          >
+            {showImages ? 'С фото' : 'Без фото'}
+          </button>
         </div>
-
-        {/* Фильтры и переключатель вида удалены */}
       </div>
 
-      {/* Услуги — адаптивная сетка */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      {/* Переключатель вида (как в архиве) */}
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showImages ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowImages(true)}
+            className="gap-2"
+          >
+            <ImageIcon className="w-4 h-4" />
+            С фото
+          </Button>
+          <Button
+            variant={!showImages ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowImages(false)}
+            className="gap-2"
+          >
+            <List className="w-4 h-4" />
+            Без фото
+          </Button>
+        </div>
+      </div>
+
+      {/* Услуги — сетка (1 / 2 / 4) с фото, (1 / 2 / 3) без фото */}
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${showImages ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         {filteredServices.map((service) => (
-          <ServiceCard key={service.id} service={service} />
+          showImages ? (
+            <ServiceCard key={service.id} service={service} />
+          ) : (
+            <ServiceCardNoImage key={service.id} service={service} />
+          )
         ))}
       </div>
 

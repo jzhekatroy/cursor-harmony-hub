@@ -8,6 +8,8 @@
     --primary-foreground: #ffffff;
     --tg-viewport-height: 100vh;
     --tg-viewport-stable-height: 100vh;
+    /* Типографика */
+    --font-size: 14px;
   }
 
   @theme {
@@ -17,6 +19,13 @@
     --color-primary-foreground: var(--primary-foreground);
     --font-sans: var(--font-geist-sans);
     --font-mono: var(--font-geist-mono);
+    /* Шкала размеров текста для 1:1 соответствия */
+    --text-xs: 12px;
+    --text-sm: 14px;
+    --text-base: 14px;
+    --text-lg: 18px;
+    --text-xl: 20px;
+    --text-2xl: 24px;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -29,8 +38,8 @@
   body {
     background: var(--background);
     color: var(--foreground);
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: var(--font-size);
     line-height: 1.5;
   }
 }

@@ -62,6 +62,15 @@ model Team {
   ungroupedGroupName         String     @default("Основные услуги") // Название для услуг без группы
   privacyPolicyUrl           String?
   telegramBotToken           String? // токен Telegram бота для WebApp
+  // Публичные настройки страницы записи
+  publicPageTitle            String? // кастомное название салона для страницы записи
+  publicPageDescription      String? // кастомное описание салона для страницы записи
+  publicPageLogoUrl          String? // кастомный логотип для страницы записи
+  
+  // Публичные UX-настройки
+  publicServiceCardsWithPhotos Boolean @default(true)
+  publicTheme                  String  @default("light")
+  
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt
 

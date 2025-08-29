@@ -247,7 +247,7 @@ export async function PUT(request: NextRequest) {
       try {
         const setFragments: string[] = []
         if (publicServiceCardsWithPhotos !== undefined) setFragments.push(`"publicServiceCardsWithPhotos" = ${publicServiceCardsWithPhotos ? 'TRUE' : 'FALSE'}`)
-        if (publicTheme !== undefined) setFragments.push(`"publicTheme" = ${prisma.$unsafe(`'${publicTheme}'`)}`)
+        if (publicTheme !== undefined) setFragments.push(`"publicTheme" = '${publicTheme}'`)
         if (setFragments.length > 0) {
           // @ts-ignore
           await prisma.$executeRawUnsafe(`UPDATE "public"."teams" SET ${setFragments.join(', ')} WHERE id = '${user.teamId}'`)

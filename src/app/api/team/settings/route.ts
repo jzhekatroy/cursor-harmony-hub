@@ -240,23 +240,10 @@ export async function PUT(request: NextRequest) {
     if (timezone !== undefined) updateData.timezone = timezone
     if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken?.trim() || null
     if (ungroupedGroupName !== undefined) updateData.ungroupedGroupName = (ungroupedGroupName || 'Основные услуги').trim()
-
-    // Публичные UX-настройки: если Prisma клиент отстаёт — сделаем raw SQL
-    let didRawUxUpdate = false
-    if (publicServiceCardsWithPhotos !== undefined || publicTheme !== undefined) {
-      try {
-        const setFragments: string[] = []
-        if (publicServiceCardsWithPhotos !== undefined) setFragments.push(`"publicServiceCardsWithPhotos" = ${publicServiceCardsWithPhotos ? 'TRUE' : 'FALSE'}`)
-        if (publicTheme !== undefined) setFragments.push(`"publicTheme" = '${publicTheme}'`)
-        if (setFragments.length > 0) {
-          // @ts-ignore
-          await prisma.$executeRawUnsafe(`UPDATE "public"."teams" SET ${setFragments.join(', ')} WHERE id = '${user.teamId}'`)
-          didRawUxUpdate = true
-        }
-      } catch (e) {
-        // fallthrough — попробуем обычным update
-      }
-    }
+    
+    // Публичные UX-настройки
+    if (publicServiceCardsWithPhotos !== undefined) updateData.publicServiceCardsWithPhotos = publicServiceCardsWithPhotos
+    if (publicTheme !== undefined) updateData.publicTheme = publicTheme
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -280,8 +267,8 @@ export async function PUT(request: NextRequest) {
         timezone: updatedTeam.timezone,
         telegramBotToken: updatedTeam.telegramBotToken,
         ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги',
-        publicServiceCardsWithPhotos: didRawUxUpdate ? publicServiceCardsWithPhotos : (updatedTeam as any).publicServiceCardsWithPhotos ?? true,
-        publicTheme: didRawUxUpdate ? publicTheme : (updatedTeam as any).publicTheme ?? 'light'
+        publicServiceCardsWithPhotos: updatedTeam.publicServiceCardsWithPhotos,
+        publicTheme: updatedTeam.publicTheme
       }
     })
 

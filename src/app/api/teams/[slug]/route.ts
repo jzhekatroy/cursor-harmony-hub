@@ -71,6 +71,23 @@ export async function GET(
       )
     }
 
+    // Публичные UX-настройки (через raw, так как поля могут отсутствовать в клиенте Prisma)
+    let publicServiceCardsWithPhotos: boolean = true
+    let publicTheme: string = 'light'
+    let publicPageTitle: string | null = null
+    let publicPageDescription: string | null = null
+    let publicPageLogoUrl: string | null = null
+    try {
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl" FROM "public"."teams" WHERE id = ${team.id} LIMIT 1`
+      if (rows && rows[0]) {
+        publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
+        publicTheme = String(rows[0].publicTheme ?? 'light')
+        publicPageTitle = rows[0].publicPageTitle || null
+        publicPageDescription = rows[0].publicPageDescription || null
+        publicPageLogoUrl = rows[0].publicPageLogoUrl || null
+      }
+    } catch {}
+
     // Форматируем данные для фронтенда
     const formattedData = {
       team: {

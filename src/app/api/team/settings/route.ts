@@ -43,6 +43,22 @@ export async function GET(request: NextRequest) {
       ungroupedGroupName: (user.team as any).ungroupedGroupName || 'Основные услуги'
     }
 
+    // Добавляем публичные настройки UX (через raw на случай отсутствия полей в клиенте Prisma)
+    try {
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
+      if (rows && rows[0]) {
+        (settings as any).publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
+        ;(settings as any).publicTheme = String(rows[0].publicTheme ?? 'light')
+      } else {
+        (settings as any).publicServiceCardsWithPhotos = true
+        ;(settings as any).publicTheme = 'light'
+      }
+    } catch (e) {
+      // Если колонок нет — возвращаем дефолты
+      (settings as any).publicServiceCardsWithPhotos = true
+      ;(settings as any).publicTheme = 'light'
+    }
+
     return NextResponse.json({ settings })
 
   } catch (error) {
@@ -99,7 +115,9 @@ export async function PUT(request: NextRequest) {
       bookingSlug,
       timezone,
       telegramBotToken,
-      ungroupedGroupName
+      ungroupedGroupName,
+      publicServiceCardsWithPhotos,
+      publicTheme
     } = body
 
     // Валидация интервала бронирования
@@ -223,6 +241,23 @@ export async function PUT(request: NextRequest) {
     if (telegramBotToken !== undefined) updateData.telegramBotToken = telegramBotToken?.trim() || null
     if (ungroupedGroupName !== undefined) updateData.ungroupedGroupName = (ungroupedGroupName || 'Основные услуги').trim()
 
+    // Публичные UX-настройки: если Prisma клиент отстаёт — сделаем raw SQL
+    let didRawUxUpdate = false
+    if (publicServiceCardsWithPhotos !== undefined || publicTheme !== undefined) {
+      try {
+        const setFragments: string[] = []
+        if (publicServiceCardsWithPhotos !== undefined) setFragments.push(`"publicServiceCardsWithPhotos" = ${publicServiceCardsWithPhotos ? 'TRUE' : 'FALSE'}`)
+        if (publicTheme !== undefined) setFragments.push(`"publicTheme" = ${prisma.$unsafe(`'${publicTheme}'`)}`)
+        if (setFragments.length > 0) {
+          // @ts-ignore
+          await prisma.$executeRawUnsafe(`UPDATE "public"."teams" SET ${setFragments.join(', ')} WHERE id = '${user.teamId}'`)
+          didRawUxUpdate = true
+        }
+      } catch (e) {
+        // fallthrough — попробуем обычным update
+      }
+    }
+
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
       data: updateData
@@ -244,7 +279,9 @@ export async function PUT(request: NextRequest) {
         bookingSlug: updatedTeam.bookingSlug || updatedTeam.slug,
         timezone: updatedTeam.timezone,
         telegramBotToken: updatedTeam.telegramBotToken,
-        ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги'
+        ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги',
+        publicServiceCardsWithPhotos: didRawUxUpdate ? publicServiceCardsWithPhotos : (updatedTeam as any).publicServiceCardsWithPhotos ?? true,
+        publicTheme: didRawUxUpdate ? publicTheme : (updatedTeam as any).publicTheme ?? 'light'
       }
     })
 

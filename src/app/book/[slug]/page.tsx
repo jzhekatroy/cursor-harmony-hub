@@ -22,6 +22,8 @@ interface TeamData {
     slug: string
     bookingStep: number
     timezone: string
+    publicServiceCardsWithPhotos?: boolean
+    publicTheme?: 'light' | 'dark'
   }
   serviceGroups: any[]
   ungroupedServices: any[]
@@ -40,6 +42,7 @@ export default function BookingWidget() {
   const [serviceGroups, setServiceGroups] = useState<ServiceGroup[]>([])
   const [masters, setMasters] = useState<Master[]>([])
   const [isDarkLocal, setIsDarkLocal] = useState(false)
+  const [showImagesByTeam, setShowImagesByTeam] = useState<boolean>(true)
 
   const [bookingData, setBookingData] = useState<BookingData>({
     services: [],
@@ -99,6 +102,19 @@ export default function BookingWidget() {
         // Устанавливаем данные даже если timezone отсутствует, чтобы страница не зависла
         setTeam(teamData)
       }
+      // Применяем публичные настройки UX
+      try {
+        const usePhotos = Boolean(teamData?.team?.publicServiceCardsWithPhotos ?? true)
+        const theme = (teamData?.team?.publicTheme as string) || 'light'
+        setShowImagesByTeam(usePhotos)
+        setIsDarkLocal(theme === 'dark')
+        if (typeof window !== 'undefined') {
+          // Жёстко выставляем класс и data-theme
+          const isDark = theme === 'dark'
+          document.documentElement.classList[isDark ? 'add' : 'remove']('dark')
+          document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
+        }
+      } catch {}
 
       // Загружаем группы услуг (публичный API)
       const servicesResponse = await fetch(`/api/teams/${slug}/services`)
@@ -202,20 +218,7 @@ export default function BookingWidget() {
     setCurrentStep('select-services') // Вернуться к началу
   }
 
-  // Слушаем смену темы
-  useEffect(() => {
-    const handler = (e: any) => setIsDarkLocal(Boolean(e?.detail?.isDark))
-    if (typeof window !== 'undefined') {
-      window.addEventListener('theme-changed', handler)
-      try {
-        const saved = localStorage.getItem('theme')
-        setIsDarkLocal(saved === 'dark')
-      } catch {}
-    }
-    return () => {
-      if (typeof window !== 'undefined') window.removeEventListener('theme-changed', handler)
-    }
-  }, [])
+  // Публичная страница: тема берётся из настроек команды, слушатели не нужны
 
   if (loading) {
     console.log('🔍 RENDER: showing loading state');
@@ -269,10 +272,8 @@ export default function BookingWidget() {
   if (currentStep === 'select-services') {
     return (
       <div className={isDarkLocal ? 'min-h-screen bg-neutral-900 text-neutral-100' : 'min-h-screen bg-background text-foreground'}>
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
-          <div className="flex items-center justify-end mb-4">
-            <ThemeToggle />
-          </div>
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+          {/* Переключатель темы убран с публичной страницы */}
           {team?.team?.logoUrl && (
             <img
               src={team.team.logoUrl}
@@ -287,6 +288,7 @@ export default function BookingWidget() {
             onServiceSelect={handleServiceSelect}
             onNext={handleNext}
             className="animate-fade-in"
+            showImagesOverride={showImagesByTeam}
           />
         </div>
       </div>

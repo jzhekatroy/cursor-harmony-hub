@@ -10,6 +10,8 @@ interface TeamSettings {
   bookingStep: number
   fairMasterRotation?: boolean
   ungroupedGroupName?: string
+  publicServiceCardsWithPhotos?: boolean
+  publicTheme?: 'light' | 'dark'
 }
 
 export default function BookingPageSettings() {
@@ -58,6 +60,18 @@ export default function BookingPageSettings() {
     const data = await res.json()
     if (!res.ok) throw new Error(data?.error || 'Ошибка обновления настройки распределения')
     setSettings((prev) => prev ? { ...prev, fairMasterRotation: data.settings.fairMasterRotation } : prev)
+  }
+
+  const updatePublicUx = async (patch: Partial<Pick<TeamSettings, 'publicServiceCardsWithPhotos' | 'publicTheme'>>) => {
+    const token = localStorage.getItem('token')
+    const res = await fetch('/api/team/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(patch)
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data?.error || 'Ошибка обновления')
+    setSettings((prev) => prev ? { ...prev, ...patch } : prev)
   }
 
   if (loading) {
@@ -137,6 +151,59 @@ export default function BookingPageSettings() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Публичная страница записи: внешний вид */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Внешний вид публичной страницы</h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Карточки услуг</label>
+                  <p className="text-sm text-gray-600">Отображать карточки услуг с фотографиями или компактным списком.</p>
+                </div>
+                <div className="ml-4">
+                  <button
+                    type="button"
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                      (settings.publicServiceCardsWithPhotos ?? true) ? 'bg-blue-600' : 'bg-gray-200'
+                    }`}
+                    onClick={() => updatePublicUx({ publicServiceCardsWithPhotos: !(settings.publicServiceCardsWithPhotos ?? true) })}
+                    aria-pressed={settings.publicServiceCardsWithPhotos ?? true}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                        (settings.publicServiceCardsWithPhotos ?? true) ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Тема</label>
+                  <p className="text-sm text-gray-600">Светлая или тёмная тема публичной страницы записи.</p>
+                </div>
+                <div className="ml-4 flex gap-2">
+                  <button
+                    type="button"
+                    className={`px-3 py-1 text-sm border rounded ${settings.publicTheme === 'light' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => updatePublicUx({ publicTheme: 'light' })}
+                  >
+                    Светлая
+                  </button>
+                  <button
+                    type="button"
+                    className={`px-3 py-1 text-sm border rounded ${settings.publicTheme === 'dark' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300'}`}
+                    onClick={() => updatePublicUx({ publicTheme: 'dark' })}
+                  >
+                    Тёмная
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

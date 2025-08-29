@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-import { Search, Clock, DollarSign, Check, X, ArrowRight, Image as ImageIcon, List } from 'lucide-react'
+import React, { useState, useMemo, useEffect } from 'react'
+import { Clock, Check, X, ArrowRight, Sparkles } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ImageWithFallback'
 import { Service, ServiceGroup } from '@/types/booking'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +15,7 @@ interface EnhancedServiceSelectionProps {
   onServiceSelect: (services: Service[]) => void;
   onNext?: () => void;
   className?: string;
+  showImagesOverride?: boolean; // принудительный режим «с фото/без фото» из настроек команды
 }
 
 // Упрощённый UI: без переключателя вида и фильтра по цене
@@ -25,7 +25,8 @@ export function EnhancedServiceSelection({
   selectedServices,
   onServiceSelect,
   onNext,
-  className = ''
+  className = '',
+  showImagesOverride
 }: EnhancedServiceSelectionProps) {
   console.log('🔍 EnhancedServiceSelection: render with props:', {
     serviceGroups: serviceGroups?.length,
@@ -33,8 +34,11 @@ export function EnhancedServiceSelection({
     onNext: !!onNext
   });
   
+  // Поиск убран по требованию — оставляем пустую строку и не рендерим поле
   const [searchQuery, setSearchQuery] = useState('');
   const [showImages, setShowImages] = useState(true);
+  const effectiveShowImages = showImagesOverride ?? showImages;
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   // Объединяем все услуги из групп
   const allServices = useMemo(() => {
@@ -53,19 +57,46 @@ export function EnhancedServiceSelection({
     });
   }, [serviceGroups]);
 
-  // Фильтрация услуг
-  const filteredServices = useMemo(() => {
-    let filtered = allServices;
+  // Табы групп услуг
+  const groupTabs = useMemo(() => {
+    if (!serviceGroups || !Array.isArray(serviceGroups)) return [] as Array<{ id: string; name: string; count: number }>
+    return serviceGroups.map(g => ({ id: String((g as any).id), name: (g as any).name || 'Группа', count: (g as any).services?.length || 0 }))
+      .filter(tab => tab.count > 0)
+  }, [serviceGroups])
 
-    // Поиск по названию и описанию
-    if (searchQuery) {
-      filtered = filtered.filter(service => 
-        service.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  // Инициализация/сброс выбранной группы при изменении списка групп
+  useEffect(() => {
+    if (groupTabs.length === 0) {
+      setSelectedGroupId(null)
+      return
     }
-    return filtered;
-  }, [allServices, searchQuery]);
+    if (!selectedGroupId || !groupTabs.some(t => t.id === selectedGroupId)) {
+      setSelectedGroupId(groupTabs[0].id)
+    }
+  }, [groupTabs, selectedGroupId])
+
+  // Услуги текущей выбранной группы (или все, если групп 0/1)
+  const servicesOfSelectedGroup = useMemo(() => {
+    if (groupTabs.length <= 1) return allServices
+    const group = serviceGroups.find(g => String((g as any).id) === selectedGroupId)
+    const list = (group as any)?.services || []
+    return list.map((service: any) => ({
+      ...service,
+      description: service.description || '',
+      image: service.photoUrl || service.image,
+    }))
+  }, [groupTabs, allServices, selectedGroupId, serviceGroups])
+
+  // Фильтрация по поиску
+  const filteredServices = useMemo(() => {
+    const base = servicesOfSelectedGroup
+    if (!searchQuery) return base
+    const q = searchQuery.toLowerCase()
+    return base.filter(service =>
+      service.name.toLowerCase().includes(q) ||
+      (service.description || '').toLowerCase().includes(q)
+    )
+  }, [servicesOfSelectedGroup, searchQuery])
 
   // Вычисления для выбранных услуг
   const totalPrice = useMemo(
@@ -163,11 +194,20 @@ export function EnhancedServiceSelection({
       >
         {/* Блок изображения 4:3 с оверлеями */}
         <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
-          {showImages ? (
+          {effectiveShowImages ? (
             imageUrl ? (
-              <ImageWithFallback src={imageUrl} alt={service.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              <ImageWithFallback
+                src={imageUrl}
+                alt={service.name}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
             ) : (
-              <div className="w-full h-full" style={{ background: fallbackGradient }} />
+              <div className="w-full h-full bg-gradient-to-br from-slate-400 to-slate-500 dark:from-slate-600 dark:to-slate-700 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                <div className="text-center text-white">
+                  <Sparkles className="w-12 h-12 mx-auto mb-2 opacity-90" />
+                  <div className="text-xs opacity-75 px-2 font-medium">НЕТ ФОТО</div>
+                </div>
+              </div>
             )
           ) : (
             <div className="w-full h-full bg-white" />
@@ -185,15 +225,15 @@ export function EnhancedServiceSelection({
           {/* Оверлеи: название, затем чипы времени и цены */}
           <div className="absolute bottom-3 left-3 right-3 space-y-2">
             <div className="flex flex-wrap gap-1">
-              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1">
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded-full px-[6.5px] py-1">
                 {service.name}
               </span>
             </div>
             <div className="flex gap-1">
-              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1 flex items-center">
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded-full px-[6.5px] py-1 flex items-center">
                 <Clock className="w-3 h-3 mr-1" /> {service.duration} мин
               </span>
-              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded px-2 py-1">
+              <span className="bg-black/80 text-white text-xs font-medium shadow-lg border-0 rounded-full px-[6.5px] py-1">
                 {formatCurrency(Number(service.price))}
               </span>
             </div>
@@ -252,58 +292,29 @@ export function EnhancedServiceSelection({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Поиск и переключатель вида */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Поиск услуг..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00acf4] focus:border-transparent transition-all"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowImages(v => !v)}
-            className="px-3 py-2 border rounded-lg text-sm text-gray-700 hover:bg-gray-50"
-            title={showImages ? 'Показать без фото' : 'Показать с фото'}
-          >
-            {showImages ? 'С фото' : 'Без фото'}
-          </button>
-        </div>
-      </div>
+      {/* Поиск удалён */}
 
-      {/* Переключатель вида (как в архиве) */}
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <Button
-            variant={showImages ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowImages(true)}
-            className="gap-2"
-          >
-            <ImageIcon className="w-4 h-4" />
-            С фото
-          </Button>
-          <Button
-            variant={!showImages ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setShowImages(false)}
-            className="gap-2"
-          >
-            <List className="w-4 h-4" />
-            Без фото
-          </Button>
+      {/* Кнопки групп (если групп > 1). Цвет: #2563eb */}
+      {groupTabs.length > 1 && (
+        <div className="flex flex-wrap gap-2 justify-center mb-4">
+          {groupTabs.map(tab => (
+            <Button
+              key={tab.id}
+              variant={selectedGroupId === tab.id ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSelectedGroupId(tab.id)}
+              className={`rounded-full border !border-[#2563eb] ${selectedGroupId === tab.id ? '!bg-[#2563eb] !text-white' : '!bg-white !text-[#2563eb]'}`}
+            >
+              {tab.name}
+            </Button>
+          ))}
         </div>
-      </div>
+      )}
 
-      {/* Услуги — сетка (1 / 2 / 4) с фото, (1 / 2 / 3) без фото */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${showImages ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
+      {/* Услуги — сетка: максимум 3 карточки в ряд */}
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4`}>
         {filteredServices.map((service) => (
-          showImages ? (
+          (effectiveShowImages) ? (
             <ServiceCard key={service.id} service={service} />
           ) : (
             <ServiceCardNoImage key={service.id} service={service} />

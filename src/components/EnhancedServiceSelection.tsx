@@ -84,7 +84,7 @@ export function EnhancedServiceSelection({
       ...service,
       description: service.description || '',
       image: service.photoUrl || service.image,
-    }))
+    })) as Service[]
   }, [groupTabs, allServices, selectedGroupId, serviceGroups])
 
   // Фильтрация по поиску
@@ -92,7 +92,7 @@ export function EnhancedServiceSelection({
     const base = servicesOfSelectedGroup
     if (!searchQuery) return base
     const q = searchQuery.toLowerCase()
-    return base.filter(service =>
+    return base.filter((service: Service) =>
       service.name.toLowerCase().includes(q) ||
       (service.description || '').toLowerCase().includes(q)
     )

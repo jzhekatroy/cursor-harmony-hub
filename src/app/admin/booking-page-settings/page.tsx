@@ -71,7 +71,11 @@ export default function BookingPageSettings() {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data?.error || 'Ошибка обновления')
-    setSettings((prev) => prev ? { ...prev, ...patch } : prev)
+    
+    setSettings((prev) => {
+      if (!prev) return prev
+      return { ...prev, ...patch }
+    })
   }
 
   if (loading) {

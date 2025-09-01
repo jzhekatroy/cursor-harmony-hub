@@ -96,7 +96,12 @@ export async function GET(
         logoUrl: team.logoUrl,
         privacyPolicyUrl: team.privacyPolicyUrl,
         bookingStep: team.bookingStep,
-        timezone: team.timezone || 'Europe/Moscow'
+        timezone: team.timezone || 'Europe/Moscow',
+        publicServiceCardsWithPhotos: publicServiceCardsWithPhotos,
+        publicTheme: publicTheme,
+        publicPageTitle: publicPageTitle,
+        publicPageDescription: publicPageDescription,
+        publicPageLogoUrl: publicPageLogoUrl
       },
       serviceGroups: team.serviceGroups.map(group => ({
         id: group.id,

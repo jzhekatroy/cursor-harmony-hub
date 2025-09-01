@@ -56,28 +56,10 @@ export default function BookingWidget() {
 
   // Загрузка данных
   useEffect(() => {
-    console.log('🔍 useEffect: slug changed, calling loadInitialData');
     loadInitialData()
   }, [slug])
 
-  // Отслеживаем изменения team
-  useEffect(() => {
-    console.log('🔍 useEffect: team changed, team =', team);
-    if (team) {
-      console.log('🔍 useEffect: team.team?.timezone =', team.team?.timezone)
-      console.log('🔍 useEffect: team.team.timezone type =', typeof team.team?.timezone)
-      console.log('🔍 useEffect: team.team =', team.team)
-      console.log('🔍 useEffect: masters.length =', masters.length)
-    }
-  }, [team, masters])
-
-  // Отслеживаем изменения bookingData.timeSlot
-  useEffect(() => {
-    console.log('🔍 useEffect: bookingData.timeSlot =', bookingData.timeSlot?.time)
-  }, [bookingData.timeSlot])
-
   const loadInitialData = async () => {
-    console.log('🔍 loadInitialData: starting...');
     try {
       setLoading(true)
 
@@ -87,21 +69,8 @@ export default function BookingWidget() {
         throw new Error('Команда не найдена')
       }
       const teamData = await teamResponse.json()
-      console.log('🔍 DEBUG: teamData.team.timezone =', teamData.team?.timezone)
-      console.log('🔍 DEBUG: teamData =', teamData)
-      console.log('🔍 DEBUG: teamData.team =', teamData.team)
       
-      // Проверяем структуру данных перед установкой
-      if (teamData && teamData.team && teamData.team.timezone) {
-        console.log('🔍 DEBUG: Setting team data with timezone:', teamData.team.timezone)
-        setTeam(teamData)
-      } else {
-        console.error('🔍 ERROR: Invalid teamData structure:', teamData)
-        console.error('🔍 ERROR: teamData.team =', teamData?.team)
-        console.error('🔍 ERROR: teamData.team.timezone =', teamData?.team?.timezone)
-        // Устанавливаем данные даже если timezone отсутствует, чтобы страница не зависла
-        setTeam(teamData)
-      }
+      setTeam(teamData)
       // Применяем публичные настройки UX
       try {
         const usePhotos = Boolean(teamData?.team?.publicServiceCardsWithPhotos ?? true)
@@ -120,7 +89,6 @@ export default function BookingWidget() {
       const servicesResponse = await fetch(`/api/teams/${slug}/services`)
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json()
-        console.log('🔍 loadInitialData: services loaded:', servicesData.length, 'groups');
         setServiceGroups(servicesData)
       }
 
@@ -128,7 +96,6 @@ export default function BookingWidget() {
       const mastersResponse = await fetch(`/api/teams/${slug}/masters`)
       if (mastersResponse.ok) {
         const mastersData = await mastersResponse.json()
-        console.log('🔍 loadInitialData: masters loaded:', mastersData.length, 'masters');
         setMasters(mastersData)
       }
       
@@ -136,7 +103,6 @@ export default function BookingWidget() {
       console.error('Ошибка загрузки данных:', error)
       setError(error instanceof Error ? error.message : 'Ошибка загрузки данных')
     } finally {
-      console.log('🔍 loadInitialData: finally block, setting loading to false');
       setLoading(false)
     }
   }
@@ -147,31 +113,23 @@ export default function BookingWidget() {
   }
 
   const handleNext = () => {
-    console.log('🔍 handleNext called with currentStep:', currentStep);
-    console.log('🔍 handleNext: bookingData.services.length =', bookingData.services.length);
-    
     switch (currentStep) {
       case 'select-services':
         if (bookingData.services.length > 0) {
-          console.log('🔍 handleNext: going to select-date-time');
           goToStep('select-date-time')
         } else {
-          console.log('🔍 handleNext: no services selected, showing alert');
           alert('Пожалуйста, выберите хотя бы одну услугу.')
         }
         break
       case 'select-date-time':
         if (bookingData.date && bookingData.master && bookingData.timeSlot) {
-          console.log('🔍 handleNext: going to client-info');
           goToStep('client-info')
         } else {
-          console.log('🔍 handleNext: incomplete date-time selection, showing alert');
           alert('Пожалуйста, выберите дату, мастера и время.')
         }
         break
       case 'client-info':
         // Финальный шаг - обработка в компоненте EnhancedClientInfoAndConfirmation
-        console.log('🔍 handleNext: already at client-info step');
         break
     }
   }
@@ -188,14 +146,12 @@ export default function BookingWidget() {
   }
 
   const handleServiceSelect = (services: Service[]) => {
-    console.log('🔍 handleServiceSelect called with services:', services.map(s => s.name));
     const totalDuration = services.reduce((sum, s) => sum + s.duration, 0)
     const totalPrice = services.reduce((sum, s) => sum + s.price, 0)
     setBookingData(prev => ({ ...prev, services, totalDuration, totalPrice }))
   }
 
   const handleDateTimeSelect = (date: string, master: Master | null, timeSlot: TimeSlot | null) => {
-    console.log('🔍 handleDateTimeSelect:', { date, master: timeSlot?.time })
     setBookingData(prev => ({ ...prev, date, master, timeSlot }))
   }
 
@@ -221,7 +177,6 @@ export default function BookingWidget() {
   // Публичная страница: тема берётся из настроек команды, слушатели не нужны
 
   if (loading) {
-    console.log('🔍 RENDER: showing loading state');
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
@@ -267,7 +222,6 @@ export default function BookingWidget() {
 
 
 
-  console.log('🔍 RENDER: main render, currentStep =', currentStep);
   // Отдельный лейаут для шага выбора услуг — как в архиве (без Card, max-w-6xl контейнер)
   if (currentStep === 'select-services') {
     return (

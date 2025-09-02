@@ -45,18 +45,27 @@ export async function GET(request: NextRequest) {
 
     // Добавляем публичные настройки UX (через raw на случай отсутствия полей в клиенте Prisma)
     try {
-      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
       if (rows && rows[0]) {
         (settings as any).publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
         ;(settings as any).publicTheme = String(rows[0].publicTheme ?? 'light')
+        ;(settings as any).publicPageTitle = rows[0].publicPageTitle || null
+        ;(settings as any).publicPageDescription = rows[0].publicPageDescription || null
+        ;(settings as any).publicPageLogoUrl = rows[0].publicPageLogoUrl || null
       } else {
         (settings as any).publicServiceCardsWithPhotos = true
         ;(settings as any).publicTheme = 'light'
+        ;(settings as any).publicPageTitle = null
+        ;(settings as any).publicPageDescription = null
+        ;(settings as any).publicPageLogoUrl = null
       }
     } catch (e) {
       // Если колонок нет — возвращаем дефолты
       (settings as any).publicServiceCardsWithPhotos = true
       ;(settings as any).publicTheme = 'light'
+      ;(settings as any).publicPageTitle = null
+      ;(settings as any).publicPageDescription = null
+      ;(settings as any).publicPageLogoUrl = null
     }
 
     return NextResponse.json({ settings })
@@ -117,7 +126,10 @@ export async function PUT(request: NextRequest) {
       telegramBotToken,
       ungroupedGroupName,
       publicServiceCardsWithPhotos,
-      publicTheme
+      publicTheme,
+      publicPageTitle,
+      publicPageDescription,
+      publicPageLogoUrl
     } = body
 
     // Валидация интервала бронирования
@@ -244,6 +256,9 @@ export async function PUT(request: NextRequest) {
     // Публичные UX-настройки
     if (publicServiceCardsWithPhotos !== undefined) updateData.publicServiceCardsWithPhotos = publicServiceCardsWithPhotos
     if (publicTheme !== undefined) updateData.publicTheme = publicTheme
+    if (publicPageTitle !== undefined) updateData.publicPageTitle = publicPageTitle || null
+    if (publicPageDescription !== undefined) updateData.publicPageDescription = publicPageDescription || null
+    if (publicPageLogoUrl !== undefined) updateData.publicPageLogoUrl = publicPageLogoUrl || null
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -268,7 +283,10 @@ export async function PUT(request: NextRequest) {
         telegramBotToken: updatedTeam.telegramBotToken,
         ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги',
         publicServiceCardsWithPhotos: updatedTeam.publicServiceCardsWithPhotos,
-        publicTheme: updatedTeam.publicTheme
+        publicTheme: updatedTeam.publicTheme,
+        publicPageTitle: (updatedTeam as any).publicPageTitle,
+        publicPageDescription: (updatedTeam as any).publicPageDescription,
+        publicPageLogoUrl: (updatedTeam as any).publicPageLogoUrl
       }
     })
 

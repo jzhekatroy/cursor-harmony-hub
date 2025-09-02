@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import BookingLinkSettings from '@/components/BookingLinkSettings'
 import BookingSettings from '@/components/BookingSettings'
+import LogoUpload from '@/components/LogoUpload'
 
 interface TeamSettings {
   slug: string
@@ -12,6 +13,9 @@ interface TeamSettings {
   ungroupedGroupName?: string
   publicServiceCardsWithPhotos?: boolean
   publicTheme?: 'light' | 'dark'
+  publicPageTitle?: string
+  publicPageDescription?: string
+  publicPageLogoUrl?: string
 }
 
 export default function BookingPageSettings() {
@@ -62,7 +66,7 @@ export default function BookingPageSettings() {
     setSettings((prev) => prev ? { ...prev, fairMasterRotation: data.settings.fairMasterRotation } : prev)
   }
 
-  const updatePublicUx = async (patch: Partial<Pick<TeamSettings, 'publicServiceCardsWithPhotos' | 'publicTheme'>>) => {
+  const updatePublicUx = async (patch: Partial<Pick<TeamSettings, 'publicServiceCardsWithPhotos' | 'publicTheme' | 'publicPageTitle' | 'publicPageDescription' | 'publicPageLogoUrl'>>) => {
     const token = localStorage.getItem('token')
     const res = await fetch('/api/team/settings', {
       method: 'PUT',
@@ -207,6 +211,78 @@ export default function BookingPageSettings() {
                     Тёмная
                   </button>
                 </div>
+              </div>
+              
+              {/* Кнопка сохранения для UX настроек */}
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Сохраняем все UX настройки
+                    updatePublicUx({
+                      publicServiceCardsWithPhotos: settings.publicServiceCardsWithPhotos,
+                      publicTheme: settings.publicTheme
+                    })
+                  }}
+                  className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+                >
+                  Сохранить настройки внешнего вида
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Брендинг салона */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Брендинг салона</h3>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Название салона</label>
+                <input
+                  type="text"
+                  value={settings.publicPageTitle || ''}
+                  onChange={(e) => updatePublicUx({ publicPageTitle: e.target.value || undefined })}
+                  placeholder="Например: BEAUTY SALON"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-sm text-gray-600 mt-1">Отображается на публичной странице записи</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Описание салона</label>
+                <textarea
+                  value={settings.publicPageDescription || ''}
+                  onChange={(e) => updatePublicUx({ publicPageDescription: e.target.value || undefined })}
+                  placeholder="Добро пожаловать в наш салон красоты! Мы предлагаем профессиональные услуги..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-sm text-gray-600 mt-1">Краткое описание салона для клиентов</p>
+              </div>
+
+              <LogoUpload
+                currentLogoUrl={settings.publicPageLogoUrl}
+                onLogoChange={(url) => updatePublicUx({ publicPageLogoUrl: url })}
+                onLogoRemove={() => updatePublicUx({ publicPageLogoUrl: undefined })}
+                label="Логотип салона"
+              />
+              
+              {/* Кнопка сохранения */}
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Сохраняем все настройки брендинга
+                    updatePublicUx({
+                      publicPageTitle: settings.publicPageTitle,
+                      publicPageDescription: settings.publicPageDescription,
+                      publicPageLogoUrl: settings.publicPageLogoUrl
+                    })
+                  }}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                >
+                  Сохранить настройки брендинга
+                </button>
               </div>
             </div>
           </div>

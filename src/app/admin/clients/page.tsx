@@ -7,14 +7,25 @@ import { Search, Users } from 'lucide-react'
 
 interface ClientRow {
   id: string
-  firstName: string
-  lastName: string
-  phone: string
-  email: string
-  telegram: string
-  totalBookings: number
+  firstName: string | null
+  lastName: string | null
+  phone: string | null
+  email: string | null
+  telegramId: bigint | null
+  telegramUsername: string | null
+  telegramFirstName: string | null
+  telegramLastName: string | null
+  source: 'TELEGRAM_WEBAPP' | 'PUBLIC_PAGE' | 'ADMIN_CREATED'
+  isBlocked: boolean
+  telegramBlocked: boolean
   lastActivity: string | null
+  lastBookingTime: string | null
+  lastBookingStatus: string | null
   createdAt: string
+  _count: {
+    bookings: number
+    actions: number
+  }
 }
 
 export default function ClientsPage() {
@@ -28,7 +39,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'totalBookings' | 'lastActivity'>('createdAt')
+  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'totalBookings' | 'lastBookingTime'>('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
@@ -42,8 +53,8 @@ export default function ClientsPage() {
         setError('Токен авторизации отсутствует')
         return
       }
-      const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
-      if (q.trim()) params.set('q', q.trim())
+      const params = new URLSearchParams({ page: String(page), limit: String(pageSize) })
+      if (q.trim()) params.set('search', q.trim())
       const res = await fetch(`/api/clients?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
@@ -51,7 +62,7 @@ export default function ClientsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Ошибка загрузки')
       setItems(data.clients || [])
-      setTotal(data.total || 0)
+      setTotal(data.pagination?.total || 0)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Неизвестная ошибка'
       setError(msg)
@@ -89,10 +100,10 @@ export default function ClientsPage() {
           bv = `${b.lastName} ${b.firstName}`.trim().toLowerCase()
           break
         case 'totalBookings':
-          av = a.totalBookings; bv = b.totalBookings; break
-        case 'lastActivity':
-          av = a.lastActivity ? new Date(a.lastActivity).getTime() : 0
-          bv = b.lastActivity ? new Date(b.lastActivity).getTime() : 0
+          av = a._count.bookings; bv = b._count.bookings; break
+        case 'lastBookingTime':
+          av = a.lastBookingTime ? new Date(a.lastBookingTime).getTime() : 0
+          bv = b.lastBookingTime ? new Date(b.lastBookingTime).getTime() : 0
           break
         default:
           av = new Date(a.createdAt).getTime(); bv = new Date(b.createdAt).getTime()
@@ -155,7 +166,7 @@ export default function ClientsPage() {
               <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('name')}>Клиент {sortBy === 'name' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Контакты</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('totalBookings')}>Всего записей {sortBy === 'totalBookings' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
-              <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('lastActivity')}>Последняя активность {sortBy === 'lastActivity' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
+              <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('lastBookingTime')}>Последняя запись {sortBy === 'lastBookingTime' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
               <th className="px-3 py-2"></th>
             </tr>
           </thead>
@@ -185,15 +196,43 @@ export default function ClientsPage() {
               sortedItems.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-gray-50">
                   <td className="px-3 py-2">
-                    <div className="font-medium">{mark(([c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'))}</div>
-                    <div className="text-gray-500 text-xs">Создан: {new Date(c.createdAt).toLocaleDateString('ru-RU')}</div>
+                    <div className="font-medium">
+                      {mark(([c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'))}
+                      {c.isBlocked && <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">Заблокирован</span>}
+                      {c.telegramBlocked && <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">Telegram заблокирован</span>}
+                    </div>
+                    <div className="text-gray-500 text-xs">
+                      Создан: {new Date(c.createdAt).toLocaleDateString('ru-RU')} · 
+                      {c.source === 'TELEGRAM_WEBAPP' && ' Telegram'}
+                      {c.source === 'PUBLIC_PAGE' && ' Публичная страница'}
+                      {c.source === 'ADMIN_CREATED' && ' Админ-панель'}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-gray-700">
                     <div>{mark(c.phone || '—')}</div>
-                    <div className="text-gray-500 text-xs">{mark(c.email || '—')} {c.telegram ? <>· @{mark(c.telegram)}</> : ''}</div>
+                    <div className="text-gray-500 text-xs">
+                      {mark(c.email || '—')} 
+                      {c.telegramUsername && <> · @{mark(c.telegramUsername)}</>}
+                    </div>
                   </td>
-                    <td className="px-3 py-2">{c.totalBookings}</td>
-                  <td className="px-3 py-2">{c.lastActivity ? new Date(c.lastActivity).toLocaleString('ru-RU') : '—'}</td>
+                    <td className="px-3 py-2">{c._count.bookings}</td>
+                  <td className="px-3 py-2">
+                    {c.lastBookingTime ? (
+                      <div>
+                        <div className="text-sm">{new Date(c.lastBookingTime).toLocaleString('ru-RU')}</div>
+                        {c.lastBookingStatus && (
+                          <div className="text-xs text-gray-500">
+                            {c.lastBookingStatus === 'COMPLETED' && 'Завершена'}
+                            {c.lastBookingStatus === 'CONFIRMED' && 'Подтверждена'}
+                            {c.lastBookingStatus === 'NEW' && 'Новая'}
+                            {c.lastBookingStatus === 'CANCELLED_BY_CLIENT' && 'Отменена клиентом'}
+                            {c.lastBookingStatus === 'CANCELLED_BY_SALON' && 'Отменена салоном'}
+                            {c.lastBookingStatus === 'NO_SHOW' && 'Не пришел'}
+                          </div>
+                        )}
+                      </div>
+                    ) : '—'}
+                  </td>
                   <td className="px-3 py-2">
                     <button onClick={() => setSelectedId(c.id)} className="px-3 py-1.5 border rounded hover:bg-gray-50">Открыть</button>
                   </td>
@@ -284,7 +323,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                         const token = localStorage.getItem('token')
                         if (!token) return
                         const res = await fetch(`/api/clients/${id}`, {
-                          method: 'PATCH',
+                          method: 'PUT',
                           headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`,
@@ -294,8 +333,12 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                             lastName: data.lastName,
                             phone: data.phone,
                             email: data.email,
-                            telegram: data.telegram,
-                            address: data.address,
+                            telegramId: data.telegramId,
+                            telegramUsername: data.telegramUsername,
+                            telegramFirstName: data.telegramFirstName,
+                            telegramLastName: data.telegramLastName,
+                            preferredLanguage: data.preferredLanguage,
+                            isBlocked: data.isBlocked
                           })
                         })
                         const json = await res.json()
@@ -312,30 +355,61 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                       }
                     }}
                   >
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Имя</label>
-                      <input value={data.firstName || ''} onChange={(e) => setData((d: any) => ({...d, firstName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Имя</label>
+                        <input value={data.firstName || ''} onChange={(e) => setData((d: any) => ({...d, firstName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Фамилия</label>
+                        <input value={data.lastName || ''} onChange={(e) => setData((d: any) => ({...d, lastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Фамилия</label>
-                      <input value={data.lastName || ''} onChange={(e) => setData((d: any) => ({...d, lastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                  </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Телефон</label>
-                      <input value={data.phone || ''} onChange={(e) => setData((d: any) => ({...d, phone: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-                  </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Email</label>
-                      <input type="email" value={data.email || ''} onChange={(e) => setData((d: any) => ({...d, email: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" required />
-                </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Telegram</label>
-                      <input value={data.telegram || ''} onChange={(e) => setData((d: any) => ({...d, telegram: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-              </div>
-                    <div>
-                      <label className="block text-sm text-gray-600 mb-1">Адрес</label>
-                      <input value={data.address || ''} onChange={(e) => setData((d: any) => ({...d, address: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
-            </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Телефон</label>
+                        <input value={data.phone || ''} onChange={(e) => setData((d: any) => ({...d, phone: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-gray-600 mb-1">Email</label>
+                        <input type="email" value={data.email || ''} onChange={(e) => setData((d: any) => ({...d, email: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-3">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Telegram данные</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Telegram ID</label>
+                          <input value={data.telegramId || ''} onChange={(e) => setData((d: any) => ({...d, telegramId: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Username</label>
+                          <input value={data.telegramUsername || ''} onChange={(e) => setData((d: any) => ({...d, telegramUsername: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                        </div>
+                      </div>
+                    </div>
+
+
+                    <div className="border-t pt-3">
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Настройки</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Язык</label>
+                          <select value={data.preferredLanguage || 'ru'} onChange={(e) => setData((d: any) => ({...d, preferredLanguage: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]">
+                            <option value="ru">Русский</option>
+                            <option value="en">English</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="flex items-center">
+                            <input type="checkbox" checked={data.isBlocked || false} onChange={(e) => setData((d: any) => ({...d, isBlocked: e.target.checked}))} className="mr-2" />
+                            <span className="text-sm text-gray-600">Заблокирован</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2 pt-2">
                       <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={loading}>Сохранить</button>
                       <div className="text-sm text-gray-500">Создан: {new Date(data.createdAt).toLocaleString('ru-RU')}</div>
@@ -345,7 +419,7 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
               )}
 
               {tab === 'analytics' && (
-                <ClientAnalytics clientId={id} baseMetrics={data.metrics} />
+                <ClientAnalytics clientId={id} baseMetrics={data} />
               )}
             </>
           )}
@@ -408,18 +482,45 @@ function ClientAnalytics({ clientId, baseMetrics }: { clientId: string; baseMetr
     } finally { setLoading(false) }
   }
 
+  // Вычисляем метрики на основе бронирований клиента
+  const computeMetrics = (bookings: any[]) => {
+    const res = {
+      counts: { COMPLETED: 0, PLANNED: 0, NO_SHOW: 0, CANCELLED_BY_CLIENT: 0, CANCELLED_BY_SALON: 0 },
+      revenue: { completed: 0, planned: 0, lost: 0 }
+    }
+    for (const b of bookings) {
+      const price = Number(b.totalPrice) || 0
+      switch (b.status) {
+        case 'COMPLETED':
+          res.counts.COMPLETED++; res.revenue.completed += price; break
+        case 'NEW':
+        case 'CONFIRMED':
+          res.counts.PLANNED++; res.revenue.planned += price; break
+        case 'NO_SHOW':
+          res.counts.NO_SHOW++; res.revenue.lost += price; break
+        case 'CANCELLED_BY_CLIENT':
+          res.counts.CANCELLED_BY_CLIENT++; res.revenue.lost += price; break
+        case 'CANCELLED_BY_SALON':
+          res.counts.CANCELLED_BY_SALON++; res.revenue.lost += price; break
+      }
+    }
+    return res
+  }
+
+  const computedMetrics = computeMetrics(baseMetrics?.bookings || [])
+
   const current = mode === 'all' ? {
     counts: {
-      COMPLETED: baseMetrics?.counts?.completed || 0,
-      PLANNED: baseMetrics?.counts?.planned || 0,
-      NO_SHOW: baseMetrics?.counts?.lost ? undefined : 0, // будет уточнено ниже
-      CANCELLED_BY_CLIENT: undefined,
-      CANCELLED_BY_SALON: undefined
+      COMPLETED: computedMetrics?.counts?.COMPLETED || 0,
+      PLANNED: computedMetrics?.counts?.PLANNED || 0,
+      NO_SHOW: computedMetrics?.counts?.NO_SHOW || 0,
+      CANCELLED_BY_CLIENT: computedMetrics?.counts?.CANCELLED_BY_CLIENT || 0,
+      CANCELLED_BY_SALON: computedMetrics?.counts?.CANCELLED_BY_SALON || 0
     },
     revenue: {
-      completed: baseMetrics?.revenue?.completed || 0,
-      planned: baseMetrics?.revenue?.planned || 0,
-      lost: baseMetrics?.revenue?.lost || 0
+      completed: computedMetrics?.revenue?.completed || 0,
+      planned: computedMetrics?.revenue?.planned || 0,
+      lost: computedMetrics?.revenue?.lost || 0
     }
   } : summary
 
@@ -451,29 +552,29 @@ function ClientAnalytics({ clientId, baseMetrics }: { clientId: string; baseMetr
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Завершено</div>
-          <div className="text-lg font-semibold">{mode==='all' ? (baseMetrics?.counts?.completed || 0) : (current?.counts?.COMPLETED || 0)}</div>
-          <div className="text-sm text-gray-600">{(mode==='all' ? baseMetrics?.revenue?.completed : current?.revenue?.completed || 0)?.toLocaleString('ru-RU')} ₽</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (computedMetrics?.counts?.COMPLETED || 0) : (current?.counts?.COMPLETED || 0)}</div>
+          <div className="text-sm text-gray-600">{(mode==='all' ? computedMetrics?.revenue?.completed : current?.revenue?.completed || 0)?.toLocaleString('ru-RU')} ₽</div>
         </div>
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Запланировано</div>
-          <div className="text-lg font-semibold">{mode==='all' ? (baseMetrics?.counts?.planned || 0) : (current?.counts?.PLANNED || 0)}</div>
-          <div className="text-sm text-gray-600">{(mode==='all' ? baseMetrics?.revenue?.planned : current?.revenue?.planned || 0)?.toLocaleString('ru-RU')} ₽</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (computedMetrics?.counts?.PLANNED || 0) : (current?.counts?.PLANNED || 0)}</div>
+          <div className="text-sm text-gray-600">{(mode==='all' ? computedMetrics?.revenue?.planned : current?.revenue?.planned || 0)?.toLocaleString('ru-RU')} ₽</div>
         </div>
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Не пришёл</div>
-          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.NO_SHOW || 0)}</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (computedMetrics?.counts?.NO_SHOW || 0) : (current?.counts?.NO_SHOW || 0)}</div>
         </div>
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Отменено клиентом</div>
-          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.CANCELLED_BY_CLIENT || 0)}</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (computedMetrics?.counts?.CANCELLED_BY_CLIENT || 0) : (current?.counts?.CANCELLED_BY_CLIENT || 0)}</div>
         </div>
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Отменено салоном</div>
-          <div className="text-lg font-semibold">{mode==='all' ? '-' : (current?.counts?.CANCELLED_BY_SALON || 0)}</div>
+          <div className="text-lg font-semibold">{mode==='all' ? (computedMetrics?.counts?.CANCELLED_BY_SALON || 0) : (current?.counts?.CANCELLED_BY_SALON || 0)}</div>
         </div>
         <div className="p-3 border rounded">
           <div className="text-sm text-gray-600 mb-1">Упущенная выручка</div>
-          <div className="text-lg font-semibold">{(mode==='all' ? baseMetrics?.revenue?.lost : current?.revenue?.lost || 0)?.toLocaleString('ru-RU')} ₽</div>
+          <div className="text-lg font-semibold">{(mode==='all' ? computedMetrics?.revenue?.lost : current?.revenue?.lost || 0)?.toLocaleString('ru-RU')} ₽</div>
         </div>
       </div>
     </div>

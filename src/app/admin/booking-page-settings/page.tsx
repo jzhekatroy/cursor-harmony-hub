@@ -16,6 +16,9 @@ interface TeamSettings {
   publicPageTitle?: string
   publicPageDescription?: string
   publicPageLogoUrl?: string
+  dailyBookingLimit?: number
+  notificationsEnabled?: boolean
+  reminderHours?: number
 }
 
 export default function BookingPageSettings() {
@@ -282,6 +285,71 @@ export default function BookingPageSettings() {
                   className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
                 >
                   Сохранить настройки брендинга
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Настройки клиентов */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Настройки клиентов</h3>
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Лимит записей в день на клиента</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={settings.dailyBookingLimit || 3}
+                  onChange={(e) => updatePublicUx({ dailyBookingLimit: parseInt(e.target.value) || 3 })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-sm text-gray-600 mt-1">Максимальное количество записей, которое может сделать один клиент за день</p>
+              </div>
+
+              <div>
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={settings.notificationsEnabled || false}
+                    onChange={(e) => updatePublicUx({ notificationsEnabled: e.target.checked })}
+                    className="mr-2"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Включить уведомления клиентам</span>
+                </label>
+                <p className="text-sm text-gray-600 mt-1">Отправлять уведомления о записях, отменах и напоминания</p>
+              </div>
+
+              {settings.notificationsEnabled && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Напоминание за (часов)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="48"
+                    value={settings.reminderHours || 24}
+                    onChange={(e) => updatePublicUx({ reminderHours: parseInt(e.target.value) || 24 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="text-sm text-gray-600 mt-1">За сколько часов до записи отправлять напоминание</p>
+                </div>
+              )}
+
+              {/* Кнопка сохранения */}
+              <div className="pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Сохраняем все настройки клиентов
+                    updatePublicUx({
+                      dailyBookingLimit: settings.dailyBookingLimit,
+                      notificationsEnabled: settings.notificationsEnabled,
+                      reminderHours: settings.reminderHours
+                    })
+                  }}
+                  className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                >
+                  Сохранить настройки клиентов
                 </button>
               </div>
             </div>

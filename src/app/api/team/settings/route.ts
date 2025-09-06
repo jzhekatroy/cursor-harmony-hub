@@ -45,19 +45,25 @@ export async function GET(request: NextRequest) {
 
     // Добавляем публичные настройки UX (через raw на случай отсутствия полей в клиенте Prisma)
     try {
-      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl", "dailyBookingLimit", "notificationsEnabled", "reminderHours" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
       if (rows && rows[0]) {
         (settings as any).publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
         ;(settings as any).publicTheme = String(rows[0].publicTheme ?? 'light')
         ;(settings as any).publicPageTitle = rows[0].publicPageTitle || null
         ;(settings as any).publicPageDescription = rows[0].publicPageDescription || null
         ;(settings as any).publicPageLogoUrl = rows[0].publicPageLogoUrl || null
+        ;(settings as any).dailyBookingLimit = rows[0].dailyBookingLimit || 3
+        ;(settings as any).notificationsEnabled = Boolean(rows[0].notificationsEnabled ?? false)
+        ;(settings as any).reminderHours = rows[0].reminderHours || 24
       } else {
         (settings as any).publicServiceCardsWithPhotos = true
         ;(settings as any).publicTheme = 'light'
         ;(settings as any).publicPageTitle = null
         ;(settings as any).publicPageDescription = null
         ;(settings as any).publicPageLogoUrl = null
+        ;(settings as any).dailyBookingLimit = 3
+        ;(settings as any).notificationsEnabled = false
+        ;(settings as any).reminderHours = 24
       }
     } catch (e) {
       // Если колонок нет — возвращаем дефолты
@@ -66,6 +72,9 @@ export async function GET(request: NextRequest) {
       ;(settings as any).publicPageTitle = null
       ;(settings as any).publicPageDescription = null
       ;(settings as any).publicPageLogoUrl = null
+      ;(settings as any).dailyBookingLimit = 3
+      ;(settings as any).notificationsEnabled = false
+      ;(settings as any).reminderHours = 24
     }
 
     return NextResponse.json({ settings })
@@ -129,7 +138,10 @@ export async function PUT(request: NextRequest) {
       publicTheme,
       publicPageTitle,
       publicPageDescription,
-      publicPageLogoUrl
+      publicPageLogoUrl,
+      dailyBookingLimit,
+      notificationsEnabled,
+      reminderHours
     } = body
 
     // Валидация интервала бронирования
@@ -259,6 +271,9 @@ export async function PUT(request: NextRequest) {
     if (publicPageTitle !== undefined) updateData.publicPageTitle = publicPageTitle || null
     if (publicPageDescription !== undefined) updateData.publicPageDescription = publicPageDescription || null
     if (publicPageLogoUrl !== undefined) updateData.publicPageLogoUrl = publicPageLogoUrl || null
+    if (dailyBookingLimit !== undefined) updateData.dailyBookingLimit = dailyBookingLimit || 3
+    if (notificationsEnabled !== undefined) updateData.notificationsEnabled = notificationsEnabled || false
+    if (reminderHours !== undefined) updateData.reminderHours = reminderHours || 24
 
     const updatedTeam = await prisma.team.update({
       where: { id: user.teamId },
@@ -286,7 +301,10 @@ export async function PUT(request: NextRequest) {
         publicTheme: updatedTeam.publicTheme,
         publicPageTitle: (updatedTeam as any).publicPageTitle,
         publicPageDescription: (updatedTeam as any).publicPageDescription,
-        publicPageLogoUrl: (updatedTeam as any).publicPageLogoUrl
+        publicPageLogoUrl: (updatedTeam as any).publicPageLogoUrl,
+        dailyBookingLimit: (updatedTeam as any).dailyBookingLimit,
+        notificationsEnabled: (updatedTeam as any).notificationsEnabled,
+        reminderHours: (updatedTeam as any).reminderHours
       }
     })
 

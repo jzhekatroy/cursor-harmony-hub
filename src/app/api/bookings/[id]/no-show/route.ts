@@ -62,11 +62,11 @@ export async function POST(
       })
 
       // Событие клиента
+      const clientId = (await tx.booking.findUnique({ where: { id }, select: { clientId: true } }))?.clientId
       await (tx as any).clientEvent.create({
         data: {
           teamId: user.teamId,
-          // найдём clientId быстро
-          clientId: (await tx.booking.findUnique({ where: { id }, select: { clientId: true } }))?.clientId || null,
+          clientId: clientId || null,
           source: 'admin',
           type: 'booking_no_show',
           metadata: { bookingId: id },
@@ -74,6 +74,14 @@ export async function POST(
           userAgent: request.headers.get('user-agent') || null
         }
       })
+
+      // Обновляем lastActivity клиента
+      if (clientId) {
+        await tx.client.update({
+          where: { id: clientId },
+          data: { lastActivity: new Date() }
+        })
+      }
     })
 
     return NextResponse.json({ success: true })

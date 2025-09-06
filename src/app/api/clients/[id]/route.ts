@@ -1,185 +1,287 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import jwt from 'jsonwebtoken'
+import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 
-export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+// GET /api/clients/[id] - получить клиента по ID
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id: clientId } = await context.params
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
+    const token = extractTokenFromHeader(request.headers.get('authorization'))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, include: { team: true } })
-    if (!user || !user.team) {
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
+    const payload = verifyToken(token)
+    if (!payload.teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
-    }
+
+    const { id } = await params
 
     const client = await prisma.client.findFirst({
-      where: { id: clientId, teamId: user.teamId },
+      where: {
+        id,
+        teamId: payload.teamId
+      },
       include: {
         bookings: {
           orderBy: { startTime: 'desc' },
-          take: 10,
           include: {
-            master: true,
-            services: { include: { service: true } }
+            master: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
+            services: {
+              include: {
+                service: {
+                  select: {
+                    name: true,
+                    price: true
+                  }
+                }
+              }
+            }
+          }
+        },
+        actions: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: {
+            service: {
+              select: {
+                name: true
+              }
+            },
+            booking: {
+              select: {
+                bookingNumber: true,
+                startTime: true
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            bookings: true,
+            actions: true
           }
         }
       }
     })
 
     if (!client) {
-      return NextResponse.json({ error: 'Клиент не найден' }, { status: 404 })
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Агрегации по бронированиям
-    const [totalBookings, lastBooking, completedAgg, plannedAgg, lostAgg] = await Promise.all([
-      prisma.booking.count({ where: { teamId: user.teamId, clientId: client.id } }),
-      prisma.booking.findFirst({ where: { teamId: user.teamId, clientId: client.id }, orderBy: { startTime: 'desc' } }),
-      prisma.booking.aggregate({
-        where: { teamId: user.teamId, clientId: client.id, status: 'COMPLETED' },
-        _sum: { totalPrice: true },
-        _count: { _all: true }
-      }),
-      prisma.booking.aggregate({
-        where: { teamId: user.teamId, clientId: client.id, status: { in: ['NEW', 'CONFIRMED'] } },
-        _sum: { totalPrice: true },
-        _count: { _all: true }
-      }),
-      prisma.booking.aggregate({
-        where: { teamId: user.teamId, clientId: client.id, status: { in: ['NO_SHOW', 'CANCELLED_BY_CLIENT', 'CANCELLED_BY_SALON'] } },
-        _sum: { totalPrice: true },
-        _count: { _all: true }
-      })
-    ])
+    return NextResponse.json(client)
 
-    return NextResponse.json({
-      id: client.id,
-      firstName: client.firstName || '',
-      lastName: client.lastName || '',
-      phone: client.phone || '',
-      email: client.email || '',
-      telegram: client.telegram || '',
-      address: client.address || '',
-      createdAt: client.createdAt,
-      updatedAt: client.updatedAt,
-      metrics: {
-        totalBookings,
-        lastBookingAt: lastBooking?.startTime || null,
-        revenue: {
-          completed: Number(completedAgg._sum.totalPrice || 0),
-          planned: Number(plannedAgg._sum.totalPrice || 0),
-          lost: Number(lostAgg._sum.totalPrice || 0)
-        },
-        counts: {
-          completed: completedAgg._count._all,
-          planned: plannedAgg._count._all,
-          lost: lostAgg._count._all
-        }
-      },
-      recentBookings: client.bookings.map(b => ({
-        id: b.id,
-        bookingNumber: b.bookingNumber,
-        startTime: b.startTime,
-        endTime: b.endTime,
-        status: b.status,
-        totalPrice: b.totalPrice,
-        master: { id: b.master.id, firstName: b.master.firstName, lastName: b.master.lastName },
-        services: b.services.map(s => ({ id: s.service.id, name: s.service.name, duration: s.service.duration, price: s.price }))
-      }))
-    })
   } catch (error) {
-    console.error('Client detail error:', error)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    console.error('Error fetching client:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+// PUT /api/clients/[id] - обновить клиента
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const { id: clientId } = await context.params
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
+    const token = extractTokenFromHeader(request.headers.get('authorization'))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, include: { team: true } })
-    if (!user || !user.team) {
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
+    const payload = verifyToken(token)
+    if (!payload.teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
-    }
+
+    const { id } = await params
 
     const body = await request.json()
     const {
-      firstName = '',
-      lastName = '',
-      phone = '',
-      email = '',
-      telegram = '',
-      address = ''
-    } = body || {}
+      firstName,
+      lastName,
+      email,
+      phone,
+      telegramId,
+      telegramUsername,
+      telegramFirstName,
+      telegramLastName,
+      telegramLanguageCode,
+      vkId,
+      whatsapp,
+      instagram,
+      notificationsEnabled,
+      preferredLanguage,
+      dailyBookingLimit,
+      isBlocked
+    } = body
 
-    if (!email || typeof email !== 'string' || !email.trim()) {
-      return NextResponse.json({ error: 'Email обязателен' }, { status: 400 })
+    // Проверяем, что клиент существует и принадлежит команде
+    const existingClient = await prisma.client.findFirst({
+      where: {
+        id,
+        teamId: payload.teamId
+      }
+    })
+
+    if (!existingClient) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    // Проверяем, что клиент существует и принадлежит этой команде
-    const existing = await prisma.client.findFirst({ where: { id: clientId, teamId: user.teamId } })
-    if (!existing) {
-      return NextResponse.json({ error: 'Клиент не найден' }, { status: 404 })
-    }
-
-    const normalized = {
-      firstName: String(firstName || '').trim() || null,
-      lastName: String(lastName || '').trim() || null,
-      phone: String(phone || '').trim() || null,
-      email: String(email || '').trim(),
-      telegram: String(telegram || '').trim() || null,
-      address: String(address || '').trim() || null,
-    }
-
-    // Проверяем уникальность email в пределах команды
-    if (normalized.email !== existing.email) {
-      const sameEmail = await prisma.client.findFirst({
-        where: { email: normalized.email, teamId: user.teamId, NOT: { id: clientId } }
+    // Проверяем уникальность email в рамках команды (если изменился)
+    if (email && email !== existingClient.email) {
+      const duplicateClient = await prisma.client.findFirst({
+        where: {
+          teamId: payload.teamId,
+          email,
+          id: { not: id }
+        }
       })
-      if (sameEmail) {
-        return NextResponse.json({ error: 'Клиент с таким email уже существует' }, { status: 409 })
+
+      if (duplicateClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким email уже существует' },
+          { status: 400 }
+        )
       }
     }
 
-    const updated = await prisma.client.update({
-      where: { id: clientId },
-      data: normalized
-    })
+    // Проверяем уникальность телефона (если изменился)
+    if (phone && phone !== existingClient.phone) {
+      const duplicateClient = await prisma.client.findFirst({
+        where: {
+          phone,
+          id: { not: id }
+        }
+      })
 
-    return NextResponse.json({
-      success: true,
-      client: {
-        id: updated.id,
-        firstName: updated.firstName || '',
-        lastName: updated.lastName || '',
-        phone: updated.phone || '',
-        email: updated.email,
-        telegram: updated.telegram || '',
-        address: updated.address || '',
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt
+      if (duplicateClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким телефоном уже существует' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Проверяем уникальность Telegram ID (если изменился)
+    if (telegramId && BigInt(telegramId) !== existingClient.telegramId) {
+      const duplicateClient = await prisma.client.findFirst({
+        where: {
+          telegramId: BigInt(telegramId),
+          id: { not: id }
+        }
+      })
+
+      if (duplicateClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким Telegram ID уже существует' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const updatedClient = await prisma.client.update({
+      where: { id },
+      data: {
+        firstName,
+        lastName,
+        email,
+        phone,
+        telegramId: telegramId ? BigInt(telegramId) : null,
+        telegramUsername,
+        telegramFirstName,
+        telegramLastName,
+        telegramLanguageCode,
+        vkId,
+        whatsapp,
+        instagram,
+        notificationsEnabled,
+        preferredLanguage,
+        dailyBookingLimit,
+        isBlocked,
+        lastActivity: new Date()
       }
     })
+
+    return NextResponse.json(updatedClient)
+
   } catch (error) {
-    console.error('Client update error:', error)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    console.error('Error updating client:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
+// DELETE /api/clients/[id] - удалить клиента
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const token = extractTokenFromHeader(request.headers.get('authorization'))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const payload = verifyToken(token)
+    if (!payload.teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+
+    // Проверяем, что клиент существует и принадлежит команде
+    const existingClient = await prisma.client.findFirst({
+      where: {
+        id,
+        teamId: payload.teamId
+      },
+      include: {
+        bookings: {
+          where: {
+            status: {
+              in: ['NEW', 'CONFIRMED']
+            }
+          }
+        }
+      }
+    })
+
+    if (!existingClient) {
+      return NextResponse.json({ error: 'Client not found' }, { status: 404 })
+    }
+
+    // Проверяем, есть ли активные бронирования
+    if (existingClient.bookings.length > 0) {
+      return NextResponse.json(
+        { error: 'Нельзя удалить клиента с активными бронированиями' },
+        { status: 400 }
+      )
+    }
+
+    await prisma.client.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ message: 'Client deleted successfully' })
+
+  } catch (error) {
+    console.error('Error deleting client:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

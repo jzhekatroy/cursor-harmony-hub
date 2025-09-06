@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
           data: {
             email: emailForCreate,
             phone: phoneE164,
-            telegram: clientData.telegram,
+            telegramId: clientData.telegramId ? BigInt(clientData.telegramId) : null,
             firstName: clientData.firstName ?? parsedFirstName,
             lastName: clientData.lastName ?? parsedLastName,
             address: clientData.address,
@@ -303,6 +303,12 @@ export async function POST(request: NextRequest) {
           }
         })
 
+        // Обновляем lastActivity клиента
+        await tx.client.update({
+          where: { id: client.id },
+          data: { lastActivity: new Date() }
+        })
+
         created.push(booking.id)
         currentStart = segEnd
       }
@@ -330,11 +336,11 @@ export async function POST(request: NextRequest) {
         endTime: b.endTime,
         totalPrice: b.totalPrice,
         status: b.status,
-        client: {
+        client: b.client ? {
           firstName: b.client.firstName,
           lastName: b.client.lastName,
           email: b.client.email
-        },
+        } : null,
         master: {
           firstName: b.master.firstName,
           lastName: b.master.lastName
@@ -407,15 +413,17 @@ export async function GET(request: NextRequest) {
           data: { status: 'COMPLETED' }
         })
         for (const b of outdated) {
-          await (tx as any).clientEvent.create({
-            data: {
-              teamId,
-              clientId: b.clientId,
-              source: 'system',
-              type: 'booking_completed',
-              metadata: { bookingId: b.id },
-            }
-          })
+          if (b.clientId) {
+            await tx.clientAction.create({
+              data: {
+                teamId,
+                clientId: b.clientId,
+                actionType: 'BOOKING_CREATED',
+                bookingId: b.id,
+                telegramData: { source: 'system' }
+              }
+            })
+          }
         }
       })
     }

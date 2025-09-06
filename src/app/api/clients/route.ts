@@ -1,70 +1,211 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import jwt from 'jsonwebtoken'
+import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 
+// GET /api/clients - получить список клиентов
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Токен авторизации отсутствует' }, { status: 401 })
+    const token = extractTokenFromHeader(request.headers.get('authorization'))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    const token = authHeader.replace('Bearer ', '')
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId }, include: { team: true } })
-    if (!user || !user.team) {
-      return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 })
-    }
-    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Недостаточно прав' }, { status: 403 })
+
+    const payload = verifyToken(token)
+    if (!payload.teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const q = (searchParams.get('q') || '').trim()
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
-    const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get('pageSize') || '20', 10)))
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '20')
+    const search = searchParams.get('search') || ''
+    const source = searchParams.get('source') || ''
+    const blocked = searchParams.get('blocked') || ''
 
-    const where: any = { teamId: user.teamId }
-    if (q) {
+    const skip = (page - 1) * limit
+
+    // Строим фильтры
+    const where: any = {
+      teamId: payload.teamId
+    }
+
+    if (search) {
       where.OR = [
-        { firstName: { contains: q } },
-        { lastName: { contains: q } },
-        { phone: { contains: q } },
-        { email: { contains: q } },
-        { telegram: { contains: q } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { telegramUsername: { contains: search, mode: 'insensitive' } }
       ]
     }
 
-    const [total, items] = await Promise.all([
-      prisma.client.count({ where }),
+    if (source) {
+      where.source = source
+    }
+
+    if (blocked === 'true') {
+      where.isBlocked = true
+    } else if (blocked === 'false') {
+      where.isBlocked = false
+    }
+
+    // Получаем клиентов с пагинацией
+    const [clients, total] = await Promise.all([
       prisma.client.findMany({
         where,
+        skip,
+        take: limit,
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
         include: {
-          _count: { select: { bookings: true } },
-          bookings: { orderBy: { startTime: 'desc' }, take: 1, select: { startTime: true } }
+          bookings: {
+            select: {
+              startTime: true,
+              status: true
+            },
+            orderBy: {
+              startTime: 'desc'
+            },
+            take: 1
+          },
+          _count: {
+            select: {
+              bookings: true
+            }
+          }
         }
-      })
+      }),
+      prisma.client.count({ where })
     ])
 
-    const data = items.map(c => ({
-      id: c.id,
-      firstName: c.firstName || '',
-      lastName: c.lastName || '',
-      phone: c.phone || '',
-      email: c.email || '',
-      telegram: c.telegram || '',
-      totalBookings: c._count.bookings,
-      lastActivity: c.bookings[0]?.startTime || null,
-      createdAt: c.createdAt
+    // Добавляем lastBookingTime для каждого клиента
+    const clientsWithLastBooking = clients.map(client => ({
+      ...client,
+      lastBookingTime: client.bookings.length > 0 ? client.bookings[0].startTime : null,
+      lastBookingStatus: client.bookings.length > 0 ? client.bookings[0].status : null
     }))
 
-    return NextResponse.json({ total, page, pageSize, clients: data })
+    return NextResponse.json({
+      clients: clientsWithLastBooking,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    })
+
   } catch (error) {
-    console.error('Clients list error:', error)
-    return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    console.error('Error fetching clients:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
+// POST /api/clients - создать нового клиента
+export async function POST(request: NextRequest) {
+  try {
+    const token = extractTokenFromHeader(request.headers.get('authorization'))
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const payload = verifyToken(token)
+    if (!payload.teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await request.json()
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      telegramId,
+      telegramUsername,
+      telegramFirstName,
+      telegramLastName,
+      telegramLanguageCode,
+      vkId,
+      whatsapp,
+      instagram,
+      source = 'ADMIN_CREATED',
+      dailyBookingLimit = 3
+    } = body
+
+    // Проверяем уникальность email в рамках команды
+    if (email) {
+      const existingClient = await prisma.client.findFirst({
+        where: {
+          teamId: payload.teamId,
+          email
+        }
+      })
+
+      if (existingClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким email уже существует' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Проверяем уникальность телефона
+    if (phone) {
+      const existingClient = await prisma.client.findFirst({
+        where: { phone }
+      })
+
+      if (existingClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким телефоном уже существует' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Проверяем уникальность Telegram ID
+    if (telegramId) {
+      const existingClient = await prisma.client.findFirst({
+        where: { telegramId: BigInt(telegramId) }
+      })
+
+      if (existingClient) {
+        return NextResponse.json(
+          { error: 'Клиент с таким Telegram ID уже существует' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const client = await prisma.client.create({
+      data: {
+        teamId: payload.teamId,
+        firstName,
+        lastName,
+        email,
+        phone,
+        telegramId: telegramId ? BigInt(telegramId) : null,
+        telegramUsername,
+        telegramFirstName,
+        telegramLastName,
+        telegramLanguageCode,
+        vkId,
+        whatsapp,
+        instagram,
+        source: source as any,
+        dailyBookingLimit
+      }
+    })
+
+    return NextResponse.json(client, { status: 201 })
+
+  } catch (error) {
+    console.error('Error creating client:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

@@ -279,6 +279,14 @@ export async function PUT(
           }
         })
 
+        // Обновляем lastActivity клиента
+        if (booking.clientId) {
+          await tx.client.update({
+            where: { id: booking.clientId },
+            data: { lastActivity: new Date() }
+          })
+        }
+
         return booking
       })
 

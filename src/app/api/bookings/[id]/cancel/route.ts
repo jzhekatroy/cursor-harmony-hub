@@ -82,6 +82,14 @@ export async function POST(
         }
       })
 
+      // Обновляем lastActivity клиента
+      if (updated.clientId) {
+        await tx.client.update({
+          where: { id: updated.clientId },
+          data: { lastActivity: new Date() }
+        })
+      }
+
       return updated
     })
 

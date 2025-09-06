@@ -141,26 +141,19 @@ export function EnhancedDateMasterTimeSelection({
         timeZone: salonTimezone
       })
       
-      // Проверяем, что это не выходной (суббота = 6, воскресенье = 0)
-      const dayOfWeek = salonDate.getDay()
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
+      // Добавляем все дни, так как мастера могут работать в выходные
+      dates.push({
+        value: dateValue,
+        label: `${weekdayLabel} ${currentDate.getDate()} ${currentDate.toLocaleDateString('ru-RU', { 
+          month: 'short',
+          timeZone: salonTimezone
+        })}`
+      })
       
-      if (!isWeekend) {
-        dates.push({
-          value: dateValue,
-          label: `${weekdayLabel} ${currentDate.getDate()} ${currentDate.toLocaleDateString('ru-RU', { 
-            month: 'short',
-            timeZone: salonTimezone
-          })}`
-        })
-        
-        // Логируем каждую дату для отладки
-        // if (dates.length <= 3) {
-        //   console.log(`🔍 generateDates: date ${dates.length - 1} = ${dateValue} (${weekday})`)
-        // }
-      } else {
-        // console.log(`🔍 generateDates: skipping weekend ${dateValue} (${weekday})`)
-      }
+      // Логируем каждую дату для отладки
+      // if (dates.length <= 3) {
+      //   console.log(`🔍 generateDates: date ${dates.length - 1} = ${dateValue} (${weekday})`)
+      // }
       
       // Переходим к следующему дню
       currentDate.setDate(currentDate.getDate() + 1)

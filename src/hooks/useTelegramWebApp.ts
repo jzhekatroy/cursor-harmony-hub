@@ -94,6 +94,15 @@ declare global {
   }
 }
 
+interface TelegramClient {
+  id: string
+  telegramId: string
+  firstName: string
+  lastName: string
+  email: string
+  source: string
+}
+
 interface TelegramWebAppData {
   isAvailable: boolean
   isReady: boolean
@@ -104,6 +113,7 @@ interface TelegramWebAppData {
   version: string | null
   colorScheme: 'light' | 'dark' | null
   themeParams: any
+  client: TelegramClient | null
   logs: string[]
 }
 
@@ -118,6 +128,7 @@ export const useTelegramWebApp = () => {
     version: null,
     colorScheme: null,
     themeParams: {},
+    client: null,
     logs: []
   })
 
@@ -285,7 +296,24 @@ export const useTelegramWebApp = () => {
             url: window.location.href,
             timestamp: new Date().toISOString()
           })
-        }).catch(error => {
+        })
+        .then(response => response.json())
+        .then(data => {
+          addLog('✅ WebApp start data sent', { 
+            success: data.success,
+            clientCreated: !!data.client,
+            salonId: data.salon_id
+          })
+          
+          // Обновляем данные с информацией о клиенте
+          if (data.client) {
+            setData(prev => ({
+              ...prev,
+              client: data.client
+            }))
+          }
+        })
+        .catch(error => {
           addLog('❌ Failed to send start data to server', { error: error.message })
         })
 

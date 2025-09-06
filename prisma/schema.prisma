@@ -40,6 +40,28 @@ enum ActionType {
   UPDATED
 }
 
+enum ClientSource {
+  TELEGRAM_WEBAPP
+  PUBLIC_PAGE
+  ADMIN_CREATED
+}
+
+enum ClientActionType {
+  PAGE_VIEW
+  SERVICE_SELECT
+  BOOKING_CREATED
+  BOOKING_CANCELLED
+  BOOKING_RESCHEDULED
+  PAYMENT_COMPLETED
+}
+
+enum NotificationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 // Команды (салоны)
 model Team {
   id                         String     @id @default(cuid())
@@ -75,17 +97,20 @@ model Team {
   updatedAt                  DateTime   @updatedAt
 
   // Связи
-  users           User[]
-  masters         Master[]
-  services        Service[]
-  serviceGroups   ServiceGroup[]
-  bookings        Booking[]
-  clientEvents    ClientEvent[]
-  clients         Client[]
-  bookingLogs     BookingLog[]
-  teamLogs        TeamLog[]
-  masterRotations MasterRotation[]
-  loginLogs       UserLoginLog[]
+  users                User[]
+  masters              Master[]
+  services             Service[]
+  serviceGroups        ServiceGroup[]
+  bookings             Booking[]
+  clientEvents         ClientEvent[]
+  clients              Client[]
+  bookingLogs          BookingLog[]
+  teamLogs             TeamLog[]
+  masterRotations      MasterRotation[]
+  loginLogs            UserLoginLog[]
+  notificationSettings NotificationSettings?
+  telegramErrors       TelegramError[]
+  clientActions        ClientAction[]
 
   @@map("teams")
 }
@@ -208,27 +233,61 @@ model Service {
   groupId  String?
   masters  Master[]         @relation("MasterServices")
   bookings BookingService[]
+  actions  ClientAction[]
 
   @@map("services")
 }
 
 // Клиенты
 model Client {
-  id        String   @id @default(cuid())
-  email     String
-  phone     String?
-  telegram  String?
-  firstName String?
-  lastName  String?
-  address   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id                    String       @id @default(cuid())
+  teamId                String       @map("team_id")
+  team                  Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Telegram данные
+  telegramId            BigInt?      @unique @map("telegram_id")
+  telegramUsername      String?      @map("telegram_username")
+  telegramFirstName     String?      @map("telegram_first_name")
+  telegramLastName      String?      @map("telegram_last_name")
+  telegramLanguageCode  String?      @map("telegram_language_code")
+  
+  // Контактные данные
+  phone                 String?      @unique
+  email                 String?
+  firstName             String?      @map("first_name")
+  lastName              String?      @map("last_name")
+  address               String?
+  
+  // Дополнительные мессенджеры
+  vkId                  String?      @map("vk_id")
+  whatsapp              String?
+  instagram             String?
+  
+  // Метаданные
+  source                ClientSource @default(TELEGRAM_WEBAPP)
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  lastActivity          DateTime?    @map("last_activity")
+  
+  // Настройки
+  notificationsEnabled  Boolean      @default(true) @map("notifications_enabled")
+  preferredLanguage     String       @default("ru") @map("preferred_language")
+  
+  // Ограничения
+  dailyBookingLimit     Int          @default(3) @map("daily_booking_limit")
+  isBlocked             Boolean      @default(false) @map("is_blocked")
+  
+  // Telegram статус
+  telegramBlocked       Boolean      @default(false) @map("telegram_blocked")
+  telegramErrorCount    Int          @default(0) @map("telegram_error_count")
+  lastTelegramError     DateTime?    @map("last_telegram_error")
+  telegramErrorReason   String?      @map("telegram_error_reason")
+  
   // Связи
-  team     Team          @relation(fields: [teamId], references: [id])
-  teamId   String
-  bookings Booking[]
-  events   ClientEvent[]
+  bookings              Booking[]
+  events                ClientEvent[]
+  actions               ClientAction[]
+  telegramErrors        TelegramError[]
 
   @@unique([email, teamId])
   @@map("clients")
@@ -270,12 +329,13 @@ model Booking {
   // Связи
   team     Team             @relation(fields: [teamId], references: [id])
   teamId   String
-  client   Client           @relation(fields: [clientId], references: [id])
-  clientId String
+  client   Client?          @relation(fields: [clientId], references: [id])
+  clientId String?
   master   Master           @relation(fields: [masterId], references: [id])
   masterId String
   services BookingService[]
   logs     BookingLog[]
+  actions  ClientAction[]
 
   @@map("bookings")
   @@index([teamId, startTime])
@@ -363,6 +423,90 @@ model Webhook {
   updatedAt  DateTime  @updatedAt
 
   @@map("webhooks")
+}
+
+// Действия клиентов (для аналитики)
+model ClientAction {
+  id          String           @id @default(cuid())
+  clientId    String           @map("client_id")
+  client      Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  teamId      String           @map("team_id")
+  team        Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  actionType  ClientActionType @map("action_type")
+  pageUrl     String?          @map("page_url")
+  serviceId   String?          @map("service_id")
+  service     Service?         @relation(fields: [serviceId], references: [id])
+  bookingId   String?          @map("booking_id")
+  booking     Booking?         @relation(fields: [bookingId], references: [id])
+  
+  telegramData Json?           @map("telegram_data")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  
+  @@map("client_actions")
+}
+
+// Настройки уведомлений для салона
+model NotificationSettings {
+  id                            String   @id @default(cuid())
+  teamId                        String   @unique @map("team_id")
+  team                          Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  // Telegram настройки
+  telegramBotToken              String?  @map("telegram_bot_token")
+  telegramWebhookUrl            String?  @map("telegram_webhook_url")
+  
+  // Настройки уведомлений
+  sendBookingConfirmation       Boolean  @default(true) @map("send_booking_confirmation")
+  sendBookingCancellation       Boolean  @default(true) @map("send_booking_cancellation")
+  sendBookingReschedule         Boolean  @default(true) @map("send_booking_reschedule")
+  sendReminders                 Boolean  @default(true) @map("send_reminders")
+  
+  // Настройки напоминаний
+  reminderHoursBefore           Int      @default(24) @map("reminder_hours_before")
+  reminderEnabled               Boolean  @default(true) @map("reminder_enabled")
+  
+  // Шаблоны сообщений
+  bookingConfirmationTemplate   String?  @map("booking_confirmation_template")
+  bookingCancellationTemplate   String?  @map("booking_cancellation_template")
+  bookingRescheduleTemplate     String?  @map("booking_reschedule_template")
+  reminderTemplate              String?  @map("reminder_template")
+  
+  createdAt                     DateTime @default(now()) @map("created_at")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+  
+  @@map("notification_settings")
+}
+
+// Очередь уведомлений
+model NotificationQueue {
+  id            String              @id @default(cuid())
+  type          String
+  data          Json
+  executeAt     DateTime            @map("execute_at")
+  status        NotificationStatus  @default(PENDING)
+  attempts      Int                 @default(0)
+  maxAttempts   Int                 @default(3) @map("max_attempts")
+  errorMessage  String?             @map("error_message")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  
+  @@map("notification_queue")
+}
+
+// Ошибки Telegram
+model TelegramError {
+  id              String   @id @default(cuid())
+  clientId        String?  @map("client_id")
+  client          Client?  @relation(fields: [clientId], references: [id])
+  teamId          String   @map("team_id")
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  errorType       String   @map("error_type")
+  errorMessage    String   @map("error_message")
+  telegramResponse Json?   @map("telegram_response")
+  createdAt       DateTime @default(now()) @map("created_at")
+  
+  @@map("telegram_errors")
 }
 
 // Журнал входов пользователей

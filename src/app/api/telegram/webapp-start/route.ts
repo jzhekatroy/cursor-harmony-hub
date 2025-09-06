@@ -187,26 +187,30 @@ export async function POST(request: NextRequest) {
           }
         })
 
-      } catch (error) {
-        console.error('❌ Error creating/updating client:', error)
-        
-        // Логируем ошибку в БД
-        try {
-          await prisma.telegramLog.create({
-            data: {
-              level: 'ERROR',
-              message: 'Failed to create/update client',
-              data: { error: error.message, user, salonId },
-              url,
-              userAgent: request.headers.get('user-agent') || 'unknown',
-              ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-              teamId: salonId
-            }
-          })
-        } catch (logError) {
-          console.error('Failed to save error log:', logError)
+        } catch (error) {
+          console.error('❌ Error creating/updating client:', error)
+          
+          // Логируем ошибку в БД
+          try {
+            await prisma.telegramLog.create({
+              data: {
+                level: 'ERROR',
+                message: 'Failed to create/update client',
+                data: { 
+                  error: error instanceof Error ? error.message : String(error), 
+                  user, 
+                  salonId 
+                },
+                url,
+                userAgent: request.headers.get('user-agent') || 'unknown',
+                ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+                teamId: salonId
+              }
+            })
+          } catch (logError) {
+            console.error('Failed to save error log:', logError)
+          }
         }
-      }
     }
     
     return NextResponse.json({ 

@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  ExternalLink
+  ExternalLink,
+  MessageSquare
 } from 'lucide-react'
 
 interface User {

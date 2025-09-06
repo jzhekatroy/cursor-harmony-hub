@@ -535,3 +535,23 @@ model UserLoginLog {
   @@index([teamId, createdAt])
   @@map("user_login_logs")
 }
+
+// Логи взаимодействия с Telegram WebApp
+model TelegramLog {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  level       String   // INFO, ERROR, WARN, DEBUG
+  message     String
+  data        Json?    // Дополнительные данные
+  url         String?  // URL где произошло событие
+  userAgent   String?  // User Agent браузера
+  ip          String?  // IP адрес
+  teamId      String?  // ID салона
+  clientId    String?  // ID клиента
+  createdAt   DateTime @default(now())
+  
+  @@index([timestamp])
+  @@index([teamId])
+  @@index([level])
+  @@map("telegram_logs")
+}

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { user, startParam, platform, version, initData, url, timestamp } = body
     
-    console.log('🚀 TELEGRAM WEBAPP START:', {
+    const logData = {
       timestamp,
       user: user ? {
         id: user.id,
@@ -64,7 +64,25 @@ export async function POST(request: NextRequest) {
       version,
       url,
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-    })
+    }
+    
+    console.log('🚀 TELEGRAM WEBAPP START:', logData)
+    
+    // Сохраняем лог в БД
+    try {
+      await prisma.telegramLog.create({
+        data: {
+          level: 'INFO',
+          message: 'Telegram WebApp started',
+          data: logData,
+          url,
+          userAgent: request.headers.get('user-agent') || 'unknown',
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+        }
+      })
+    } catch (logError) {
+      console.error('Failed to save Telegram log:', logError)
+    }
     
     // Извлекаем salon ID из URL или startParam
     let salonId = null
@@ -171,7 +189,23 @@ export async function POST(request: NextRequest) {
 
       } catch (error) {
         console.error('❌ Error creating/updating client:', error)
-        // Не прерываем выполнение, просто логируем ошибку
+        
+        // Логируем ошибку в БД
+        try {
+          await prisma.telegramLog.create({
+            data: {
+              level: 'ERROR',
+              message: 'Failed to create/update client',
+              data: { error: error.message, user, salonId },
+              url,
+              userAgent: request.headers.get('user-agent') || 'unknown',
+              ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+              teamId: salonId
+            }
+          })
+        } catch (logError) {
+          console.error('Failed to save error log:', logError)
+        }
       }
     }
     

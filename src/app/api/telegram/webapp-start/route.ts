@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         // Ищем существующего клиента по Telegram ID
         client = await prisma.client.findFirst({
           where: {
-            telegramId: user.id.toString(),
+            telegramId: BigInt(user.id),
             teamId: team.id
           }
         })
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
           // Создаем нового клиента
           client = await prisma.client.create({
             data: {
-              telegramId: user.id.toString(),
+              telegramId: BigInt(user.id),
               telegramUsername: user.username || null,
               telegramFirstName: user.first_name || null,
               telegramLastName: user.last_name || null,
@@ -157,15 +157,14 @@ export async function POST(request: NextRequest) {
           data: {
             teamId: team.id,
             clientId: client.id,
-            source: 'TELEGRAM_WEBAPP',
-            type: 'PAGE_VIEW',
-            metadata: {
+            actionType: 'PAGE_VIEW',
+            pageUrl: url,
+            telegramData: {
               platform,
               version,
-              startParam,
-              url,
-              userAgent: request.headers.get('user-agent') || 'unknown'
+              startParam
             },
+            userAgent: request.headers.get('user-agent') || 'unknown',
             ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
           }
         })
@@ -184,7 +183,7 @@ export async function POST(request: NextRequest) {
       user_detected: !!user,
       client: client ? {
         id: client.id,
-        telegramId: client.telegramId,
+        telegramId: client.telegramId?.toString(),
         firstName: client.firstName,
         lastName: client.lastName,
         email: client.email,

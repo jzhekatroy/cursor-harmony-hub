@@ -69,7 +69,7 @@ export default function BookingPageSettings() {
     setSettings((prev) => prev ? { ...prev, fairMasterRotation: data.settings.fairMasterRotation } : prev)
   }
 
-  const updatePublicUx = async (patch: Partial<Pick<TeamSettings, 'publicServiceCardsWithPhotos' | 'publicTheme' | 'publicPageTitle' | 'publicPageDescription' | 'publicPageLogoUrl'>>) => {
+  const updatePublicUx = async (patch: Partial<Pick<TeamSettings, 'publicServiceCardsWithPhotos' | 'publicTheme' | 'publicPageTitle' | 'publicPageDescription' | 'publicPageLogoUrl' | 'dailyBookingLimit' | 'notificationsEnabled' | 'reminderHours'>>) => {
     const token = localStorage.getItem('token')
     const res = await fetch('/api/team/settings', {
       method: 'PUT',

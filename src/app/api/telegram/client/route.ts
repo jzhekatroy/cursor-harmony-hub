@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Ищем клиента по Telegram ID
     const client = await prisma.client.findFirst({
       where: {
-        telegramId: telegramId,
+        telegramId: BigInt(telegramId),
         teamId: team.id
       },
       include: {
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       success: true,
       client: {
         id: client.id,
-        telegramId: client.telegramId,
+        telegramId: client.telegramId?.toString(),
         telegramUsername: client.telegramUsername,
         telegramFirstName: client.telegramFirstName,
         telegramLastName: client.telegramLastName,
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest) {
     // Ищем клиента по Telegram ID
     const existingClient = await prisma.client.findFirst({
       where: {
-        telegramId: telegramId,
+        telegramId: BigInt(telegramId),
         teamId: team.id
       }
     })
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
       success: true,
       client: {
         id: updatedClient.id,
-        telegramId: updatedClient.telegramId,
+        telegramId: updatedClient.telegramId?.toString(),
         firstName: updatedClient.firstName,
         lastName: updatedClient.lastName,
         email: updatedClient.email,

@@ -92,6 +92,9 @@ model Team {
   // Публичные UX-настройки
   publicServiceCardsWithPhotos Boolean @default(true)
   publicTheme                  String  @default("light")
+  dailyBookingLimit            Int     @default(3) // лимит записей на клиента в день
+  notificationsEnabled         Boolean @default(true) // включить уведомления клиентам
+  reminderHours                Int     @default(24) // за сколько часов до записи отправлять напоминание
   
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt
@@ -441,7 +444,9 @@ model ClientAction {
   booking     Booking?         @relation(fields: [bookingId], references: [id])
   
   telegramData Json?           @map("telegram_data")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  ip           String?         @map("ip")
+  userAgent    String?         @map("user_agent")
+  createdAt    DateTime        @default(now()) @map("created_at")
   
   @@map("client_actions")
 }

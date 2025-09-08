@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Получаем также логи создания записей (если есть)
-    const bookingLogs = await prisma.clientAction.findMany({
+    const bookingLogs = booking.clientId ? await prisma.clientAction.findMany({
       where: {
         clientId: booking.clientId,
         actionType: 'BOOKING_CREATED'
@@ -80,10 +80,10 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       },
       take: 10
-    })
+    }) : []
 
     // Получаем все действия клиента
-    const clientActions = await prisma.clientAction.findMany({
+    const clientActions = booking.clientId ? await prisma.clientAction.findMany({
       where: {
         clientId: booking.clientId
       },
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         createdAt: 'desc'
       },
       take: 50
-    })
+    }) : []
 
     return NextResponse.json({
       booking: {

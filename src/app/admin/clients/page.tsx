@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/components/Toast'
 import { Search, Users, Trash2, CheckSquare, Square } from 'lucide-react'
+import TelegramMessageModal from '@/components/TelegramMessageModal'
 
 interface ClientRow {
   id: string
@@ -44,6 +45,7 @@ export default function ClientsPage() {
   const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<ClientRow | null>(null)
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
@@ -149,6 +151,40 @@ export default function ClientsPage() {
       toast.error(`Ошибка удаления: ${msg}`)
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const sendTelegramMessage = async (message: string) => {
+    if (!selectedClient) return
+
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Токен авторизации отсутствует')
+        return
+      }
+
+      const response = await fetch('/api/telegram/send-message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          clientId: selectedClient.id,
+          message: message
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка отправки сообщения')
+      }
+
+      toast.success('Сообщение отправлено успешно')
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Неизвестная ошибка'
+      toast.error(`Ошибка отправки: ${msg}`)
     }
   }
 
@@ -347,7 +383,17 @@ export default function ClientsPage() {
                     ) : '—'}
                   </td>
                   <td className="px-3 py-2">
-                    <button onClick={() => setSelectedId(c.id)} className="px-3 py-1.5 border rounded hover:bg-gray-50">Открыть</button>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelectedId(c.id)} className="px-3 py-1.5 border rounded hover:bg-gray-50">Открыть</button>
+                      {c.telegramId && (
+                        <button
+                          onClick={() => setSelectedClient(c)}
+                          className="px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+                        >
+                          📱 Отправить сообщение
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
@@ -401,6 +447,14 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+
+      <TelegramMessageModal
+        isOpen={!!selectedClient}
+        onClose={() => setSelectedClient(null)}
+        clientId={selectedClient?.id || ''}
+        clientName={`${selectedClient?.firstName || ''} ${selectedClient?.lastName || ''}`}
+        onSend={sendTelegramMessage}
+      />
     </div>
   )
 }

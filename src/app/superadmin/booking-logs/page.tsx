@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/components/Toast'
-import { Search, Calendar, User, MessageSquare, Activity, ArrowLeft } from 'lucide-react'
+import { Calendar, User, MessageSquare, Activity, ArrowLeft, Eye } from 'lucide-react'
 
 interface Booking {
   id: string
@@ -51,24 +50,20 @@ interface ClientAction {
 }
 
 export default function BookingLogsPage() {
-  const searchParams = useSearchParams()
   const toast = useToast()
-  const [bookingId, setBookingId] = useState('')
-  const [booking, setBooking] = useState<Booking | null>(null)
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
   const [logs, setLogs] = useState<Log[]>([])
   const [clientActions, setClientActions] = useState<ClientAction[]>([])
   const [loading, setLoading] = useState(false)
+  const [loadingLogs, setLoadingLogs] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const id = searchParams.get('id')
-    if (id) {
-      setBookingId(id)
-      fetchLogs(id)
-    }
-  }, [searchParams])
+    fetchBookings()
+  }, [])
 
-  const fetchLogs = async (id: string) => {
+  const fetchBookings = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -79,7 +74,41 @@ export default function BookingLogsPage() {
         return
       }
 
-      const response = await fetch(`/api/superadmin/booking-logs?bookingId=${id}`, {
+      const response = await fetch('/api/superadmin/bookings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка загрузки бронирований')
+      }
+
+      setBookings(data.bookings || [])
+      
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
+      setError(msg)
+      toast.error(`Ошибка загрузки бронирований: ${msg}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchLogs = async (bookingId: string) => {
+    try {
+      setLoadingLogs(true)
+      setError(null)
+      
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Токен авторизации отсутствует')
+        return
+      }
+
+      const response = await fetch(`/api/superadmin/booking-logs?bookingId=${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -91,22 +120,16 @@ export default function BookingLogsPage() {
         throw new Error(data.error || 'Ошибка загрузки логов')
       }
 
-      setBooking(data.booking)
-      setLogs(data.logs)
-      setClientActions(data.clientActions)
+      setSelectedBooking(data.booking)
+      setLogs(data.logs || [])
+      setClientActions(data.clientActions || [])
       
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Неизвестная ошибка'
       setError(msg)
       toast.error(`Ошибка загрузки логов: ${msg}`)
     } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSearch = () => {
-    if (bookingId.trim()) {
-      fetchLogs(bookingId.trim())
+      setLoadingLogs(false)
     }
   }
 
@@ -132,6 +155,15 @@ export default function BookingLogsPage() {
     }
   }
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'CONFIRMED': return 'text-green-600 bg-green-50'
+      case 'PENDING': return 'text-yellow-600 bg-yellow-50'
+      case 'CANCELLED': return 'text-red-600 bg-red-50'
+      default: return 'text-gray-600 bg-gray-50'
+    }
+  }
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -146,28 +178,12 @@ export default function BookingLogsPage() {
         </div>
         
         <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Логи бронирования
+          Логи бронирований
         </h1>
         
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1">
-            <input
-              type="text"
-              value={bookingId}
-              onChange={(e) => setBookingId(e.target.value)}
-              placeholder="Введите ID бронирования"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            disabled={loading || !bookingId.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <Search className="w-4 h-4" />
-            {loading ? 'Поиск...' : 'Найти'}
-          </button>
-        </div>
+        <p className="text-gray-600 mb-6">
+          Все бронирования в хронологическом порядке. Нажмите "Просмотр логов" для детального анализа.
+        </p>
       </div>
 
       {error && (
@@ -176,47 +192,125 @@ export default function BookingLogsPage() {
         </div>
       )}
 
-      {booking && (
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">
+          Загрузка бронирований...
+        </div>
+      ) : (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            Все бронирования ({bookings.length})
+          </h2>
+          
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Время</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Номер</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Клиент</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Салон</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Стоимость</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {bookings.map((booking) => (
+                    <tr key={booking.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatTimestamp(booking.startTime)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                        {booking.bookingNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                          {booking.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {booking.client ? (
+                          <div>
+                            <div>{booking.client.firstName} {booking.client.lastName}</div>
+                            {booking.client.telegramId && (
+                              <div className="text-xs text-gray-500">
+                                TG: {booking.client.telegramId}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">Нет данных</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {booking.team.name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        {booking.totalPrice} ₽
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <button
+                          onClick={() => fetchLogs(booking.id)}
+                          disabled={loadingLogs}
+                          className="flex items-center gap-1 px-3 py-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          {loadingLogs ? 'Загрузка...' : 'Логи'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedBooking && (
         <div className="mb-8 p-6 bg-white border border-gray-200 rounded-lg shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            Информация о бронировании
+            Детали бронирования: {selectedBooking.bookingNumber}
           </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Номер брони</label>
-              <div className="text-lg font-mono">{booking.bookingNumber}</div>
+              <div className="text-lg font-mono">{selectedBooking.bookingNumber}</div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Статус</label>
-              <div className="text-lg">{booking.status}</div>
+              <div className="text-lg">{selectedBooking.status}</div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Время</label>
-              <div className="text-lg">{formatTimestamp(booking.startTime)}</div>
+              <div className="text-lg">{formatTimestamp(selectedBooking.startTime)}</div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Стоимость</label>
-              <div className="text-lg font-semibold">{booking.totalPrice} ₽</div>
+              <div className="text-lg font-semibold">{selectedBooking.totalPrice} ₽</div>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Салон</label>
-              <div className="text-lg">{booking.team.name}</div>
+              <div className="text-lg">{selectedBooking.team.name}</div>
             </div>
             
-            {booking.client && (
+            {selectedBooking.client && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Клиент</label>
                 <div className="text-lg">
-                  {booking.client.firstName} {booking.client.lastName}
-                  {booking.client.telegramId && (
+                  {selectedBooking.client.firstName} {selectedBooking.client.lastName}
+                  {selectedBooking.client.telegramId && (
                     <span className="ml-2 text-sm text-gray-500">
-                      (TG: {booking.client.telegramId})
+                      (TG: {selectedBooking.client.telegramId})
                     </span>
                   )}
                 </div>
@@ -320,9 +414,9 @@ export default function BookingLogsPage() {
         </div>
       )}
 
-      {!loading && !error && bookingId && logs.length === 0 && clientActions.length === 0 && (
+      {!loading && !error && bookings.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          Логи для бронирования {bookingId} не найдены
+          Бронирования не найдены
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface DatabaseData {
   clients: any[]
@@ -18,19 +19,44 @@ interface DatabaseData {
 }
 
 export default function DatabaseViewer() {
+  const router = useRouter()
   const [data, setData] = useState<DatabaseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'clients' | 'teams' | 'services' | 'masters' | 'bookings'>('clients')
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    // Проверяем роль пользователя
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (!response.ok) {
+          router.push('/superadmin/login')
+          return
+        }
+        const user = await response.json()
+        if (user.role !== 'superadmin') {
+          router.push('/superadmin/login')
+          return
+        }
+        fetchData()
+      } catch (err) {
+        router.push('/superadmin/login')
+      }
+    }
+    
+    checkAuth()
+  }, [router])
 
   const fetchData = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/db-viewer')
+      const token = localStorage.getItem('token')
+      const response = await fetch('/api/db-viewer', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       const result = await response.json()
       
       if (result.success) {
@@ -204,7 +230,7 @@ export default function DatabaseViewer() {
                         {booking.client ? `${booking.client.firstName} ${booking.client.lastName}` : 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {booking.service?.name || 'N/A'}
+                        {booking.services?.map((s: any) => s.name).join(', ') || 'N/A'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {booking.master?.name || 'N/A'}

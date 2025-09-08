@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { verifyToken } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
+    // Проверяем авторизацию superadmin
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const payload = await verifyToken(token)
+    if (!payload || payload.role !== 'superadmin') {
+      return NextResponse.json({ error: 'Forbidden - Superadmin access required' }, { status: 403 })
+    }
     // Получаем все таблицы и их данные
     const clients = await prisma.client.findMany({
       take: 50,
@@ -12,7 +23,7 @@ export async function GET(request: NextRequest) {
           take: 5,
           orderBy: { createdAt: 'desc' },
           include: {
-            service: true,
+            services: true,
             master: true
           }
         },
@@ -43,7 +54,7 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: 'desc' },
       include: {
         client: true,
-        service: true,
+        services: true,
         master: true
       }
     })

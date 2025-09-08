@@ -35,7 +35,7 @@ export default function DatabaseViewer() {
           return
         }
         const user = await response.json()
-        if (user.role !== 'superadmin') {
+        if (user.role !== 'SUPER_ADMIN') {
           router.push('/superadmin/login')
           return
         }

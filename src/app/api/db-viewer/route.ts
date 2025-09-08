@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = await verifyToken(token)
-    if (!payload || payload.role !== 'superadmin') {
+    if (!payload || payload.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'Forbidden - Superadmin access required' }, { status: 403 })
     }
     // Получаем все таблицы и их данные

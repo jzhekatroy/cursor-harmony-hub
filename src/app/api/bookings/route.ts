@@ -529,10 +529,10 @@ export async function GET(request: NextRequest) {
     // Конвертируем BigInt в строки для JSON сериализации
     const bookingsWithSerializedData = bookings.map(booking => ({
       ...booking,
-      client: {
+      client: booking.client ? {
         ...booking.client,
         telegramId: booking.client.telegramId?.toString() || null
-      }
+      } : null
     }))
 
     // Возвращаем время как есть (UTC). Клиент сам отображает в TZ салона

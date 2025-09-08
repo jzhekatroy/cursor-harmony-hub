@@ -94,6 +94,23 @@ export function EnhancedClientInfoAndConfirmation({
         return
       }
 
+      // Отладочный вызов для проверки данных WebApp
+      if (telegramWebApp.user) {
+        try {
+          await fetch('/api/debug-webapp-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user: telegramWebApp.user,
+              teamSlug: window.location.pathname.split('/')[2],
+              url: window.location.href
+            })
+          })
+        } catch (e) {
+          console.error('Debug call failed:', e)
+        }
+      }
+
       const response = await fetch('/api/bookings', {
         method: 'POST',
         headers: {

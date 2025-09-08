@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
+    // Получаем всех клиентов с Telegram ID
     const clients = await prisma.client.findMany({
       where: {
         telegramId: {
@@ -11,32 +12,38 @@ export async function GET(request: NextRequest) {
       },
       select: {
         id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
         telegramId: true,
         telegramUsername: true,
         telegramFirstName: true,
         telegramLastName: true,
-        firstName: true,
-        lastName: true,
-        email: true,
         source: true,
         createdAt: true,
         teamId: true
       },
       orderBy: {
         createdAt: 'desc'
-      },
-      take: 10
+      }
     })
 
+    // Сериализуем BigInt
+    const serializedClients = clients.map(client => ({
+      ...client,
+      telegramId: client.telegramId?.toString() || null
+    }))
+
     return NextResponse.json({
-      success: true,
-      clients: clients.map(client => ({
-        ...client,
-        telegramId: client.telegramId?.toString()
-      }))
+      clients: serializedClients,
+      total: serializedClients.length
     })
+
   } catch (error) {
     console.error('Error fetching Telegram clients:', error)
-    return NextResponse.json({ error: 'Failed to fetch clients' }, { status: 500 })
+    return NextResponse.json({
+      error: 'Internal server error'
+    }, { status: 500 })
   }
 }

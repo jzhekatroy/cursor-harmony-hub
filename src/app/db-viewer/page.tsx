@@ -31,17 +31,17 @@ export default function DatabaseViewer() {
       try {
         const response = await fetch('/api/auth/me')
         if (!response.ok) {
-          router.push('/superadmin/login')
+          router.push('/login')
           return
         }
         const user = await response.json()
         if (user.role !== 'SUPER_ADMIN') {
-          router.push('/superadmin/login')
+          router.push('/login')
           return
         }
         fetchData()
       } catch (err) {
-        router.push('/superadmin/login')
+        router.push('/login')
       }
     }
     

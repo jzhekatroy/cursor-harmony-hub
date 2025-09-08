@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
       },
       logs: logs.map(log => ({
         ...log,
-        data: typeof log.data === 'object' ? log.data : JSON.parse(log.data || '{}')
+        data: typeof log.data === 'object' ? log.data : (typeof log.data === 'string' ? JSON.parse(log.data) : log.data)
       })),
       bookingLogs,
       clientActions,

@@ -163,15 +163,28 @@ export async function POST(request: NextRequest) {
     let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)
     
     // Сначала ищем по Telegram ID (если есть)
+    console.log('🔍 Checking Telegram ID:', {
+      telegramId: clientData.telegramId,
+      telegramIdType: typeof clientData.telegramId,
+      teamId: team.id,
+      teamSlug: teamSlug
+    })
+    
     if (clientData.telegramId) {
-      client = await prisma.client.findFirst({
-        where: { 
-          telegramId: BigInt(clientData.telegramId), 
-          teamId: team.id 
-        }
-      })
-      if (client) {
-        console.log('✅ Found client by Telegram ID:', client.id)
+      try {
+        client = await prisma.client.findFirst({
+          where: { 
+            telegramId: BigInt(clientData.telegramId), 
+            teamId: team.id 
+          }
+        })
+        if (client) {
+          console.log('✅ Found client by Telegram ID:', {
+            clientId: client.id,
+            telegramId: client.telegramId?.toString(),
+            firstName: client.firstName,
+            lastName: client.lastName
+          })
         
         // Обновляем Telegram данные, если они изменились
         const telegramDataChanged = 
@@ -194,7 +207,14 @@ export async function POST(request: NextRequest) {
           })
           console.log('✅ Telegram data updated for client:', client.id)
         }
+      } else {
+        console.log('❌ No client found with Telegram ID:', clientData.telegramId, 'in team:', team.id)
       }
+      } catch (error) {
+        console.error('❌ Error searching by Telegram ID:', error)
+      }
+    } else {
+      console.log('❌ No Telegram ID provided in clientData')
     }
     
     // Если не найден по Telegram ID, ищем по email

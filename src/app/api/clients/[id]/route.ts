@@ -80,6 +80,11 @@ export async function GET(
 
   } catch (error) {
     console.error('Error fetching client:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      clientId: id
+    })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

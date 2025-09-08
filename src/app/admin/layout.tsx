@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { ToastProvider } from '@/components/Toast'
 import { 
   Calendar, 
   Users, 
@@ -108,7 +107,6 @@ export default function AdminLayout({
   }
 
   return (
-    <ToastProvider>
     <div className="min-h-screen bg-gray-50">
       {user && (user as any).impersonatedBy && (
         <div className="bg-yellow-100 border-b border-yellow-300 text-yellow-900">
@@ -240,6 +238,5 @@ export default function AdminLayout({
         {children}
       </main>
     </div>
-    </ToastProvider>
   )
 }

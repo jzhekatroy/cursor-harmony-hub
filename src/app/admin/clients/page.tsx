@@ -64,6 +64,14 @@ export default function ClientsPage() {
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store'
       })
+      
+      if (res.status === 401) {
+        // Токен недействителен, перенаправляем на страницу входа
+        localStorage.removeItem('token')
+        window.location.href = '/admin/login'
+        return
+      }
+      
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Ошибка загрузки')
       setItems(data.clients || [])
@@ -474,6 +482,14 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
       const token = localStorage.getItem('token')
       if (!token) return
       const res = await fetch(`/api/clients/${id}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      
+      if (res.status === 401) {
+        // Токен недействителен, перенаправляем на страницу входа
+        localStorage.removeItem('token')
+        window.location.href = '/admin/login'
+        return
+      }
+      
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Ошибка загрузки клиента')
       setData(json)
@@ -694,6 +710,14 @@ function ClientAnalytics({ clientId, baseMetrics }: { clientId: string; baseMetr
       if (fromStr) params.set('from', new Date(fromStr + 'T00:00:00').toISOString())
       if (toStr) params.set('to', new Date(toStr + 'T23:59:59').toISOString())
       const res = await fetch(`/api/bookings?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      
+      if (res.status === 401) {
+        // Токен недействителен, перенаправляем на страницу входа
+        localStorage.removeItem('token')
+        window.location.href = '/admin/login'
+        return
+      }
+      
       const json = await res.json(); if (!res.ok) throw new Error(json.error || 'Ошибка загрузки')
       setSummary(computeFromBookings(json.bookings || []))
     } finally { setLoading(false) }

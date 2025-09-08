@@ -76,7 +76,13 @@ export async function GET(
       return NextResponse.json({ error: 'Client not found' }, { status: 404 })
     }
 
-    return NextResponse.json(client)
+    // Конвертируем BigInt в строки для сериализации JSON
+    const serializedClient = {
+      ...client,
+      telegramId: client.telegramId ? client.telegramId.toString() : null
+    }
+
+    return NextResponse.json(serializedClient)
 
   } catch (error) {
     console.error('Error fetching client:', error)
@@ -216,7 +222,13 @@ export async function PUT(
       }
     })
 
-    return NextResponse.json(updatedClient)
+    // Конвертируем BigInt в строки для сериализации JSON
+    const serializedClient = {
+      ...updatedClient,
+      telegramId: updatedClient.telegramId ? updatedClient.telegramId.toString() : null
+    }
+
+    return NextResponse.json(serializedClient)
 
   } catch (error) {
     console.error('Error updating client:', error)

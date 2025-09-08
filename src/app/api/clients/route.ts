@@ -200,7 +200,13 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json(client, { status: 201 })
+    // Конвертируем BigInt в строки для сериализации JSON
+    const serializedClient = {
+      ...client,
+      telegramId: client.telegramId ? client.telegramId.toString() : null
+    }
+
+    return NextResponse.json(serializedClient, { status: 201 })
 
   } catch (error) {
     console.error('Error creating client:', error)

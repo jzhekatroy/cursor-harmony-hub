@@ -77,9 +77,10 @@ export async function GET(request: NextRequest) {
       prisma.client.count({ where })
     ])
 
-    // Добавляем lastBookingTime для каждого клиента
+    // Добавляем lastBookingTime для каждого клиента и конвертируем BigInt в строки
     const clientsWithLastBooking = clients.map(client => ({
       ...client,
+      telegramId: client.telegramId?.toString() || null,
       lastBookingTime: client.bookings.length > 0 ? client.bookings[0].startTime : null,
       lastBookingStatus: client.bookings.length > 0 ? client.bookings[0].status : null
     }))

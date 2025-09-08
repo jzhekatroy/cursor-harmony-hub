@@ -526,8 +526,17 @@ export async function GET(request: NextRequest) {
       orderBy: { startTime: 'asc' }
     })
 
+    // Конвертируем BigInt в строки для JSON сериализации
+    const bookingsWithSerializedData = bookings.map(booking => ({
+      ...booking,
+      client: {
+        ...booking.client,
+        telegramId: booking.client.telegramId?.toString() || null
+      }
+    }))
+
     // Возвращаем время как есть (UTC). Клиент сам отображает в TZ салона
-    return NextResponse.json({ bookings })
+    return NextResponse.json({ bookings: bookingsWithSerializedData })
 
   } catch (error) {
     console.error('Get bookings error:', error)

@@ -172,6 +172,28 @@ export async function POST(request: NextRequest) {
       })
       if (client) {
         console.log('✅ Found client by Telegram ID:', client.id)
+        
+        // Обновляем Telegram данные, если они изменились
+        const telegramDataChanged = 
+          client.telegramUsername !== clientData.telegramUsername ||
+          client.telegramFirstName !== clientData.telegramFirstName ||
+          client.telegramLastName !== clientData.telegramLastName ||
+          client.telegramLanguageCode !== clientData.telegramLanguageCode
+        
+        if (telegramDataChanged) {
+          console.log('🔄 Updating Telegram data for client:', client.id)
+          client = await prisma.client.update({
+            where: { id: client.id },
+            data: {
+              telegramUsername: clientData.telegramUsername || null,
+              telegramFirstName: clientData.telegramFirstName || null,
+              telegramLastName: clientData.telegramLastName || null,
+              telegramLanguageCode: clientData.telegramLanguageCode || null,
+              lastActivity: new Date()
+            }
+          })
+          console.log('✅ Telegram data updated for client:', client.id)
+        }
       }
     }
     

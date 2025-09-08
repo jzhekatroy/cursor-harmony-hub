@@ -476,10 +476,6 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                             lastName: data.lastName,
                             phone: data.phone,
                             email: data.email,
-                            telegramId: data.telegramId,
-                            telegramUsername: data.telegramUsername,
-                            telegramFirstName: data.telegramFirstName,
-                            telegramLastName: data.telegramLastName,
                             preferredLanguage: data.preferredLanguage,
                             isBlocked: data.isBlocked
                           })
@@ -521,23 +517,39 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                     </div>
 
                     <div className="border-t pt-3">
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Telegram данные</h4>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Telegram данные (только для чтения)</h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">Telegram ID</label>
-                          <input value={data.telegramId || ''} onChange={(e) => setData((d: any) => ({...d, telegramId: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                          <input 
+                            value={data.telegramId || ''} 
+                            readOnly 
+                            className="w-full border rounded px-3 py-2 min-h-[44px] bg-gray-100 text-gray-600 cursor-not-allowed" 
+                          />
                         </div>
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">Username</label>
-                          <input value={data.telegramUsername || ''} onChange={(e) => setData((d: any) => ({...d, telegramUsername: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                          <input 
+                            value={data.telegramUsername || ''} 
+                            readOnly 
+                            className="w-full border rounded px-3 py-2 min-h-[44px] bg-gray-100 text-gray-600 cursor-not-allowed" 
+                          />
                         </div>
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">Имя в Telegram</label>
-                          <input value={data.telegramFirstName || ''} onChange={(e) => setData((d: any) => ({...d, telegramFirstName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                          <input 
+                            value={data.telegramFirstName || ''} 
+                            readOnly 
+                            className="w-full border rounded px-3 py-2 min-h-[44px] bg-gray-100 text-gray-600 cursor-not-allowed" 
+                          />
                         </div>
                         <div>
                           <label className="block text-sm text-gray-600 mb-1">Фамилия в Telegram</label>
-                          <input value={data.telegramLastName || ''} onChange={(e) => setData((d: any) => ({...d, telegramLastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                          <input 
+                            value={data.telegramLastName || ''} 
+                            readOnly 
+                            className="w-full border rounded px-3 py-2 min-h-[44px] bg-gray-100 text-gray-600 cursor-not-allowed" 
+                          />
                         </div>
                       </div>
                     </div>

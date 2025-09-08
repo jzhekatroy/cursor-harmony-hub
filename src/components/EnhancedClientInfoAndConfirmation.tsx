@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toE164 } from '@/lib/phone'
+import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
 
 interface EnhancedClientInfoAndConfirmationProps {
   bookingData: BookingData;
@@ -28,6 +29,7 @@ export function EnhancedClientInfoAndConfirmation({
   const [errors, setErrors] = useState<Partial<ClientInfo>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showBookingSummary, setShowBookingSummary] = useState(true)
+  const telegramWebApp = useTelegramWebApp()
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ClientInfo> = {}
@@ -107,6 +109,12 @@ export function EnhancedClientInfoAndConfirmation({
             phone: phoneE164,
             email: bookingData.clientInfo.email,
             notes: bookingData.clientInfo.notes,
+            // Добавляем данные Telegram WebApp
+            telegramId: telegramWebApp.user?.id?.toString(),
+            telegramUsername: telegramWebApp.user?.username,
+            telegramFirstName: telegramWebApp.user?.first_name,
+            telegramLastName: telegramWebApp.user?.last_name,
+            telegramLanguageCode: telegramWebApp.user?.language_code,
           }
         })
       })

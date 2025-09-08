@@ -26,6 +26,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Логируем входящие данные для отладки
+    console.log('🔍 Received clientData:', {
+      name: clientData.name,
+      phone: clientData.phone,
+      email: clientData.email,
+      telegramId: clientData.telegramId,
+      telegramUsername: clientData.telegramUsername,
+      telegramFirstName: clientData.telegramFirstName,
+      telegramLastName: clientData.telegramLastName,
+      telegramLanguageCode: clientData.telegramLanguageCode
+    })
+
     // Находим команду по slug
     const team = await prisma.team.findUnique({
       where: { slug: teamSlug }
@@ -206,8 +218,12 @@ export async function POST(request: NextRequest) {
         email: emailForCreate,
         phone: phoneE164,
         telegramId: clientData.telegramId,
+        telegramUsername: clientData.telegramUsername,
+        telegramFirstName: clientData.telegramFirstName,
+        telegramLastName: clientData.telegramLastName,
         firstName: clientData.firstName ?? parsedFirstName,
-        lastName: clientData.lastName ?? parsedLastName
+        lastName: clientData.lastName ?? parsedLastName,
+        source: clientData.telegramId ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE'
       })
       
       // Пытаемся создать клиента, если он не найден. На случай гонки (P2002) — перезапрашиваем существующего

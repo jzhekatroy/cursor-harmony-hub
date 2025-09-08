@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Ищем существующего клиента по Telegram ID
+        console.log('🔍 Searching for existing client with Telegram ID:', user.id, 'in team:', team.id)
         client = await prisma.client.findFirst({
           where: {
             telegramId: BigInt(user.id),
@@ -138,6 +139,15 @@ export async function POST(request: NextRequest) {
         })
 
         if (client) {
+          console.log('👤 Found existing client:', {
+            id: client.id,
+            telegramId: client.telegramId?.toString(),
+            telegramUsername: client.telegramUsername,
+            firstName: client.firstName,
+            lastName: client.lastName,
+            email: client.email
+          })
+          
           // Обновляем существующего клиента
           client = await prisma.client.update({
             where: { id: client.id },
@@ -149,25 +159,46 @@ export async function POST(request: NextRequest) {
               source: 'TELEGRAM_WEBAPP'
             }
           })
-          console.log('✅ Client updated:', client.id)
-        } else {
-          // Создаем нового клиента
-          client = await prisma.client.create({
-            data: {
-              telegramId: BigInt(user.id),
-              telegramUsername: user.username || null,
-              telegramFirstName: user.first_name || null,
-              telegramLastName: user.last_name || null,
-              firstName: user.first_name || 'Telegram User',
-              lastName: user.last_name || '',
-              email: user.username ? `${user.username}@telegram.local` : `tg_${user.id}@telegram.local`,
-              phone: null,
-              teamId: team.id,
-              source: 'TELEGRAM_WEBAPP',
-              lastActivity: new Date()
-            }
+          console.log('✅ Client updated:', {
+            id: client.id,
+            telegramId: client.telegramId?.toString(),
+            telegramUsername: client.telegramUsername,
+            telegramFirstName: client.telegramFirstName,
+            telegramLastName: client.telegramLastName
           })
-          console.log('✅ New client created:', client.id)
+        } else {
+          console.log('👤 No existing client found, creating new one')
+          
+          // Создаем нового клиента
+          const clientData = {
+            telegramId: BigInt(user.id),
+            telegramUsername: user.username || null,
+            telegramFirstName: user.first_name || null,
+            telegramLastName: user.last_name || null,
+            firstName: user.first_name || 'Telegram User',
+            lastName: user.last_name || '',
+            email: user.username ? `${user.username}@telegram.local` : `tg_${user.id}@telegram.local`,
+            phone: null,
+            teamId: team.id,
+            source: 'TELEGRAM_WEBAPP' as const,
+            lastActivity: new Date()
+          }
+          
+          console.log('📝 Creating client with data:', clientData)
+          
+          client = await prisma.client.create({
+            data: clientData
+          })
+          console.log('✅ New client created:', {
+            id: client.id,
+            telegramId: client.telegramId?.toString(),
+            telegramUsername: client.telegramUsername,
+            telegramFirstName: client.telegramFirstName,
+            telegramLastName: client.telegramLastName,
+            firstName: client.firstName,
+            lastName: client.lastName,
+            email: client.email
+          })
         }
 
         // Создаем запись о действии клиента

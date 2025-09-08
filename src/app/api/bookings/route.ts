@@ -149,15 +149,38 @@ export async function POST(request: NextRequest) {
     const emailTrim = (clientData.email || '').trim()
 
     let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)
-    if (clientData.email) {
+    
+    // Сначала ищем по Telegram ID (если есть)
+    if (clientData.telegramId) {
+      client = await prisma.client.findFirst({
+        where: { 
+          telegramId: BigInt(clientData.telegramId), 
+          teamId: team.id 
+        }
+      })
+      if (client) {
+        console.log('✅ Found client by Telegram ID:', client.id)
+      }
+    }
+    
+    // Если не найден по Telegram ID, ищем по email
+    if (!client && clientData.email) {
       client = await prisma.client.findFirst({
         where: { email: clientData.email, teamId: team.id }
       })
+      if (client) {
+        console.log('✅ Found client by email:', client.id)
+      }
     }
+    
+    // Если не найден по email, ищем по телефону
     if (!client && phoneE164) {
       client = await prisma.client.findFirst({
         where: { phone: phoneE164, teamId: team.id }
       })
+      if (client) {
+        console.log('✅ Found client by phone:', client.id)
+      }
     }
 
     if (!client) {
@@ -167,7 +190,26 @@ export async function POST(request: NextRequest) {
       if (!phoneE164) {
         return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
       }
-      const emailForCreate = emailTrim || `${String(phoneE164).replace('+','')}${String(team.id).slice(0,6)}@noemail.local`
+      // Определяем email для создания клиента
+      let emailForCreate = emailTrim
+      if (!emailForCreate) {
+        if (clientData.telegramId) {
+          // Для Telegram клиентов используем специальный email
+          emailForCreate = `tg_${clientData.telegramId}@telegram.local`
+        } else {
+          // Для обычных клиентов используем телефон
+          emailForCreate = `${String(phoneE164).replace('+','')}${String(team.id).slice(0,6)}@noemail.local`
+        }
+      }
+      
+      console.log('📝 Creating new client with data:', {
+        email: emailForCreate,
+        phone: phoneE164,
+        telegramId: clientData.telegramId,
+        firstName: clientData.firstName ?? parsedFirstName,
+        lastName: clientData.lastName ?? parsedLastName
+      })
+      
       // Пытаемся создать клиента, если он не найден. На случай гонки (P2002) — перезапрашиваем существующего
       try {
         client = await prisma.client.create({
@@ -175,15 +217,21 @@ export async function POST(request: NextRequest) {
             email: emailForCreate,
             phone: phoneE164,
             telegramId: clientData.telegramId ? BigInt(clientData.telegramId) : null,
+            telegramUsername: clientData.telegramUsername || null,
+            telegramFirstName: clientData.telegramFirstName || null,
+            telegramLastName: clientData.telegramLastName || null,
             firstName: clientData.firstName ?? parsedFirstName,
             lastName: clientData.lastName ?? parsedLastName,
             address: clientData.address,
-            teamId: team.id
+            teamId: team.id,
+            source: clientData.telegramId ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE'
           }
         })
+        console.log('✅ New client created:', client.id)
       } catch (err: any) {
         // Если уникальный индекс email+teamId сработал — значит клиент уже есть. Пробуем найти по email/телефону
         if (err && err.code === 'P2002') {
+          console.log('⚠️ Client already exists, searching for existing...')
           let existing = null as any
           existing = await prisma.client.findFirst({ where: { email: emailTrim, teamId: team.id } })
           if (!existing && phoneE164) {
@@ -191,6 +239,7 @@ export async function POST(request: NextRequest) {
           }
           if (existing) {
             client = existing
+            console.log('✅ Found existing client:', client.id)
           } else {
             throw err
           }
@@ -198,16 +247,29 @@ export async function POST(request: NextRequest) {
           throw err
         }
       }
-    } else if (((!client.firstName && parsedFirstName) || (!client.lastName && parsedLastName)) || (phoneE164 && client.phone !== phoneE164)) {
-      // Обновляем отсутствующие ФИО, если пришло имя от клиента
+    } else if (((!client.firstName && parsedFirstName) || (!client.lastName && parsedLastName)) || (phoneE164 && client.phone !== phoneE164) || (clientData.telegramId && !client.telegramId)) {
+      // Обновляем отсутствующие ФИО, телефон или Telegram данные, если пришло от клиента
+      const updateData: any = {
+        firstName: client.firstName || parsedFirstName,
+        lastName: client.lastName || parsedLastName,
+        phone: phoneE164 || client.phone
+      }
+      
+      // Обновляем Telegram данные, если они есть
+      if (clientData.telegramId && !client.telegramId) {
+        updateData.telegramId = BigInt(clientData.telegramId)
+        updateData.telegramUsername = clientData.telegramUsername || null
+        updateData.telegramFirstName = clientData.telegramFirstName || null
+        updateData.telegramLastName = clientData.telegramLastName || null
+        updateData.source = 'TELEGRAM_WEBAPP'
+        console.log('📱 Updating client with Telegram data:', updateData)
+      }
+      
       client = await prisma.client.update({
         where: { id: client.id },
-        data: {
-          firstName: client.firstName || parsedFirstName,
-          lastName: client.lastName || parsedLastName,
-          phone: phoneE164 || client.phone
-        }
+        data: updateData
       })
+      console.log('✅ Client updated:', client.id)
     }
 
     // Лимит записей на клиента/день (по времени салона)

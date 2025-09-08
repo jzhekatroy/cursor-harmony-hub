@@ -22,6 +22,7 @@ export default function DatabaseViewer() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'clients' | 'teams' | 'services' | 'masters' | 'bookings'>('clients')
+  const [showAllFields, setShowAllFields] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -101,6 +102,20 @@ export default function DatabaseViewer() {
         <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Просмотр базы данных</h1>
           
+          {activeTab === 'clients' && (
+            <div className="mb-4 flex items-center space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={showAllFields}
+                  onChange={(e) => setShowAllFields(e.target.checked)}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Показать все поля клиентов</span>
+              </label>
+            </div>
+          )}
+          
           {/* Статистика */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div className="bg-blue-50 p-4 rounded-lg">
@@ -165,6 +180,24 @@ export default function DatabaseViewer() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Источник</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Создан</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Бронирований</th>
+                    {showAllFields && (
+                      <>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Телефон</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Адрес</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">VK ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WhatsApp</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instagram</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telegram Имя</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telegram Фамилия</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Язык</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уведомления</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Лимит бронирований</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Заблокирован</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Telegram заблокирован</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Обновлен</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Последняя активность</th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -181,6 +214,24 @@ export default function DatabaseViewer() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.source || 'N/A'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(client.createdAt)}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.bookings?.length || 0}</td>
+                      {showAllFields && (
+                        <>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.phone || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.address || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.vkId || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.whatsapp || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.instagram || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.telegramFirstName || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.telegramLastName || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.preferredLanguage || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.notificationsEnabled ? 'Да' : 'Нет'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.dailyBookingLimit || 'N/A'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.isBlocked ? 'Да' : 'Нет'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.telegramBlocked ? 'Да' : 'Нет'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatDate(client.updatedAt)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{client.lastActivity ? formatDate(client.lastActivity) : 'N/A'}</td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>

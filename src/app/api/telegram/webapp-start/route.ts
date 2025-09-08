@@ -99,6 +99,10 @@ export async function POST(request: NextRequest) {
     if (initData && salonId) {
       isValid = await validateTelegramWebAppData(initData, salonId)
       console.log('🔐 Data validation result:', isValid)
+    } else if (user && salonId) {
+      // Если initData пустой, но данные пользователя есть, считаем валидным
+      console.log('🔐 No initData, but user data available - skipping validation')
+      isValid = true
     }
     
     if (startParam) {

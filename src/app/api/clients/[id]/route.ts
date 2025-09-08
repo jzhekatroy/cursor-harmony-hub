@@ -47,27 +47,26 @@ export async function GET(
             }
           }
         },
-        actions: {
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-          include: {
-            service: {
-              select: {
-                name: true
-              }
-            },
-            booking: {
-              select: {
-                bookingNumber: true,
-                startTime: true
-              }
-            }
-          }
-        },
+        // actions: {
+        //   orderBy: { createdAt: 'desc' },
+        //   take: 20,
+        //   include: {
+        //     service: {
+        //       select: {
+        //         name: true
+        //       }
+        //     },
+        //     booking: {
+        //       select: {
+        //         bookingNumber: true,
+        //         startTime: true
+        //       }
+        //     }
+        //   }
+        // },
         _count: {
           select: {
-            bookings: true,
-            actions: true
+            bookings: true
           }
         }
       }

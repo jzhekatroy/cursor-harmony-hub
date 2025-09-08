@@ -206,8 +206,8 @@ export async function POST(request: NextRequest) {
       let emailForCreate = emailTrim
       if (!emailForCreate) {
         if (clientData.telegramId) {
-          // Для Telegram клиентов используем специальный email
-          emailForCreate = `tg_${clientData.telegramId}@telegram.local`
+          // Для Telegram клиентов оставляем email пустым
+          emailForCreate = ''
         } else {
           // Для обычных клиентов используем телефон
           emailForCreate = `${String(phoneE164).replace('+','')}${String(team.id).slice(0,6)}@noemail.local`

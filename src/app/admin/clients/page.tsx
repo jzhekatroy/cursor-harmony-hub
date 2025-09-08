@@ -531,6 +531,14 @@ function ClientDrawer({ id, onClose }: { id: string; onClose: () => void }) {
                           <label className="block text-sm text-gray-600 mb-1">Username</label>
                           <input value={data.telegramUsername || ''} onChange={(e) => setData((d: any) => ({...d, telegramUsername: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
                         </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Имя в Telegram</label>
+                          <input value={data.telegramFirstName || ''} onChange={(e) => setData((d: any) => ({...d, telegramFirstName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-600 mb-1">Фамилия в Telegram</label>
+                          <input value={data.telegramLastName || ''} onChange={(e) => setData((d: any) => ({...d, telegramLastName: e.target.value}))} className="w-full border rounded px-3 py-2 min-h-[44px]" />
+                        </div>
                       </div>
                     </div>
 

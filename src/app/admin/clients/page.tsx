@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useToast } from '@/components/Toast'
-import { Search, Users } from 'lucide-react'
+import { Search, Users, Trash2, CheckSquare, Square } from 'lucide-react'
 
 interface ClientRow {
   id: string
@@ -41,6 +41,9 @@ export default function ClientsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'totalBookings' | 'lastBookingTime'>('createdAt')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [selectedClients, setSelectedClients] = useState<Set<string>>(new Set())
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize])
 
@@ -87,7 +90,66 @@ export default function ClientsPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setPage(1)
+    setSelectedClients(new Set()) // Сбрасываем выбор при поиске
     load()
+  }
+
+  // Функции для работы с выбором клиентов
+  const toggleClientSelection = (clientId: string) => {
+    setSelectedClients(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(clientId)) {
+        newSet.delete(clientId)
+      } else {
+        newSet.add(clientId)
+      }
+      return newSet
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedClients.size === sortedItems.length) {
+      setSelectedClients(new Set())
+    } else {
+      setSelectedClients(new Set(sortedItems.map(c => c.id)))
+    }
+  }
+
+  const handleDeleteSelected = async () => {
+    if (selectedClients.size === 0) return
+    
+    try {
+      setDeleting(true)
+      const token = localStorage.getItem('token')
+      if (!token) {
+        toast.error('Токен авторизации отсутствует')
+        return
+      }
+
+      const response = await fetch('/api/clients/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ clientIds: Array.from(selectedClients) })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'Ошибка удаления')
+      }
+
+      toast.success(`Удалено клиентов: ${data.deletedClients.length}`)
+      setSelectedClients(new Set())
+      setShowDeleteConfirm(false)
+      await load() // Перезагружаем список
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Неизвестная ошибка'
+      toast.error(`Ошибка удаления: ${msg}`)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const sortedItems = useMemo(() => {
@@ -155,6 +217,40 @@ export default function ClientsPage() {
         <button type="submit" className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 min-h-[44px]">Искать</button>
       </form>
 
+      {/* Панель управления выбором */}
+      {sortedItems.length > 0 && (
+        <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-md">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSelectAll}
+              className="flex items-center gap-2 px-3 py-2 border rounded-md hover:bg-gray-100"
+            >
+              {selectedClients.size === sortedItems.length ? (
+                <CheckSquare className="w-4 h-4 text-blue-600" />
+              ) : (
+                <Square className="w-4 h-4 text-gray-400" />
+              )}
+              {selectedClients.size === sortedItems.length ? 'Снять все' : 'Выбрать все'}
+            </button>
+            
+            {selectedClients.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  Выбрано: {selectedClients.size} из {sortedItems.length}
+                </span>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Удалить выбранных
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded">{error}</div>
       )}
@@ -163,6 +259,14 @@ export default function ClientsPage() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50 sticky top-0">
             <tr>
+              <th className="w-12 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={selectedClients.size === sortedItems.length && sortedItems.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                />
+              </th>
               <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('name')}>Клиент {sortBy === 'name' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600">Контакты</th>
               <th className="text-left px-3 py-2 font-medium text-gray-600 cursor-pointer select-none" onClick={() => toggleSort('totalBookings')}>Всего записей {sortBy === 'totalBookings' && (<span className="text-gray-400">{sortOrder === 'asc' ? '▲' : '▼'}</span>)}</th>
@@ -174,6 +278,7 @@ export default function ClientsPage() {
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-t">
+                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-4 animate-pulse"></div></td>
                   <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-40 animate-pulse"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2 animate-pulse"></div></td>
                   <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div><div className="h-3 bg-gray-100 rounded w-24 mt-2 animate-pulse"></div></td>
                   <td className="px-3 py-3"><div className="h-4 bg-gray-200 rounded w-10 animate-pulse"></div></td>
@@ -183,7 +288,7 @@ export default function ClientsPage() {
               ))
             ) : sortedItems.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-10 text-center text-gray-600">
+                <td colSpan={6} className="px-3 py-10 text-center text-gray-600">
                   <div className="space-y-2">
                     <div>Ничего не найдено</div>
                     {!q && (
@@ -194,7 +299,15 @@ export default function ClientsPage() {
               </tr>
             ) : (
               sortedItems.map((c) => (
-                <tr key={c.id} className="border-t hover:bg-gray-50">
+                <tr key={c.id} className={`border-t hover:bg-gray-50 ${selectedClients.has(c.id) ? 'bg-blue-50' : ''}`}>
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedClients.has(c.id)}
+                      onChange={() => toggleClientSelection(c.id)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-3 py-2">
                     <div className="font-medium">
                       {mark(([c.lastName, c.firstName].filter(Boolean).join(' ') || 'Без имени'))}
@@ -258,6 +371,36 @@ export default function ClientsPage() {
 
       {/* Боковая карточка клиента */}
       {selectedId && <ClientDrawer id={selectedId} onClose={() => setSelectedId(null)} />}
+
+      {/* Модальное окно подтверждения удаления */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Подтверждение удаления</h3>
+            <p className="text-gray-600 mb-6">
+              Вы уверены, что хотите удалить {selectedClients.size} клиент{selectedClients.size === 1 ? 'а' : selectedClients.size < 5 ? 'ов' : 'ов'}?
+              <br />
+              <span className="text-red-600 font-medium">Это действие нельзя отменить!</span>
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border rounded-md hover:bg-gray-50"
+                disabled={deleting}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

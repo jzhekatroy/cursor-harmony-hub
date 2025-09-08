@@ -68,6 +68,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <li>
               <Link href="/superadmin/booking-qc" className="block px-3 py-2 rounded hover:bg-gray-50 text-gray-700">Проверка бронирования</Link>
             </li>
+            <li>
+              <Link href="/db-viewer" className="block px-3 py-2 rounded hover:bg-gray-50 text-gray-700">🗄️ База данных</Link>
+            </li>
           </ul>
         </nav>
         <div className="p-3 text-[11px] text-gray-400 border-t border-gray-100">© Admin</div>

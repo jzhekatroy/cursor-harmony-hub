@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
           data: {
             teamId: team.id,
             clientId: client.id,
-            actionType: 'PAGE_VIEW',
+            action_type: 'PAGE_VIEW',
             pageUrl: url,
             telegramData: {
               platform,

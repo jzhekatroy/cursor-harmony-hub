@@ -139,9 +139,9 @@ export async function GET(request: NextRequest) {
       where.clientId = clientId
     }
 
-    // if (actionType) {
-    //   where.actionType = actionType
-    // }
+    if (actionType) {
+      where.actionType = actionType
+    }
 
     if (startDate || endDate) {
       where.createdAt = {}

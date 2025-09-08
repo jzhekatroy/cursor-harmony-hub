@@ -480,7 +480,7 @@ export async function GET(request: NextRequest) {
               data: {
                 teamId,
                 clientId: b.clientId,
-                actionType: 'BOOKING_CREATED',
+                action_type: 'BOOKING_CREATED',
                 bookingId: b.id,
                 telegramData: { source: 'system' }
               }

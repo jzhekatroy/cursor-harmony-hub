@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface DatabaseData {
   clients: any[]
@@ -19,34 +18,14 @@ interface DatabaseData {
 }
 
 export default function DatabaseViewer() {
-  const router = useRouter()
   const [data, setData] = useState<DatabaseData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'clients' | 'teams' | 'services' | 'masters' | 'bookings'>('clients')
 
   useEffect(() => {
-    // Проверяем роль пользователя
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/me')
-        if (!response.ok) {
-          router.push('/login')
-          return
-        }
-        const user = await response.json()
-        if (user.role !== 'SUPER_ADMIN') {
-          router.push('/login')
-          return
-        }
-        fetchData()
-      } catch (err) {
-        router.push('/login')
-      }
-    }
-    
-    checkAuth()
-  }, [router])
+    fetchData()
+  }, [])
 
   const fetchData = async () => {
     try {

@@ -49,6 +49,24 @@ async function main() {
       // Пользователь не существует, создаем нового
       const hashedPassword = await bcrypt.hash(password, 10)
       
+      // Находим системную команду для суперадмина
+      let systemTeam = await prisma.team.findFirst({
+        where: { teamNumber: 'B0000001' }
+      })
+      
+      if (!systemTeam) {
+        systemTeam = await prisma.team.create({
+          data: {
+            teamNumber: 'B0000001',
+            name: 'Система управления',
+            slug: 'system',
+            contactPerson: 'Супер Админ',
+            email: 'admin@beauty-booking.com',
+            masterLimit: 0,
+          }
+        })
+      }
+
       user = await prisma.user.create({
         data: {
           email,
@@ -56,6 +74,7 @@ async function main() {
           role: 'SUPER_ADMIN',
           firstName: 'Super',
           lastName: 'Admin',
+          teamId: systemTeam.id,
         }
       })
       console.log(`✅ Создан новый пользователь ${email} с ролью SUPER_ADMIN`)

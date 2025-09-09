@@ -567,12 +567,12 @@ export function EnhancedClientInfoAndConfirmation({
                     variant="outline"
                     onClick={requestPhoneNumber}
                     disabled={isRequestingPhone}
-                    className="px-4 py-2 whitespace-nowrap"
+                    className="px-2 py-1 text-xs whitespace-nowrap h-8"
                   >
                     {isRequestingPhone ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
                     ) : (
-                      '📱 Получить из Telegram'
+                      '📱 Telegram'
                     )}
                   </Button>
                 )}

@@ -29,7 +29,73 @@ export function EnhancedClientInfoAndConfirmation({
   const [errors, setErrors] = useState<Partial<ClientInfo>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showBookingSummary, setShowBookingSummary] = useState(true)
+  const [isRequestingPhone, setIsRequestingPhone] = useState(false)
   const telegramWebApp = useTelegramWebApp()
+
+  // Автоматическое заполнение данных из Telegram WebApp
+  React.useEffect(() => {
+    if (telegramWebApp.user && !bookingData.clientInfo.name) {
+      const firstName = telegramWebApp.user.first_name || ''
+      const lastName = telegramWebApp.user.last_name || ''
+      const fullName = `${firstName} ${lastName}`.trim()
+      
+      if (fullName) {
+        onClientInfoChange({
+          ...bookingData.clientInfo,
+          name: fullName
+        })
+      }
+    }
+  }, [telegramWebApp.user, bookingData.clientInfo.name, onClientInfoChange])
+
+  // Автоматический запрос номера телефона для WebApp
+  React.useEffect(() => {
+    if (telegramWebApp.webApp && !bookingData.clientInfo.phone && !isRequestingPhone) {
+      // Небольшая задержка, чтобы пользователь увидел форму
+      const timer = setTimeout(() => {
+        if (telegramWebApp.webApp && !bookingData.clientInfo.phone) {
+          console.log('📱 WebApp detected, requesting phone number...')
+          requestPhoneNumber()
+        }
+      }, 1000)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [telegramWebApp.webApp, bookingData.clientInfo.phone, isRequestingPhone])
+
+  // Функция для запроса номера телефона через Telegram WebApp
+  const requestPhoneNumber = async () => {
+    if (!telegramWebApp.webApp) {
+      alert('Telegram WebApp недоступен')
+      return
+    }
+
+    setIsRequestingPhone(true)
+    try {
+      // Запрашиваем номер телефона через Telegram WebApp
+      telegramWebApp.webApp.requestContact((granted: boolean, contact?: any) => {
+        setIsRequestingPhone(false)
+        
+        if (granted && contact?.phone_number) {
+          console.log('📱 Получен контакт из Telegram:', contact)
+          onClientInfoChange({
+            ...bookingData.clientInfo,
+            phone: contact.phone_number
+          })
+        } else if (!granted) {
+          console.log('❌ Пользователь отказался предоставить контакт')
+          alert('Для записи необходимо предоставить номер телефона')
+        } else {
+          console.log('❌ Контакт не получен')
+          alert('Не удалось получить номер телефона')
+        }
+      })
+    } catch (error) {
+      console.error('Ошибка при запросе номера телефона:', error)
+      alert('Не удалось запросить номер телефона')
+      setIsRequestingPhone(false)
+    }
+  }
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ClientInfo> = {}
@@ -293,22 +359,44 @@ export function EnhancedClientInfoAndConfirmation({
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Номер телефона *
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+7 (999) 123-45-67"
-                  value={bookingData.clientInfo.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className={cn(
-                    "pl-10",
-                    errors.phone ? 'border-red-500 focus:border-red-500' : ''
-                  )}
-                />
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="+7 (999) 123-45-67"
+                    value={bookingData.clientInfo.phone}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className={cn(
+                      "pl-10",
+                      errors.phone ? 'border-red-500 focus:border-red-500' : ''
+                    )}
+                  />
+                </div>
+                {telegramWebApp.webApp && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={requestPhoneNumber}
+                    disabled={isRequestingPhone}
+                    className="px-4 py-2 whitespace-nowrap"
+                  >
+                    {isRequestingPhone ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    ) : (
+                      '📱 Получить из Telegram'
+                    )}
+                  </Button>
+                )}
               </div>
               {errors.phone && (
                 <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
+              )}
+              {telegramWebApp.webApp && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Нажмите кнопку, чтобы автоматически получить номер из Telegram
+                </p>
               )}
             </div>
 

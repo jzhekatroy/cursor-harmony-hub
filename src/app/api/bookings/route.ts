@@ -262,7 +262,11 @@ export async function POST(request: NextRequest) {
       }
       if (!phoneE164) {
         console.log('❌ No phone provided')
-        return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
+        if (isWebApp) {
+          return NextResponse.json({ error: 'Для записи через Telegram необходимо указать номер телефона' }, { status: 400 })
+        } else {
+          return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
+        }
       }
       // Определяем email для создания клиента
       let emailForCreate = emailTrim

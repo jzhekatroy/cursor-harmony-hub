@@ -4,22 +4,16 @@ import { verifyToken, extractTokenFromHeader } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔍 Error logs API - Headers:', Object.fromEntries(request.headers.entries()))
-    
     // Проверяем авторизацию
     const token = extractTokenFromHeader(request.headers.get('authorization'))
-    console.log('🔍 Token extracted:', token ? 'present' : 'missing')
     
     if (!token) {
-      console.log('❌ No token provided')
       return NextResponse.json({ error: 'Unauthorized - No token provided' }, { status: 401 })
     }
 
     const payload = verifyToken(token)
-    console.log('🔍 Token payload:', { role: payload.role, email: payload.email })
     
     if (payload.role !== 'SUPER_ADMIN') {
-      console.log('❌ Insufficient permissions:', payload.role)
       return NextResponse.json({ error: 'Forbidden - SUPER_ADMIN role required' }, { status: 403 })
     }
 

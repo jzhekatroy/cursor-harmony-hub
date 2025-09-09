@@ -92,7 +92,7 @@ export default function ClientsPage() {
 
   // Авто-открытие карточки через ?id=
   useEffect(() => {
-    const id = searchParams.get('id')
+    const id = searchParams?.get('id')
     if (id) setSelectedId(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])

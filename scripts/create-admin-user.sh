@@ -23,7 +23,7 @@ HASHED_PASSWORD=$(docker compose exec beauty-booking node -e "console.log(requir
 
 # Создаем пользователя
 docker compose exec postgres psql -U postgres -d beauty -c "
-INSERT INTO users (id, email, password, role, first_name, last_name, created_at, updated_at) 
+INSERT INTO users (id, email, password, role, \"firstName\", \"lastName\", \"createdAt\", \"updatedAt\") 
 VALUES (
   'admin-' || extract(epoch from now())::text, 
   '$EMAIL', 

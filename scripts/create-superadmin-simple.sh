@@ -33,13 +33,22 @@ TEAM_ID=$(docker compose exec postgres psql -U postgres -d beauty -t -c "SELECT 
 
 echo "📝 ID системной команды: $TEAM_ID"
 
+# Создаем пользователя с правильным хешем пароля
+# Используем bcrypt для хеширования пароля
+HASHED_PASSWORD=$(docker compose exec beauty-booking node -e "
+const bcrypt = require('bcryptjs');
+const password = '$PASSWORD';
+const hash = bcrypt.hashSync(password, 10);
+console.log(hash);
+")
+
 # Создаем пользователя
 docker compose exec postgres psql -U postgres -d beauty -c "
 INSERT INTO users (id, email, password, role, \"firstName\", \"lastName\", \"teamId\", \"createdAt\", \"updatedAt\") 
 VALUES (
   '$USER_ID', 
   '$EMAIL', 
-  '\$2a\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 
+  '$HASHED_PASSWORD', 
   'SUPER_ADMIN',
   'Super',
   'Admin',
@@ -48,7 +57,7 @@ VALUES (
   NOW()
 ) ON CONFLICT (email) DO UPDATE SET 
   role = 'SUPER_ADMIN',
-  password = '\$2a\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+  password = '$HASHED_PASSWORD',
   \"updatedAt\" = NOW();
 "
 

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 export default function DebugWebAppPage() {
   const telegramWebApp = useTelegramWebApp()
   const [logs, setLogs] = useState<string[]>([])
-  const [testResults, setTestResults] = useState<any>({})
+  const [testResults, setTestResults] = useState<Record<string, any>>({})
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString()
@@ -34,7 +34,7 @@ export default function DebugWebAppPage() {
       try {
         telegramWebApp.webApp.requestContact((granted: boolean, contact?: any) => {
           addLog(`📞 requestContact callback: granted=${granted}, contact=${JSON.stringify(contact)}`)
-          setTestResults(prev => ({
+          setTestResults((prev: Record<string, any>) => ({
             ...prev,
             requestContact: { granted, contact, timestamp: new Date().toISOString() }
           }))
@@ -61,7 +61,7 @@ export default function DebugWebAppPage() {
       try {
         telegramWebApp.webApp.requestWriteAccess((granted: boolean) => {
           addLog(`📝 requestWriteAccess callback: granted=${granted}`)
-          setTestResults(prev => ({
+          setTestResults((prev: Record<string, any>) => ({
             ...prev,
             requestWriteAccess: { granted, timestamp: new Date().toISOString() }
           }))

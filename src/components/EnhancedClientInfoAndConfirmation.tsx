@@ -151,11 +151,23 @@ export function EnhancedClientInfoAndConfirmation({
         
         setIsRequestingPhone(false)
         
+        // Проверяем разные форматы контакта
+        let phoneNumber = null
+        
         if (contact?.phone_number) {
+          phoneNumber = contact.phone_number
+        } else if (contact?.contact?.phone_number) {
+          phoneNumber = contact.contact.phone_number
+        } else if (contact?.responseUnsafe?.contact?.phone_number) {
+          phoneNumber = contact.responseUnsafe.contact.phone_number
+        }
+        
+        if (phoneNumber) {
           console.log('✅ Получен контакт из Telegram:', contact)
+          console.log('✅ Phone number extracted:', phoneNumber)
           onClientInfoChange({
             ...bookingData.clientInfo,
-            phone: contact.phone_number
+            phone: phoneNumber
           })
           
           // Отправляем успешный лог на сервер
@@ -164,7 +176,11 @@ export function EnhancedClientInfoAndConfirmation({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               message: 'PHONE_REQUEST_SUCCESS',
-              data: { contact, timestamp: new Date().toISOString() }
+              data: { 
+                contact, 
+                phone: phoneNumber,
+                timestamp: new Date().toISOString() 
+              }
             })
           }).catch(e => console.error('Failed to send success log:', e))
           

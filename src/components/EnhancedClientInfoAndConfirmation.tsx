@@ -66,31 +66,43 @@ export function EnhancedClientInfoAndConfirmation({
   // Функция для запроса номера телефона через Telegram WebApp
   const requestPhoneNumber = async () => {
     if (!telegramWebApp.webApp) {
+      console.error('❌ Telegram WebApp недоступен')
       alert('Telegram WebApp недоступен')
       return
     }
 
-    console.log('📱 Requesting phone number from Telegram WebApp...')
+    console.log('📱 ===== НАЧАЛО ЗАПРОСА НОМЕРА ТЕЛЕФОНА =====')
     console.log('📱 WebApp object:', telegramWebApp.webApp)
     console.log('📱 requestContact method:', typeof telegramWebApp.webApp.requestContact)
+    console.log('📱 onEvent method:', typeof telegramWebApp.webApp.onEvent)
+    console.log('📱 offEvent method:', typeof telegramWebApp.webApp.offEvent)
+    console.log('📱 WebApp version:', telegramWebApp.webApp.version)
+    console.log('📱 WebApp platform:', telegramWebApp.webApp.platform)
+    console.log('📱 User agent:', navigator.userAgent)
+    console.log('📱 Current URL:', window.location.href)
     
-    // Отправляем логи на сервер для отладки
+    // Отправляем подробные логи на сервер для отладки
     try {
       await fetch('/api/telegram/logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: 'Requesting phone number from WebApp',
+          message: 'PHONE_REQUEST_START',
           data: {
             webAppAvailable: !!telegramWebApp.webApp,
             requestContactAvailable: typeof telegramWebApp.webApp?.requestContact === 'function',
+            onEventAvailable: typeof telegramWebApp.webApp?.onEvent === 'function',
+            offEventAvailable: typeof telegramWebApp.webApp?.offEvent === 'function',
+            webAppVersion: telegramWebApp.webApp?.version,
+            webAppPlatform: telegramWebApp.webApp?.platform,
             userAgent: navigator.userAgent,
-            url: window.location.href
+            url: window.location.href,
+            timestamp: new Date().toISOString()
           }
         })
       })
     } catch (e) {
-      console.error('Failed to send debug log:', e)
+      console.error('❌ Failed to send debug log:', e)
     }
 
     setIsRequestingPhone(true)
@@ -102,7 +114,9 @@ export function EnhancedClientInfoAndConfirmation({
         
         // Альтернативный способ - запрашиваем доступ к записи
         if (typeof telegramWebApp.webApp.requestWriteAccess === 'function') {
+          console.log('📱 Trying requestWriteAccess as fallback...')
           telegramWebApp.webApp.requestWriteAccess((granted: boolean) => {
+            console.log('📱 requestWriteAccess result:', granted)
             setIsRequestingPhone(false)
             if (granted) {
               console.log('✅ Write access granted, but phone number still needs manual input')
@@ -114,11 +128,14 @@ export function EnhancedClientInfoAndConfirmation({
           })
           return
         } else {
+          console.log('❌ No fallback methods available')
           alert('Функция запроса номера телефона недоступна в этой версии Telegram. Пожалуйста, введите номер вручную.')
           setIsRequestingPhone(false)
           return
         }
       }
+
+      console.log('✅ requestContact method available, proceeding with contact request...')
 
       // В Telegram WebApp requestContact работает по-другому!
       // Он НЕ принимает callback, а показывает кнопку для отправки контакта
@@ -126,7 +143,12 @@ export function EnhancedClientInfoAndConfirmation({
       
       // Устанавливаем обработчик события
       const handleContactRequested = (contact: any) => {
-        console.log('📱 Contact received via event:', contact)
+        console.log('📱 ===== КОНТАКТ ПОЛУЧЕН ЧЕРЕЗ СОБЫТИЕ =====')
+        console.log('📱 Contact data:', contact)
+        console.log('📱 Contact type:', typeof contact)
+        console.log('📱 Contact keys:', contact ? Object.keys(contact) : 'null')
+        console.log('📱 Phone number:', contact?.phone_number)
+        
         setIsRequestingPhone(false)
         
         if (contact?.phone_number) {
@@ -136,30 +158,69 @@ export function EnhancedClientInfoAndConfirmation({
             phone: contact.phone_number
           })
           
+          // Отправляем успешный лог на сервер
+          fetch('/api/telegram/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: 'PHONE_REQUEST_SUCCESS',
+              data: { contact, timestamp: new Date().toISOString() }
+            })
+          }).catch(e => console.error('Failed to send success log:', e))
+          
           // Убираем обработчик после получения контакта
           telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
         } else {
-          console.log('❌ Контакт не получен:', contact)
+          console.log('❌ Контакт не получен или нет номера телефона:', contact)
           alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
+          
+          // Отправляем лог об ошибке на сервер
+          fetch('/api/telegram/logs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: 'PHONE_REQUEST_FAILED',
+              data: { contact, timestamp: new Date().toISOString() }
+            })
+          }).catch(e => console.error('Failed to send error log:', e))
         }
       }
 
+      console.log('📱 Setting up event listener for contactRequested...')
+      
       // Добавляем обработчик события
       telegramWebApp.webApp.onEvent('contactRequested', handleContactRequested)
+      console.log('✅ Event listener attached')
       
       // Запрашиваем контакт (показывает кнопку в интерфейсе)
+      console.log('📱 Calling requestContact()...')
       telegramWebApp.webApp.requestContact()
+      console.log('✅ requestContact() called, waiting for user action...')
       
       // Устанавливаем таймаут на случай, если пользователь не отправит контакт
       const timeoutId = setTimeout(() => {
+        console.log('⏰ ===== ТАЙМАУТ ОЖИДАНИЯ КОНТАКТА =====')
         setIsRequestingPhone(false)
         telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
-        console.log('⏰ Timeout waiting for contact')
+        console.log('⏰ Timeout waiting for contact - user did not send contact')
+        
+        // Отправляем лог о таймауте на сервер
+        fetch('/api/telegram/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: 'PHONE_REQUEST_TIMEOUT',
+            data: { timestamp: new Date().toISOString() }
+          })
+        }).catch(e => console.error('Failed to send timeout log:', e))
       }, 30000) // 30 секунд
+      
+      console.log('⏰ Timeout set for 30 seconds')
       
       // Очищаем таймаут при получении контакта
       const originalHandler = handleContactRequested
       const wrappedHandler = (contact: any) => {
+        console.log('📱 Wrapped handler called, clearing timeout...')
         clearTimeout(timeoutId)
         originalHandler(contact)
       }
@@ -167,11 +228,30 @@ export function EnhancedClientInfoAndConfirmation({
       // Заменяем обработчик на обернутый
       telegramWebApp.webApp.offEvent('contactRequested', handleContactRequested)
       telegramWebApp.webApp.onEvent('contactRequested', wrappedHandler)
+      console.log('✅ Wrapped handler attached')
       
     } catch (error) {
-      console.error('❌ Ошибка при запросе номера телефона:', error)
+      console.error('❌ ===== ОШИБКА ПРИ ЗАПРОСЕ НОМЕРА ТЕЛЕФОНА =====')
+      console.error('❌ Error details:', error)
+      console.error('❌ Error message:', error.message)
+      console.error('❌ Error stack:', error.stack)
+      
       alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
       setIsRequestingPhone(false)
+      
+      // Отправляем лог об ошибке на сервер
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'PHONE_REQUEST_ERROR',
+          data: { 
+            error: error.message, 
+            stack: error.stack,
+            timestamp: new Date().toISOString() 
+          }
+        })
+      }).catch(e => console.error('Failed to send error log:', e))
     }
   }
 

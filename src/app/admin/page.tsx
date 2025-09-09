@@ -606,7 +606,14 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-bold text-gray-900">Панель администратора</h1>
       </div>
 
-            {/* Убрали кнопку "+ мастер" по запросу */}
+            <div className="flex items-center space-x-4">
+              <Link
+                href="/debug-phone-logs"
+                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+              >
+                📱 Логи телефона
+              </Link>
+            </div>
           </div>
         </div>
       </div>

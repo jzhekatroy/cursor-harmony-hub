@@ -34,10 +34,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const level = searchParams.get('level')
     const teamId = searchParams.get('teamId')
+    const type = searchParams.get('type') // Новый параметр для фильтрации по типу
     
     const where: any = {}
     if (level) where.level = level
     if (teamId) where.teamId = teamId
+    
+    // Фильтрация по типу логов
+    if (type === 'phone') {
+      where.message = {
+        contains: 'PHONE_REQUEST'
+      }
+    }
     
     const logs = await prisma.telegramLog.findMany({
       where,
@@ -60,5 +68,29 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching Telegram logs:', error)
     return NextResponse.json({ error: 'Failed to fetch logs' }, { status: 500 })
+  }
+}
+
+// API для удаления логов
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { type } = body
+    
+    const where: any = {}
+    if (type === 'phone') {
+      where.message = {
+        contains: 'PHONE_REQUEST'
+      }
+    }
+    
+    await prisma.telegramLog.deleteMany({
+      where
+    })
+    
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting Telegram logs:', error)
+    return NextResponse.json({ error: 'Failed to delete logs' }, { status: 500 })
   }
 }

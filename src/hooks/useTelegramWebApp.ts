@@ -278,8 +278,27 @@ export const useTelegramWebApp = () => {
           })
         }
 
+        // Добавляем обработчик для отладки всех событий
+        const handleAnyEvent = (...args: any[]) => {
+          addLog('🔍 Event received', {
+            eventType: 'unknown',
+            args: args,
+            timestamp: new Date().toISOString()
+          })
+        }
+
         tg.onEvent('viewportChanged', handleViewportChanged)
         tg.onEvent('themeChanged', handleThemeChanged)
+        
+        // Добавляем обработчик для contactRequested события
+        tg.onEvent('contactRequested', (contact: any) => {
+          addLog('📞 Contact requested event received', {
+            contact: contact,
+            contactType: typeof contact,
+            contactKeys: contact ? Object.keys(contact) : 'null',
+            timestamp: new Date().toISOString()
+          })
+        })
 
         addLog('🎯 Event listeners attached')
 

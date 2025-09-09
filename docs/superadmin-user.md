@@ -40,7 +40,8 @@
 - При отсутствии токена или недостаточных правах UI панели не рендерится — выполняется редирект на `/login`.
 
 #### Подсказки
-- Если нужно назначить себе роль `SUPER_ADMIN`, используйте скрипт: `node scripts/assign-super-admin.js user@example.com`.
+- Если нужно создать суперадмина, используйте скрипт: `docker compose exec beauty-booking node scripts/create-super-admin.js user@example.com password123`.
+- Если нужно назначить роль существующему пользователю: `docker compose exec beauty-booking node scripts/assign-super-admin.js user@example.com`.
 - После имперсонации не забывайте возвращаться кнопкой «Вернуться к SUPER_ADMIN».
 
 

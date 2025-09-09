@@ -197,11 +197,12 @@ export async function POST(request: NextRequest) {
       // WEBAPP: ищем ТОЛЬКО по telegramId
       try {
         client = await prisma.client.findFirst({
-      where: {
+          where: { 
             telegramId: BigInt(clientData.telegramId), 
-        teamId: team.id
-      }
-    })
+            teamId: team.id 
+          }
+        })
+        
         if (client) {
           console.log('✅ Found client by Telegram ID:', {
             clientId: client.id,
@@ -266,8 +267,13 @@ export async function POST(request: NextRequest) {
       // Определяем email для создания клиента
       let emailForCreate = emailTrim
       if (!emailForCreate) {
-        // Для всех клиентов без email оставляем пустым
-        emailForCreate = ''
+        if (isWebApp) {
+          // Для WebApp создаем уникальный email на основе telegramId
+          emailForCreate = `telegram_${clientData.telegramId}@noemail.local`
+        } else {
+          // Для публичной страницы оставляем пустым
+          emailForCreate = ''
+        }
       }
       
       console.log('📝 Creating new client with data:', {

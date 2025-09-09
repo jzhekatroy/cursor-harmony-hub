@@ -23,19 +23,19 @@ USER_ID="admin-$(date +%s)"
 
 # Создаем системную команду если не существует
 docker compose exec postgres psql -U postgres -d beauty -c "
-INSERT INTO \"Team\" (id, \"teamNumber\", name, slug, \"contactPerson\", email, \"masterLimit\", \"createdAt\", \"updatedAt\")
+INSERT INTO team (id, \"teamNumber\", name, slug, \"contactPerson\", email, \"masterLimit\", \"createdAt\", \"updatedAt\")
 SELECT 'system-team-001', 'B0000001', 'Система управления', 'system', 'Супер Админ', 'admin@beauty-booking.com', 0, NOW(), NOW()
-WHERE NOT EXISTS (SELECT 1 FROM \"Team\" WHERE \"teamNumber\" = 'B0000001');
+WHERE NOT EXISTS (SELECT 1 FROM team WHERE \"teamNumber\" = 'B0000001');
 "
 
 # Получаем ID системной команды
-TEAM_ID=$(docker compose exec postgres psql -U postgres -d beauty -t -c "SELECT id FROM \"Team\" WHERE \"teamNumber\" = 'B0000001' LIMIT 1;" | tr -d ' \n')
+TEAM_ID=$(docker compose exec postgres psql -U postgres -d beauty -t -c "SELECT id FROM team WHERE \"teamNumber\" = 'B0000001' LIMIT 1;" | tr -d ' \n')
 
 echo "📝 ID системной команды: $TEAM_ID"
 
 # Создаем пользователя
 docker compose exec postgres psql -U postgres -d beauty -c "
-INSERT INTO \"User\" (id, email, password, role, \"firstName\", \"lastName\", \"teamId\", \"createdAt\", \"updatedAt\") 
+INSERT INTO \"user\" (id, email, password, role, \"firstName\", \"lastName\", \"teamId\", \"createdAt\", \"updatedAt\") 
 VALUES (
   '$USER_ID', 
   '$EMAIL', 

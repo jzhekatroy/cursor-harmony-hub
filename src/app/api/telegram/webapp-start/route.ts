@@ -45,8 +45,15 @@ async function validateTelegramWebAppData(initData: string, teamSlug: string): P
 }
 
 export async function POST(request: NextRequest) {
+  console.log('🚀 WEBAPP START API - Full request data:')
+  console.log('URL:', request.url)
+  console.log('Method:', request.method)
+  console.log('Headers:', Object.fromEntries(request.headers.entries()))
+  
   try {
     const body = await request.json()
+    console.log('📦 Raw WebApp request body:', JSON.stringify(body, null, 2))
+    
     const { user, startParam, platform, version, initData, url, timestamp } = body
     
     const logData = {

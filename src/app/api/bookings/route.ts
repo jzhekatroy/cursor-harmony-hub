@@ -8,8 +8,15 @@ import { toE164 } from '@/lib/phone'
 
 // Создание нового бронирования
 export async function POST(request: NextRequest) {
+  console.log('🚀 BOOKING API START - Full request data:')
+  console.log('URL:', request.url)
+  console.log('Method:', request.method)
+  console.log('Headers:', Object.fromEntries(request.headers.entries()))
+  
   try {
     const body = await request.json()
+    console.log('📦 Raw request body:', JSON.stringify(body, null, 2))
+    
     const {
       teamSlug,
       serviceIds,
@@ -18,25 +25,37 @@ export async function POST(request: NextRequest) {
       clientData
     } = body
 
+    console.log('🔍 Parsed request data:', {
+      teamSlug,
+      serviceIds,
+      masterId,
+      startTime,
+      clientData: clientData ? {
+        name: clientData.name,
+        phone: clientData.phone,
+        email: clientData.email,
+        telegramId: clientData.telegramId,
+        telegramUsername: clientData.telegramUsername,
+        telegramFirstName: clientData.telegramFirstName,
+        telegramLastName: clientData.telegramLastName,
+        telegramLanguageCode: clientData.telegramLanguageCode
+      } : null
+    })
+
     // Валидация
     if (!teamSlug || !serviceIds || !masterId || !startTime || !clientData) {
+      console.log('❌ Validation failed - missing required fields:', {
+        teamSlug: !!teamSlug,
+        serviceIds: !!serviceIds,
+        masterId: !!masterId,
+        startTime: !!startTime,
+        clientData: !!clientData
+      })
       return NextResponse.json(
         { error: 'Не все обязательные поля заполнены' },
         { status: 400 }
       )
     }
-
-    // Логируем входящие данные для отладки
-    console.log('🔍 Received clientData:', {
-      name: clientData.name,
-      phone: clientData.phone,
-      email: clientData.email,
-      telegramId: clientData.telegramId,
-      telegramUsername: clientData.telegramUsername,
-      telegramFirstName: clientData.telegramFirstName,
-      telegramLastName: clientData.telegramLastName,
-      telegramLanguageCode: clientData.telegramLanguageCode
-    })
 
     // Находим команду по slug
     const team = await prisma.team.findUnique({
@@ -576,10 +595,42 @@ export async function POST(request: NextRequest) {
       }))
     })
 
-  } catch (error) {
-    console.error('Booking creation error:', error)
+  } catch (error: any) {
+    console.error('❌ BOOKING CREATION ERROR:')
+    console.error('Error type:', typeof error)
+    console.error('Error constructor:', error?.constructor?.name)
+    console.error('Error message:', error?.message)
+    console.error('Error stack:', error?.stack)
+    console.error('Full error object:', error)
+    
+    // Логируем в базу данных для отладки
+    try {
+      await prisma.telegramLog.create({
+        data: {
+          level: 'ERROR',
+          message: 'Booking creation failed',
+          data: {
+            error: error?.message || 'Unknown error',
+            errorType: error?.constructor?.name || 'Unknown',
+            stack: error?.stack || 'No stack trace',
+            url: request.url,
+            timestamp: new Date().toISOString()
+          },
+          url: request.url || '',
+          userAgent: request.headers.get('user-agent') || '',
+          ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+        }
+      })
+    } catch (logError) {
+      console.error('Failed to log error to database:', logError)
+    }
+    
     return NextResponse.json(
-      { error: 'Внутренняя ошибка сервера' },
+      { 
+        error: 'Внутренняя ошибка сервера',
+        details: error?.message || 'Unknown error',
+        timestamp: new Date().toISOString()
+      },
       { status: 500 }
     )
   }

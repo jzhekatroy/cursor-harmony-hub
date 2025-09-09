@@ -168,8 +168,10 @@ export function EnhancedClientInfoAndConfirmation({
             })
           }).catch(e => console.error('Failed to send success log:', e))
           
-          // Убираем обработчик после получения контакта
+          // Убираем обработчики после получения контакта
           telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
+          telegramWebApp.webApp?.offEvent('contact_requested', handleContactRequested)
+          telegramWebApp.webApp?.offEvent('contact', handleContactRequested)
         } else {
           console.log('❌ Контакт не получен или нет номера телефона:', contact)
           alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
@@ -192,6 +194,10 @@ export function EnhancedClientInfoAndConfirmation({
       telegramWebApp.webApp.onEvent('contactRequested', handleContactRequested)
       console.log('✅ Event listener attached')
       
+      // Также попробуем другие возможные события
+      telegramWebApp.webApp.onEvent('contact_requested', handleContactRequested)
+      telegramWebApp.webApp.onEvent('contact', handleContactRequested)
+      
       // Запрашиваем контакт (показывает кнопку в интерфейсе)
       console.log('📱 Calling requestContact()...')
       telegramWebApp.webApp.requestContact()
@@ -202,6 +208,8 @@ export function EnhancedClientInfoAndConfirmation({
         console.log('⏰ ===== ТАЙМАУТ ОЖИДАНИЯ КОНТАКТА =====')
         setIsRequestingPhone(false)
         telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
+        telegramWebApp.webApp?.offEvent('contact_requested', handleContactRequested)
+        telegramWebApp.webApp?.offEvent('contact', handleContactRequested)
         console.log('⏰ Timeout waiting for contact - user did not send contact')
         
         // Отправляем лог о таймауте на сервер
@@ -225,10 +233,15 @@ export function EnhancedClientInfoAndConfirmation({
         originalHandler(contact)
       }
       
-      // Заменяем обработчик на обернутый
+      // Заменяем обработчики на обернутые
       telegramWebApp.webApp.offEvent('contactRequested', handleContactRequested)
+      telegramWebApp.webApp.offEvent('contact_requested', handleContactRequested)
+      telegramWebApp.webApp.offEvent('contact', handleContactRequested)
+      
       telegramWebApp.webApp.onEvent('contactRequested', wrappedHandler)
-      console.log('✅ Wrapped handler attached')
+      telegramWebApp.webApp.onEvent('contact_requested', wrappedHandler)
+      telegramWebApp.webApp.onEvent('contact', wrappedHandler)
+      console.log('✅ Wrapped handlers attached')
       
     } catch (error: any) {
       console.error('❌ ===== ОШИБКА ПРИ ЗАПРОСЕ НОМЕРА ТЕЛЕФОНА =====')

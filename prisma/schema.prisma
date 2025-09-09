@@ -255,7 +255,7 @@ model Client {
   telegramLanguageCode  String?      @map("telegram_language_code")
   
   // Контактные данные
-  phone                 String?      @unique
+  phone                 String?
   email                 String?
   firstName             String?      @map("first_name")
   lastName              String?      @map("last_name")

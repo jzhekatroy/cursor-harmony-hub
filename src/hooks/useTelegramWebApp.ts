@@ -82,7 +82,7 @@ interface TelegramWebApp {
   closeScanQrPopup(): void
   readTextFromClipboard(callback?: (text: string) => void): void
   requestWriteAccess(callback?: (granted: boolean) => void): void
-  requestContact(callback?: (granted: boolean, contact?: any) => void): void
+  requestContact(): void
   isVersionAtLeast(version: string): boolean
 }
 

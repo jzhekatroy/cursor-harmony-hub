@@ -94,10 +94,11 @@ export function EnhancedClientInfoAndConfirmation({
     }
 
     setIsRequestingPhone(true)
+    
     try {
       // Проверяем, доступен ли метод requestContact
       if (typeof telegramWebApp.webApp.requestContact !== 'function') {
-        console.log('❌ requestContact method not available, trying alternative approach')
+        console.log('❌ requestContact method not available, trying requestWriteAccess')
         
         // Альтернативный способ - запрашиваем доступ к записи
         if (typeof telegramWebApp.webApp.requestWriteAccess === 'function') {
@@ -119,25 +120,54 @@ export function EnhancedClientInfoAndConfirmation({
         }
       }
 
-      // Запрашиваем номер телефона через Telegram WebApp
-      telegramWebApp.webApp.requestContact((granted: boolean, contact?: any) => {
-        console.log('📱 requestContact callback:', { granted, contact })
+      // В Telegram WebApp requestContact работает по-другому!
+      // Он НЕ принимает callback, а показывает кнопку для отправки контакта
+      // Результат приходит через событие 'contactRequested'
+      
+      // Устанавливаем обработчик события
+      const handleContactRequested = (contact: any) => {
+        console.log('📱 Contact received via event:', contact)
         setIsRequestingPhone(false)
         
-        if (granted && contact?.phone_number) {
+        if (contact?.phone_number) {
           console.log('✅ Получен контакт из Telegram:', contact)
           onClientInfoChange({
             ...bookingData.clientInfo,
             phone: contact.phone_number
           })
-        } else if (!granted) {
-          console.log('❌ Пользователь отказался предоставить контакт')
-          alert('Для записи необходимо предоставить номер телефона. Пожалуйста, введите его вручную.')
+          
+          // Убираем обработчик после получения контакта
+          telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
         } else {
           console.log('❌ Контакт не получен:', contact)
           alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
         }
-      })
+      }
+
+      // Добавляем обработчик события
+      telegramWebApp.webApp.onEvent('contactRequested', handleContactRequested)
+      
+      // Запрашиваем контакт (показывает кнопку в интерфейсе)
+      telegramWebApp.webApp.requestContact()
+      
+      // Устанавливаем таймаут на случай, если пользователь не отправит контакт
+      const timeoutId = setTimeout(() => {
+        setIsRequestingPhone(false)
+        telegramWebApp.webApp?.offEvent('contactRequested', handleContactRequested)
+        console.log('⏰ Timeout waiting for contact')
+      }, 30000) // 30 секунд
+      
+      // Очищаем таймаут при получении контакта
+      const originalHandler = handleContactRequested
+      const wrappedHandler = (contact: any) => {
+        clearTimeout(timeoutId)
+        originalHandler(contact)
+      }
+      
+      // Заменяем обработчик на обернутый
+      telegramWebApp.webApp.offEvent('contactRequested', handleContactRequested)
+      telegramWebApp.webApp.onEvent('contactRequested', wrappedHandler)
+      
     } catch (error) {
       console.error('❌ Ошибка при запросе номера телефона:', error)
       alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')

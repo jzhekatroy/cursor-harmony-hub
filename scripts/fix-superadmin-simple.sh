@@ -124,13 +124,8 @@ docker compose exec beauty-booking node temp-create-superadmin.js "$EMAIL" "$PAS
 # Удаляем временный файл
 rm -f temp-create-superadmin.js
 
-# 7. Перезапускаем приложение
-echo -e "${BLUE}🔄 Перезапускаем приложение...${NC}"
-docker compose restart beauty-booking
-
-# 8. Финальная проверка
+# 7. Финальная проверка
 echo -e "${BLUE}📊 Финальная проверка...${NC}"
-sleep 10
 docker compose ps
 
 echo -e "${GREEN}✅ Готово!${NC}"

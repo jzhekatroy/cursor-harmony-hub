@@ -60,8 +60,8 @@ interface TelegramWebApp {
   disableClosingConfirmation(): void
   enableVerticalSwipes(): void
   disableVerticalSwipes(): void
-  onEvent(eventType: string, eventHandler: () => void): void
-  offEvent(eventType: string, eventHandler: () => void): void
+  onEvent(eventType: string, eventHandler: (...args: any[]) => void): void
+  offEvent(eventType: string, eventHandler: (...args: any[]) => void): void
   sendData(data: string): void
   switchInlineQuery(query: string, choose_chat_types?: string[]): void
   openLink(url: string, options?: { try_instant_view?: boolean }): void

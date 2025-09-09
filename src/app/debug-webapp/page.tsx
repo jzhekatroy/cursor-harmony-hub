@@ -32,13 +32,43 @@ export default function DebugWebAppPage() {
       addLog('✅ requestContact method available')
       
       try {
-        telegramWebApp.webApp.requestContact((granted: boolean, contact?: any) => {
-          addLog(`📞 requestContact callback: granted=${granted}, contact=${JSON.stringify(contact)}`)
+        // Устанавливаем обработчик события
+        const handleContactRequested = (contact: any) => {
+          addLog(`📞 Contact received via event: ${JSON.stringify(contact)}`)
           setTestResults((prev: Record<string, any>) => ({
             ...prev,
-            requestContact: { granted, contact, timestamp: new Date().toISOString() }
+            requestContact: { 
+              granted: !!contact?.phone_number, 
+              contact, 
+              timestamp: new Date().toISOString() 
+            }
           }))
-        })
+        }
+
+        // Добавляем обработчик события
+        telegramWebApp.webApp.onEvent('contactRequested', handleContactRequested)
+        
+        // Запрашиваем контакт (показывает кнопку в интерфейсе)
+        telegramWebApp.webApp.requestContact()
+        
+        addLog('📞 Contact request sent, waiting for user to send contact...')
+        
+        // Устанавливаем таймаут
+        const timeoutId = setTimeout(() => {
+          addLog('⏰ Timeout waiting for contact')
+        }, 30000) // 30 секунд
+        
+        // Очищаем таймаут при получении контакта
+        const originalHandler = handleContactRequested
+        const wrappedHandler = (contact: any) => {
+          clearTimeout(timeoutId)
+          originalHandler(contact)
+        }
+        
+        // Заменяем обработчик на обернутый
+        telegramWebApp.webApp.offEvent('contactRequested', handleContactRequested)
+        telegramWebApp.webApp.onEvent('contactRequested', wrappedHandler)
+        
       } catch (error) {
         addLog(`❌ requestContact error: ${error}`)
       }

@@ -70,29 +70,58 @@ export function EnhancedClientInfoAndConfirmation({
       return
     }
 
+    console.log('📱 Requesting phone number from Telegram WebApp...')
+    console.log('📱 WebApp object:', telegramWebApp.webApp)
+    console.log('📱 requestContact method:', typeof telegramWebApp.webApp.requestContact)
+
     setIsRequestingPhone(true)
     try {
+      // Проверяем, доступен ли метод requestContact
+      if (typeof telegramWebApp.webApp.requestContact !== 'function') {
+        console.log('❌ requestContact method not available, trying alternative approach')
+        
+        // Альтернативный способ - запрашиваем доступ к записи
+        if (typeof telegramWebApp.webApp.requestWriteAccess === 'function') {
+          telegramWebApp.webApp.requestWriteAccess((granted: boolean) => {
+            setIsRequestingPhone(false)
+            if (granted) {
+              console.log('✅ Write access granted, but phone number still needs manual input')
+              alert('Доступ к записи предоставлен, но номер телефона нужно ввести вручную')
+            } else {
+              console.log('❌ Write access denied')
+              alert('Доступ к записи не предоставлен. Пожалуйста, введите номер телефона вручную.')
+            }
+          })
+          return
+        } else {
+          alert('Функция запроса номера телефона недоступна в этой версии Telegram. Пожалуйста, введите номер вручную.')
+          setIsRequestingPhone(false)
+          return
+        }
+      }
+
       // Запрашиваем номер телефона через Telegram WebApp
       telegramWebApp.webApp.requestContact((granted: boolean, contact?: any) => {
+        console.log('📱 requestContact callback:', { granted, contact })
         setIsRequestingPhone(false)
         
         if (granted && contact?.phone_number) {
-          console.log('📱 Получен контакт из Telegram:', contact)
+          console.log('✅ Получен контакт из Telegram:', contact)
           onClientInfoChange({
             ...bookingData.clientInfo,
             phone: contact.phone_number
           })
         } else if (!granted) {
           console.log('❌ Пользователь отказался предоставить контакт')
-          alert('Для записи необходимо предоставить номер телефона')
+          alert('Для записи необходимо предоставить номер телефона. Пожалуйста, введите его вручную.')
         } else {
-          console.log('❌ Контакт не получен')
-          alert('Не удалось получить номер телефона')
+          console.log('❌ Контакт не получен:', contact)
+          alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
         }
       })
     } catch (error) {
-      console.error('Ошибка при запросе номера телефона:', error)
-      alert('Не удалось запросить номер телефона')
+      console.error('❌ Ошибка при запросе номера телефона:', error)
+      alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
       setIsRequestingPhone(false)
     }
   }

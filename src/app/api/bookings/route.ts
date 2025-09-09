@@ -146,12 +146,12 @@ export async function POST(request: NextRequest) {
 
     // Создаем или находим клиента (MVP: по email/телефону + имя из name)
     const fullName: string = (clientData.name || '').trim()
-    let parsedFirstName: string | null = null
-    let parsedLastName: string | null = null
+    let parsedFirstName: string = ''
+    let parsedLastName: string = ''
     if (fullName) {
       const parts = fullName.split(/\s+/)
-      parsedFirstName = parts[0] || null
-      parsedLastName = parts.slice(1).join(' ') || null
+      parsedFirstName = parts[0] || ''
+      parsedLastName = parts.slice(1).join(' ') || ''
     }
 
     // Нормализуем телефон в E.164
@@ -170,14 +170,19 @@ export async function POST(request: NextRequest) {
       teamSlug: teamSlug
     })
     
-    if (clientData.telegramId) {
+    // Определяем источник: WebApp или публичная страница
+    const isWebApp = !!clientData.telegramId
+    console.log('🔍 Client search source:', isWebApp ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE')
+    
+    if (isWebApp) {
+      // WEBAPP: ищем ТОЛЬКО по telegramId
       try {
         client = await prisma.client.findFirst({
-          where: { 
+      where: {
             telegramId: BigInt(clientData.telegramId), 
-            teamId: team.id 
-          }
-        })
+        teamId: team.id
+      }
+    })
         if (client) {
           console.log('✅ Found client by Telegram ID:', {
             clientId: client.id,
@@ -186,74 +191,64 @@ export async function POST(request: NextRequest) {
             lastName: client.lastName
           })
         
-        // Обновляем Telegram данные, если они изменились
-        const telegramDataChanged = 
-          client.telegramUsername !== clientData.telegramUsername ||
-          client.telegramFirstName !== clientData.telegramFirstName ||
-          client.telegramLastName !== clientData.telegramLastName ||
-          client.telegramLanguageCode !== clientData.telegramLanguageCode
-        
-        if (telegramDataChanged) {
-          console.log('🔄 Updating Telegram data for client:', client.id)
-          client = await prisma.client.update({
-            where: { id: client.id },
-            data: {
-              telegramUsername: clientData.telegramUsername || null,
-              telegramFirstName: clientData.telegramFirstName || null,
-              telegramLastName: clientData.telegramLastName || null,
-              telegramLanguageCode: clientData.telegramLanguageCode || null,
-              lastActivity: new Date()
-            }
-          })
-          console.log('✅ Telegram data updated for client:', client.id)
+          // Обновляем Telegram данные, если они изменились
+          const telegramDataChanged = 
+            client.telegramUsername !== clientData.telegramUsername ||
+            client.telegramFirstName !== clientData.telegramFirstName ||
+            client.telegramLastName !== clientData.telegramLastName ||
+            client.telegramLanguageCode !== clientData.telegramLanguageCode
+          
+          if (telegramDataChanged) {
+            console.log('🔄 Updating Telegram data for client:', client.id)
+            client = await prisma.client.update({
+              where: { id: client.id },
+              data: {
+                telegramUsername: clientData.telegramUsername || null,
+                telegramFirstName: clientData.telegramFirstName || null,
+                telegramLastName: clientData.telegramLastName || null,
+                telegramLanguageCode: clientData.telegramLanguageCode || null,
+                lastActivity: new Date()
+              }
+            })
+            console.log('✅ Telegram data updated for client:', client.id)
+          }
+        } else {
+          console.log('❌ No client found with Telegram ID:', clientData.telegramId, 'in team:', team.id)
         }
-      } else {
-        console.log('❌ No client found with Telegram ID:', clientData.telegramId, 'in team:', team.id)
-      }
       } catch (error) {
         console.error('❌ Error searching by Telegram ID:', error)
       }
     } else {
-      console.log('❌ No Telegram ID provided in clientData')
-    }
-    
-    // Если не найден по Telegram ID, ищем по email
-    if (!client && clientData.email) {
-      client = await prisma.client.findFirst({
-        where: { email: clientData.email, teamId: team.id }
-      })
-      if (client) {
-        console.log('✅ Found client by email:', client.id)
-      }
-    }
-    
-    // Если не найден по email, ищем по телефону
-    if (!client && phoneE164) {
-      client = await prisma.client.findFirst({
-        where: { phone: phoneE164, teamId: team.id }
-      })
-      if (client) {
-        console.log('✅ Found client by phone:', client.id)
+      // ПУБЛИЧНАЯ СТРАНИЦА: ищем ТОЛЬКО по телефону
+      if (phoneE164) {
+        client = await prisma.client.findFirst({
+          where: { phone: phoneE164, teamId: team.id }
+        })
+        if (client) {
+          console.log('✅ Found client by phone:', client.id)
+        } else {
+          console.log('❌ No client found with phone:', phoneE164, 'in team:', team.id)
+        }
+      } else {
+        console.log('❌ No phone provided for public page client')
       }
     }
 
     if (!client) {
+      console.log('📝 No existing client found, creating new one...')
       if (!fullName) {
+        console.log('❌ No name provided')
         return NextResponse.json({ error: 'Укажите имя клиента' }, { status: 400 })
       }
       if (!phoneE164) {
+        console.log('❌ No phone provided')
         return NextResponse.json({ error: 'Укажите корректный телефон клиента' }, { status: 400 })
       }
       // Определяем email для создания клиента
       let emailForCreate = emailTrim
       if (!emailForCreate) {
-        if (clientData.telegramId) {
-          // Для Telegram клиентов оставляем email пустым
-          emailForCreate = ''
-        } else {
-          // Для обычных клиентов используем телефон
-          emailForCreate = `${String(phoneE164).replace('+','')}${String(team.id).slice(0,6)}@noemail.local`
-        }
+        // Для всех клиентов без email оставляем пустым
+        emailForCreate = ''
       }
       
       console.log('📝 Creating new client with data:', {
@@ -270,8 +265,8 @@ export async function POST(request: NextRequest) {
       
       // Пытаемся создать клиента, если он не найден. На случай гонки (P2002) — перезапрашиваем существующего
       try {
-        client = await prisma.client.create({
-          data: {
+      client = await prisma.client.create({
+        data: {
             email: emailForCreate,
             phone: phoneE164,
             telegramId: clientData.telegramId ? BigInt(clientData.telegramId) : null,
@@ -280,28 +275,72 @@ export async function POST(request: NextRequest) {
             telegramLastName: clientData.telegramLastName || null,
             firstName: clientData.firstName ?? parsedFirstName,
             lastName: clientData.lastName ?? parsedLastName,
-            address: clientData.address,
+          address: clientData.address,
             teamId: team.id,
             source: clientData.telegramId ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE'
           }
         })
         console.log('✅ New client created:', client.id)
       } catch (err: any) {
-        // Если уникальный индекс email+teamId сработал — значит клиент уже есть. Пробуем найти по email/телефону
+        console.log('❌ Error creating client:', err)
+        console.log('❌ Error code:', err.code)
+        console.log('❌ Error message:', err.message)
+        
+        // Если уникальный индекс email+teamId сработал — значит клиент уже есть
         if (err && err.code === 'P2002') {
           console.log('⚠️ Client already exists, searching for existing...')
           let existing = null as any
-          existing = await prisma.client.findFirst({ where: { email: emailTrim, teamId: team.id } })
-          if (!existing && phoneE164) {
-            existing = await prisma.client.findFirst({ where: { phone: phoneE164, teamId: team.id } })
+          
+          if (isWebApp) {
+            // Для WebApp ищем по telegramId
+            if (clientData.telegramId) {
+              console.log('🔍 Searching by telegramId:', clientData.telegramId)
+              existing = await prisma.client.findFirst({ 
+                where: { telegramId: BigInt(clientData.telegramId), teamId: team.id } 
+              })
+            }
+          } else {
+            // Для публичной страницы ищем ТОЛЬКО по телефону
+            if (phoneE164) {
+              console.log('🔍 Searching by phone:', phoneE164)
+              existing = await prisma.client.findFirst({ 
+                where: { phone: phoneE164, teamId: team.id } 
+              })
+            }
           }
+          
           if (existing) {
             client = existing
             console.log('✅ Found existing client:', client.id)
           } else {
-            throw err
+            // Если не нашли клиента по основному идентификатору, но конфликт по email+teamId
+            // для публичной страницы - попробуем создать с уникальным email
+            if (!isWebApp && err.meta?.target?.includes('email')) {
+              console.log('🔄 P2002 email conflict for public page, trying with unique email...')
+              try {
+                const uniqueEmail = `${phoneE164}@noemail.local`
+                client = await prisma.client.create({
+                  data: {
+                    email: uniqueEmail,
+                    phone: phoneE164,
+                    firstName: parsedFirstName || '',
+                    lastName: parsedLastName || '',
+                    teamId: team.id,
+                    source: 'PUBLIC_PAGE'
+                  }
+                })
+                console.log('✅ Created client with unique email:', client.id)
+              } catch (retryErr: any) {
+                console.log('❌ Failed to create with unique email:', retryErr)
+                throw err // Re-throw original error
+              }
+            } else {
+              console.log('❌ No existing client found, re-throwing error')
+              throw err
+            }
           }
         } else {
+          console.error('❌ Error creating client:', err)
           throw err
         }
       }
@@ -379,19 +418,19 @@ export async function POST(request: NextRequest) {
           throw new Error('Выбранное время занято для одной из услуг')
         }
 
-        const booking = await tx.booking.create({
-          data: {
-            bookingNumber: generateBookingNumber(),
+      const booking = await tx.booking.create({
+        data: {
+          bookingNumber: generateBookingNumber(),
             startTime: currentStart,
             endTime: segEnd,
             totalPrice: service.price as any,
-            notes: clientData.notes,
+          notes: clientData.notes,
             status: BookingStatus.CONFIRMED,
-            teamId: team.id,
-            clientId: client.id,
-            masterId: masterId
-          }
-        })
+          teamId: team.id,
+          clientId: client.id,
+          masterId: masterId
+        }
+      })
 
         await tx.bookingService.create({
           data: {
@@ -401,56 +440,15 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        await tx.bookingLog.create({
-          data: {
-            bookingId: booking.id,
+      await tx.bookingLog.create({
+        data: {
+          bookingId: booking.id,
             action: 'CONFIRMED',
             description: 'Бронирование создано клиентом через виджет записи (автоматически подтверждено)',
-            teamId: team.id
-          }
-        })
+          teamId: team.id
+        }
+      })
 
-        // Создаем запись в clientAction для логирования
-        await tx.clientAction.create({
-          data: {
-            clientId: client.id,
-            teamId: team.id,
-            actionType: 'BOOKING_CREATED',
-            pageUrl: request.url || '',
-            telegramData: {
-              bookingId: booking.id,
-              bookingNumber: booking.bookingNumber,
-              serviceName: service.name,
-              startTime: currentStart.toISOString(),
-              endTime: segEnd.toISOString(),
-              totalPrice: service.price
-            },
-            userAgent: request.headers.get('user-agent') || '',
-            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-          }
-        })
-
-        // Создаем запись в telegramLog для логирования
-        await tx.telegramLog.create({
-          data: {
-            clientId: client.id,
-            teamId: team.id,
-            level: 'INFO',
-            message: `Бронирование создано через публичную страницу: ${booking.bookingNumber}`,
-            data: {
-              bookingId: booking.id,
-              bookingNumber: booking.bookingNumber,
-              serviceName: service.name,
-              startTime: currentStart.toISOString(),
-              endTime: segEnd.toISOString(),
-              totalPrice: service.price,
-              clientData: clientData
-            },
-            url: request.url || '',
-            userAgent: request.headers.get('user-agent') || '',
-            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
-          }
-        })
 
         await (tx as any).clientEvent.create({
           data: {
@@ -491,6 +489,65 @@ export async function POST(request: NextRequest) {
       },
       orderBy: { startTime: 'asc' }
     })
+
+    // Создаем логи для каждого бронирования
+    console.log('📊 Total bookings to log:', fullBookings.length)
+    for (const booking of fullBookings) {
+      if (!booking.clientId) {
+        console.log('⚠️ Skipping log creation for booking without clientId:', booking.id)
+        continue
+      }
+      
+      try {
+        console.log('📝 Creating logs for booking:', booking.id, 'clientId:', booking.clientId)
+        
+        // Создаем запись в clientAction для логирования
+        const clientAction = await prisma.clientAction.create({
+          data: {
+            clientId: booking.clientId!,
+            teamId: team.id,
+            actionType: 'BOOKING_CREATED',
+            pageUrl: request.url || '',
+            telegramData: {
+              bookingId: booking.id,
+              bookingNumber: booking.bookingNumber,
+              serviceName: booking.services[0]?.service?.name || 'Unknown',
+              startTime: booking.startTime.toISOString(),
+              endTime: booking.endTime.toISOString(),
+              totalPrice: booking.totalPrice
+            },
+            userAgent: request.headers.get('user-agent') || '',
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+          }
+        })
+        console.log('✅ ClientAction created:', clientAction.id)
+
+        // Создаем запись в telegramLog для логирования
+        const telegramLog = await prisma.telegramLog.create({
+          data: {
+            clientId: booking.clientId!,
+            teamId: team.id,
+            level: 'INFO',
+            message: `Бронирование создано через публичную страницу: ${booking.bookingNumber}`,
+            data: {
+              bookingId: booking.id,
+              bookingNumber: booking.bookingNumber,
+              serviceName: booking.services[0]?.service?.name || 'Unknown',
+              startTime: booking.startTime.toISOString(),
+              endTime: booking.endTime.toISOString(),
+              totalPrice: booking.totalPrice,
+              clientData: clientData
+            },
+            url: request.url || '',
+            userAgent: request.headers.get('user-agent') || '',
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+          }
+        })
+        console.log('✅ TelegramLog created:', telegramLog.id)
+      } catch (error) {
+        console.error('❌ Error creating logs for booking:', booking.id, error)
+      }
+    }
 
     return NextResponse.json({
       success: true,

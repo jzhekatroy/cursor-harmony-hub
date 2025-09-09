@@ -609,7 +609,7 @@ export default function AdminDashboard() {
             <div className="flex items-center space-x-4">
               <Link
                 href="/debug-phone-logs"
-                className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors"
+                className="px-6 py-3 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
               >
                 📱 Логи телефона
               </Link>

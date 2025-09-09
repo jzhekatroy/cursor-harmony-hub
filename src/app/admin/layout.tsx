@@ -163,7 +163,13 @@ export default function AdminLayout({
 
             {/* Right side - Public page link + User menu */}
             <div className="flex items-center space-x-4">
-              {/* Public page link removed by request */}
+              {/* Debug phone logs link */}
+              <Link
+                href="/debug-phone-logs"
+                className="px-4 py-2 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+              >
+                📱 Логи телефона
+              </Link>
 
               {/* User info and logout */}
               <div className="flex items-center space-x-3">
@@ -214,6 +220,16 @@ export default function AdminLayout({
                     </Link>
                   )
                 })}
+                
+                {/* Mobile debug phone logs link */}
+                <Link
+                  href="/debug-phone-logs"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-3" />
+                  📱 Логи телефона
+                </Link>
                 
                 {/* Mobile public page link */}
                 {user.team.slug && (

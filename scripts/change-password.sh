@@ -41,9 +41,10 @@ docker compose ps
 # Создаем временный Node.js скрипт для смены пароля
 echo -e "${BLUE}🔐 Меняем пароль...${NC}"
 
-cat > temp-change-password.js << 'EOF'
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
+# Создаем скрипт внутри контейнера
+docker compose exec beauty-booking sh -c 'cat > /app/temp-change-password.js << "EOF"
+const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
@@ -83,7 +84,7 @@ async function changePassword() {
     console.log(`   URL: http://localhost:3000/login`);
     
   } catch (error) {
-    console.error('❌ Ошибка:', error.message);
+    console.error("❌ Ошибка:", error.message);
     process.exit(1);
   } finally {
     await prisma.$disconnect();
@@ -91,13 +92,13 @@ async function changePassword() {
 }
 
 changePassword();
-EOF
+EOF'
 
 # Запускаем скрипт
-docker compose exec beauty-booking node temp-change-password.js "$EMAIL" "$NEW_PASSWORD"
+docker compose exec beauty-booking node /app/temp-change-password.js "$EMAIL" "$NEW_PASSWORD"
 
 # Удаляем временный файл
-rm -f temp-change-password.js
+docker compose exec beauty-booking rm -f /app/temp-change-password.js
 
 echo -e "${GREEN}✅ Готово!${NC}"
 echo -e "${YELLOW}Проверьте: https://test.2minutes.ru/login${NC}"

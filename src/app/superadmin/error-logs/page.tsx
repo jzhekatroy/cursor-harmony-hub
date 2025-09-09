@@ -21,6 +21,8 @@ export default function ErrorLogsPage() {
   const [logs, setLogs] = useState<ErrorLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedLog, setSelectedLog] = useState<ErrorLog | null>(null)
+  const [showModal, setShowModal] = useState(false)
 
   const fetchErrorLogs = async () => {
     try {
@@ -67,6 +69,40 @@ export default function ErrorLogsPage() {
       default:
         return 'text-gray-600 bg-gray-50'
     }
+  }
+
+  const openLogDetails = (log: ErrorLog) => {
+    setSelectedLog(log)
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+    setSelectedLog(null)
+  }
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Скопировано в буфер обмена!')
+    } catch (err) {
+      toast.error('Ошибка копирования')
+    }
+  }
+
+  const formatLogData = (log: ErrorLog) => {
+    return JSON.stringify({
+      id: log.id,
+      level: log.level,
+      message: log.message,
+      data: log.data,
+      url: log.url,
+      userAgent: log.userAgent,
+      ip: log.ip,
+      createdAt: log.createdAt,
+      teamId: log.teamId,
+      clientId: log.clientId
+    }, null, 2)
   }
 
   if (loading) {
@@ -138,24 +174,10 @@ export default function ErrorLogsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
-                      onClick={() => {
-                        const details = {
-                          id: log.id,
-                          level: log.level,
-                          message: log.message,
-                          data: log.data,
-                          url: log.url,
-                          userAgent: log.userAgent,
-                          ip: log.ip,
-                          createdAt: log.createdAt,
-                          teamId: log.teamId,
-                          clientId: log.clientId
-                        }
-                        alert(JSON.stringify(details, null, 2))
-                      }}
-                      className="text-blue-600 hover:text-blue-900"
+                      onClick={() => openLogDetails(log)}
+                      className="text-blue-600 hover:text-blue-900 font-medium"
                     >
-                      Подробности
+                      Открыть
                     </button>
                   </td>
                 </tr>
@@ -170,6 +192,133 @@ export default function ErrorLogsPage() {
           </div>
         )}
       </div>
+
+      {/* Модальное окно с деталями ошибки */}
+      {showModal && selectedLog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+            {/* Заголовок */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">
+                Детали ошибки
+              </h2>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => copyToClipboard(formatLogData(selectedLog))}
+                  className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                >
+                  Копировать всё
+                </button>
+                <button
+                  onClick={closeModal}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Содержимое */}
+            <div className="flex-1 overflow-auto p-6">
+              <div className="space-y-4">
+                {/* Основная информация */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ID</label>
+                    <div className="text-sm text-gray-900 font-mono">{selectedLog.id}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Уровень</label>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getLevelColor(selectedLog.level)}`}>
+                      {selectedLog.level}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Время</label>
+                    <div className="text-sm text-gray-900">{formatDate(selectedLog.createdAt)}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">IP</label>
+                    <div className="text-sm text-gray-900 font-mono">{selectedLog.ip}</div>
+                  </div>
+                </div>
+
+                {/* URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">URL</label>
+                  <div className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded break-all">
+                    {selectedLog.url}
+                  </div>
+                </div>
+
+                {/* Сообщение */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Сообщение</label>
+                  <div className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                    {selectedLog.message}
+                  </div>
+                </div>
+
+                {/* User Agent */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User Agent</label>
+                  <div className="text-sm text-gray-900 font-mono bg-gray-50 p-2 rounded break-all">
+                    {selectedLog.userAgent}
+                  </div>
+                </div>
+
+                {/* Данные ошибки */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Данные ошибки</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => copyToClipboard(JSON.stringify(selectedLog.data, null, 2))}
+                      className="absolute top-2 right-2 px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
+                    >
+                      Копировать
+                    </button>
+                    <pre className="text-xs text-gray-900 bg-gray-50 p-4 rounded overflow-auto max-h-96 border">
+                      {JSON.stringify(selectedLog.data, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+
+                {/* Полные данные */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Полные данные (JSON)</label>
+                  <div className="relative">
+                    <button
+                      onClick={() => copyToClipboard(formatLogData(selectedLog))}
+                      className="absolute top-2 right-2 px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
+                    >
+                      Копировать
+                    </button>
+                    <pre className="text-xs text-gray-900 bg-gray-50 p-4 rounded overflow-auto max-h-96 border">
+                      {formatLogData(selectedLog)}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Футер */}
+            <div className="flex items-center justify-end gap-2 p-6 border-t border-gray-200">
+              <button
+                onClick={() => copyToClipboard(formatLogData(selectedLog))}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Копировать всё
+              </button>
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

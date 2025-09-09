@@ -230,11 +230,11 @@ export function EnhancedClientInfoAndConfirmation({
       telegramWebApp.webApp.onEvent('contactRequested', wrappedHandler)
       console.log('✅ Wrapped handler attached')
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ ===== ОШИБКА ПРИ ЗАПРОСЕ НОМЕРА ТЕЛЕФОНА =====')
       console.error('❌ Error details:', error)
-      console.error('❌ Error message:', error.message)
-      console.error('❌ Error stack:', error.stack)
+      console.error('❌ Error message:', error?.message)
+      console.error('❌ Error stack:', error?.stack)
       
       alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
       setIsRequestingPhone(false)

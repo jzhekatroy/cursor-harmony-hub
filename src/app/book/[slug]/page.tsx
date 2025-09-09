@@ -35,7 +35,7 @@ interface TeamData {
 
 export default function BookingWidget() {
   const params = useParams()
-  const slug = params.slug as string
+  const slug = params?.slug as string
   const telegramWebApp = useTelegramWebApp()
 
   const [currentStep, setCurrentStep] = useState<BookingStep>('select-services')

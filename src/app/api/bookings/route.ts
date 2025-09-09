@@ -333,22 +333,26 @@ export async function POST(request: NextRequest) {
     // Лимит записей на клиента/день (по времени салона)
     // SQLite типы у Prisma могут не подтянуть добавленное поле в типе, используем any для безопасного доступа
     const limit = (team as any).maxBookingsPerDayPerClient ?? 3
-    const dayStartUtc = createDateInSalonTimezone(year, month, day, 0, 0, team.timezone || 'Europe/Moscow')
-    const dayEndUtc = createDateInSalonTimezone(year, month, day, 23, 59, team.timezone || 'Europe/Moscow')
-    const existingCount = await prisma.booking.count({
-      where: {
-        teamId: team.id,
-        clientId: client.id,
-        status: { in: ['NEW', 'CONFIRMED', 'COMPLETED', 'NO_SHOW'] },
-        startTime: { gte: dayStartUtc, lte: dayEndUtc }
+    
+    // Если лимит = 0, то ограничений нет
+    if (limit > 0) {
+      const dayStartUtc = createDateInSalonTimezone(year, month, day, 0, 0, team.timezone || 'Europe/Moscow')
+      const dayEndUtc = createDateInSalonTimezone(year, month, day, 23, 59, team.timezone || 'Europe/Moscow')
+      const existingCount = await prisma.booking.count({
+        where: {
+          teamId: team.id,
+          clientId: client.id,
+          status: { in: ['NEW', 'CONFIRMED', 'COMPLETED', 'NO_SHOW'] },
+          startTime: { gte: dayStartUtc, lte: dayEndUtc }
+        }
+      })
+      const newBookingsNeeded = services.length
+      if (existingCount + newBookingsNeeded > limit) {
+        return NextResponse.json(
+          { error: `Лимит записей на день: ${limit}. Запрошено ${newBookingsNeeded} записей, уже есть ${existingCount}.` },
+          { status: 429 }
+        )
       }
-    })
-    const newBookingsNeeded = services.length
-    if (existingCount + newBookingsNeeded > limit) {
-      return NextResponse.json(
-        { error: `Лимит записей на день: ${limit}. Запрошено ${newBookingsNeeded} записей, уже есть ${existingCount}.` },
-        { status: 429 }
-      )
     }
 
     // Создаем НЕСКОЛЬКО бронирований подряд (по одной услуге на бронь) в транзакции

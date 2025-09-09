@@ -77,7 +77,7 @@ model Team {
   disabledAt                 DateTime?
   masterLimit                Int        @default(2)
   bookingStep                Int        @default(15) // шаг бронирования в минутах
-  maxBookingsPerDayPerClient Int        @default(3) // лимит записей на клиента в день
+  maxBookingsPerDayPerClient Int        @default(0) // лимит записей на клиента в день (0 = без ограничений)
   timezone                   String     @default("Europe/Moscow") // часовой пояс салона
   webhooksEnabled            Boolean    @default(true)
   fairMasterRotation         Boolean    @default(false) // Справедливое распределение мастеров

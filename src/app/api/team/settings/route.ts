@@ -45,14 +45,14 @@ export async function GET(request: NextRequest) {
 
     // Добавляем публичные настройки UX (через raw на случай отсутствия полей в клиенте Prisma)
     try {
-      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl", "dailyBookingLimit", "notificationsEnabled", "reminderHours" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl", "maxBookingsPerDayPerClient", "notificationsEnabled", "reminderHours" FROM "public"."teams" WHERE id = ${user.team.id} LIMIT 1`
       if (rows && rows[0]) {
         (settings as any).publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
         ;(settings as any).publicTheme = String(rows[0].publicTheme ?? 'light')
         ;(settings as any).publicPageTitle = rows[0].publicPageTitle || null
         ;(settings as any).publicPageDescription = rows[0].publicPageDescription || null
         ;(settings as any).publicPageLogoUrl = rows[0].publicPageLogoUrl || null
-        ;(settings as any).dailyBookingLimit = rows[0].dailyBookingLimit || 3
+        ;(settings as any).dailyBookingLimit = rows[0].maxBookingsPerDayPerClient || 0
         ;(settings as any).notificationsEnabled = Boolean(rows[0].notificationsEnabled ?? false)
         ;(settings as any).reminderHours = rows[0].reminderHours || 24
       } else {
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         ;(settings as any).publicPageTitle = null
         ;(settings as any).publicPageDescription = null
         ;(settings as any).publicPageLogoUrl = null
-        ;(settings as any).dailyBookingLimit = 3
+        ;(settings as any).dailyBookingLimit = 0
         ;(settings as any).notificationsEnabled = false
         ;(settings as any).reminderHours = 24
       }
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       ;(settings as any).publicPageTitle = null
       ;(settings as any).publicPageDescription = null
       ;(settings as any).publicPageLogoUrl = null
-      ;(settings as any).dailyBookingLimit = 3
+      ;(settings as any).dailyBookingLimit = 0
       ;(settings as any).notificationsEnabled = false
       ;(settings as any).reminderHours = 24
     }
@@ -157,9 +157,9 @@ export async function PUT(request: NextRequest) {
 
     // Валидация лимита записей на клиента
     if (maxBookingsPerDayPerClient !== undefined) {
-      if (typeof maxBookingsPerDayPerClient !== 'number' || maxBookingsPerDayPerClient < 1 || maxBookingsPerDayPerClient > 20) {
+      if (typeof maxBookingsPerDayPerClient !== 'number' || maxBookingsPerDayPerClient < 0 || maxBookingsPerDayPerClient > 100) {
         return NextResponse.json(
-          { error: 'Лимит записей на клиента должен быть числом от 1 до 20' },
+          { error: 'Лимит записей на клиента должен быть числом от 0 до 100 (0 = без ограничений)' },
           { status: 400 }
         )
       }
@@ -271,7 +271,10 @@ export async function PUT(request: NextRequest) {
     if (publicPageTitle !== undefined) updateData.publicPageTitle = publicPageTitle || null
     if (publicPageDescription !== undefined) updateData.publicPageDescription = publicPageDescription || null
     if (publicPageLogoUrl !== undefined) updateData.publicPageLogoUrl = publicPageLogoUrl || null
-    if (dailyBookingLimit !== undefined) updateData.dailyBookingLimit = dailyBookingLimit || 3
+    if (dailyBookingLimit !== undefined) {
+      updateData.dailyBookingLimit = dailyBookingLimit || 0
+      updateData.maxBookingsPerDayPerClient = dailyBookingLimit || 0 // Синхронизируем с основным полем
+    }
     if (notificationsEnabled !== undefined) updateData.notificationsEnabled = notificationsEnabled || false
     if (reminderHours !== undefined) updateData.reminderHours = reminderHours || 24
 

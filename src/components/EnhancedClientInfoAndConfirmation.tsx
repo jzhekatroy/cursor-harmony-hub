@@ -73,6 +73,25 @@ export function EnhancedClientInfoAndConfirmation({
     console.log('📱 Requesting phone number from Telegram WebApp...')
     console.log('📱 WebApp object:', telegramWebApp.webApp)
     console.log('📱 requestContact method:', typeof telegramWebApp.webApp.requestContact)
+    
+    // Отправляем логи на сервер для отладки
+    try {
+      await fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'Requesting phone number from WebApp',
+          data: {
+            webAppAvailable: !!telegramWebApp.webApp,
+            requestContactAvailable: typeof telegramWebApp.webApp?.requestContact === 'function',
+            userAgent: navigator.userAgent,
+            url: window.location.href
+          }
+        })
+      })
+    } catch (e) {
+      console.error('Failed to send debug log:', e)
+    }
 
     setIsRequestingPhone(true)
     try {
@@ -423,9 +442,18 @@ export function EnhancedClientInfoAndConfirmation({
                 <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
               )}
               {telegramWebApp.webApp && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Нажмите кнопку, чтобы автоматически получить номер из Telegram
-                </p>
+                <div className="mt-1 space-y-1">
+                  <p className="text-xs text-gray-500">
+                    Нажмите кнопку, чтобы автоматически получить номер из Telegram
+                  </p>
+                  <a 
+                    href="/debug-webapp" 
+                    target="_blank" 
+                    className="text-xs text-blue-500 hover:underline"
+                  >
+                    🔍 Открыть страницу отладки WebApp
+                  </a>
+                </div>
               )}
             </div>
 

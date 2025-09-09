@@ -36,17 +36,20 @@ fi
 echo -e "${BLUE}📊 Проверяем статус контейнеров...${NC}"
 docker compose ps
 
-# Создаем системную команду
-echo -e "${BLUE}📝 Создаем системную команду...${NC}"
-docker compose exec postgres psql -U postgres -d beauty -c "
-INSERT INTO teams (id, \"teamNumber\", name, slug, \"contactPerson\", email, \"masterLimit\", \"createdAt\", \"updatedAt\")
-SELECT 'system-team-001', 'B0000001', 'Система управления', 'system', 'Супер Админ', 'admin@beauty-booking.com', 0, NOW(), NOW()
-WHERE NOT EXISTS (SELECT 1 FROM teams WHERE \"teamNumber\" = 'B0000001');
-"
+# Находим любую существующую команду или создаем системную
+echo -e "${BLUE}📝 Находим команду для суперадмина...${NC}"
+TEAM_ID=$(docker compose exec postgres psql -U postgres -d beauty -t -c "SELECT id FROM teams LIMIT 1;" | tr -d ' \n')
 
-# Получаем ID системной команды
-TEAM_ID=$(docker compose exec postgres psql -U postgres -d beauty -t -c "SELECT id FROM teams WHERE \"teamNumber\" = 'B0000001' LIMIT 1;" | tr -d ' \n')
-echo -e "${GREEN}✅ ID системной команды: $TEAM_ID${NC}"
+if [ -z "$TEAM_ID" ] || [ "$TEAM_ID" = "" ]; then
+    echo -e "${BLUE}📝 Создаем системную команду...${NC}"
+    docker compose exec postgres psql -U postgres -d beauty -c "
+    INSERT INTO teams (id, \"teamNumber\", name, slug, \"contactPerson\", email, \"masterLimit\", \"createdAt\", \"updatedAt\")
+    VALUES ('system-team-001', 'B0000001', 'Система управления', 'system', 'Супер Админ', 'admin@beauty-booking.com', 0, NOW(), NOW());
+    "
+    TEAM_ID="system-team-001"
+fi
+
+echo -e "${GREEN}✅ ID команды: $TEAM_ID${NC}"
 
 # Генерируем хеш пароля
 echo -e "${BLUE}🔐 Генерируем хеш пароля...${NC}"

@@ -410,6 +410,48 @@ export async function POST(request: NextRequest) {
           }
         })
 
+        // Создаем запись в clientAction для логирования
+        await tx.clientAction.create({
+          data: {
+            clientId: client.id,
+            teamId: team.id,
+            actionType: 'BOOKING_CREATED',
+            pageUrl: request.url || '',
+            telegramData: {
+              bookingId: booking.id,
+              bookingNumber: booking.bookingNumber,
+              serviceName: service.name,
+              startTime: currentStart.toISOString(),
+              endTime: segEnd.toISOString(),
+              totalPrice: service.price
+            },
+            userAgent: request.headers.get('user-agent') || '',
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+          }
+        })
+
+        // Создаем запись в telegramLog для логирования
+        await tx.telegramLog.create({
+          data: {
+            clientId: client.id,
+            teamId: team.id,
+            level: 'INFO',
+            message: `Бронирование создано через публичную страницу: ${booking.bookingNumber}`,
+            data: {
+              bookingId: booking.id,
+              bookingNumber: booking.bookingNumber,
+              serviceName: service.name,
+              startTime: currentStart.toISOString(),
+              endTime: segEnd.toISOString(),
+              totalPrice: service.price,
+              clientData: clientData
+            },
+            url: request.url || '',
+            userAgent: request.headers.get('user-agent') || '',
+            ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+          }
+        })
+
         await (tx as any).clientEvent.create({
           data: {
             teamId: team.id,

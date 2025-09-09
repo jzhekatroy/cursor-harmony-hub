@@ -61,7 +61,9 @@ export async function GET(request: NextRequest) {
           // Логи по URL (если содержит bookingId)
           { url: { contains: bookingId } },
           // Логи по данным (если содержит bookingId)
-          { data: { path: ['bookingId'], equals: bookingId } }
+          { data: { path: ['bookingId'], equals: bookingId } },
+          // Логи по сообщению (если содержит bookingId)
+          { message: { contains: bookingId } }
         ]
       },
       orderBy: {

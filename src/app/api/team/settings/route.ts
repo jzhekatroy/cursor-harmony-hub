@@ -300,14 +300,14 @@ export async function PUT(request: NextRequest) {
         timezone: updatedTeam.timezone,
         telegramBotToken: updatedTeam.telegramBotToken,
         ungroupedGroupName: (updatedTeam as any).ungroupedGroupName || 'Основные услуги',
-        publicServiceCardsWithPhotos: updatedTeam.publicServiceCardsWithPhotos,
-        publicTheme: updatedTeam.publicTheme,
-        publicPageTitle: (updatedTeam as any).publicPageTitle,
-        publicPageDescription: (updatedTeam as any).publicPageDescription,
-        publicPageLogoUrl: (updatedTeam as any).publicPageLogoUrl,
-        dailyBookingLimit: (updatedTeam as any).dailyBookingLimit,
-        notificationsEnabled: (updatedTeam as any).notificationsEnabled,
-        reminderHours: (updatedTeam as any).reminderHours
+        // publicServiceCardsWithPhotos: updatedTeam.publicServiceCardsWithPhotos,
+        // publicTheme: updatedTeam.publicTheme,
+        // publicPageTitle: (updatedTeam as any).publicPageTitle,
+        // publicPageDescription: (updatedTeam as any).publicPageDescription,
+        // publicPageLogoUrl: (updatedTeam as any).publicPageLogoUrl,
+        // dailyBookingLimit: (updatedTeam as any).dailyBookingLimit,
+        // notificationsEnabled: (updatedTeam as any).notificationsEnabled,
+        // reminderHours: (updatedTeam as any).reminderHours
       }
     })
 

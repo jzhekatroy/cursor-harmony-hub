@@ -69,11 +69,16 @@ export default function BookingWidget() {
 
   // Инициализация данных клиента при загрузке WebApp
   useEffect(() => {
+    // Проверяем, нужно ли инициализировать поля
+    const needsInitialization = !bookingData.clientInfo.firstName && !bookingData.clientInfo.lastName && 
+                                !!telegramWebApp.user?.first_name
+    
     console.log(`🔄 Parent useEffect triggered:
       isAvailable: ${telegramWebApp.isAvailable}
       userId: ${telegramWebApp.user?.id}
       isLoadingClient: ${isLoadingClient}
       isInitialized: ${isInitialized}
+      needsInitialization: ${needsInitialization}
       user: ${JSON.stringify(telegramWebApp.user, null, 2)}`)
     
     // Отправляем лог на сервер для диагностики
@@ -88,14 +93,11 @@ export default function BookingWidget() {
           userId: telegramWebApp.user?.id,
           isLoadingClient: isLoadingClient,
           isInitialized: isInitialized,
+          needsInitialization: needsInitialization,
           timestamp: new Date().toISOString()
         }
       })
     }).catch(e => console.error('Failed to send log:', e))
-    
-    // Проверяем, нужно ли инициализировать поля
-    const needsInitialization = !bookingData.clientInfo.firstName && !bookingData.clientInfo.lastName && 
-                                !!telegramWebApp.user?.first_name
     
     console.log(`🔍 Parent needsInitialization check:
       firstName: "${bookingData.clientInfo.firstName}"
@@ -114,7 +116,6 @@ export default function BookingWidget() {
         currentLastName: ${bookingData.clientInfo.lastName}
         REASON: ${!telegramWebApp.isAvailable ? 'not available' : 
                  !telegramWebApp.user?.id ? 'no user id' : 
-                 isLoadingClient ? 'loading client' : 
                  !needsInitialization ? 'no need init' : 'unknown'}`)
       
       // Отправляем лог на сервер о том, что useEffect пропущен
@@ -127,7 +128,7 @@ export default function BookingWidget() {
           data: {
             isAvailable: telegramWebApp.isAvailable,
             userId: telegramWebApp.user?.id,
-            isLoadingClient: isLoadingClient,
+            isInitialized: isInitialized,
             needsInitialization: needsInitialization,
             currentFirstName: bookingData.clientInfo.firstName,
             currentLastName: bookingData.clientInfo.lastName,

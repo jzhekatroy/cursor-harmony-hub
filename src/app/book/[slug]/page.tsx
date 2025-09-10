@@ -51,7 +51,7 @@ export default function BookingWidget() {
     date: '',
     master: null,
     timeSlot: null,
-    clientInfo: { name: '', phone: '', email: '', notes: '' },
+    clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
     totalPrice: 0,
     totalDuration: 0,
   })
@@ -169,7 +169,7 @@ export default function BookingWidget() {
       date: '',
       master: null,
       timeSlot: null,
-      clientInfo: { name: '', phone: '', email: '', notes: '' },
+      clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
       totalPrice: 0,
       totalDuration: 0,
     })

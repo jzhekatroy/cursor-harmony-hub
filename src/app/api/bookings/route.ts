@@ -378,11 +378,11 @@ export async function POST(request: NextRequest) {
           throw err
         }
       }
-    } else if (((!client.firstName && parsedFirstName) || (!client.lastName && parsedLastName)) || (phoneE164 && client.phone !== phoneE164) || (clientData.telegramId && !client.telegramId)) {
-      // Обновляем отсутствующие ФИО, телефон или Telegram данные, если пришло от клиента
+    } else {
+      // Обновляем данные клиента с новыми значениями от пользователя
       const updateData: any = {
-        firstName: client.firstName || parsedFirstName,
-        lastName: client.lastName || parsedLastName,
+        firstName: clientData.firstName ?? parsedFirstName,
+        lastName: clientData.lastName ?? parsedLastName,
         phone: phoneE164 || client.phone
       }
       
@@ -396,11 +396,22 @@ export async function POST(request: NextRequest) {
         console.log('📱 Updating client with Telegram data:', updateData)
       }
       
-      client = await prisma.client.update({
-        where: { id: client.id },
-        data: updateData
-      })
-      console.log('✅ Client updated:', client.id)
+      // Проверяем, есть ли изменения для обновления
+      const hasChanges = 
+        client.firstName !== updateData.firstName ||
+        client.lastName !== updateData.lastName ||
+        (phoneE164 && client.phone !== phoneE164) ||
+        (clientData.telegramId && !client.telegramId)
+      
+      if (hasChanges) {
+        client = await prisma.client.update({
+          where: { id: client.id },
+          data: updateData
+        })
+        console.log('✅ Client updated with new data:', client.id)
+      } else {
+        console.log('ℹ️ No changes needed for client:', client.id)
+      }
     }
 
     // Лимит записей на клиента/день (по времени салона)

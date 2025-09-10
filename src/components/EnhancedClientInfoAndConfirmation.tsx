@@ -793,7 +793,6 @@ export function EnhancedClientInfoAndConfirmation({
               {errors.firstName && (
                 <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
               )}
-              <p className="text-xs text-gray-500">Debug: firstName = "{bookingData.clientInfo.firstName || ''}"</p>
             </div>
 
             {/* Фамилия */}
@@ -821,7 +820,6 @@ export function EnhancedClientInfoAndConfirmation({
               {errors.lastName && (
                 <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
               )}
-              <p className="text-xs text-gray-500">Debug: lastName = "{bookingData.clientInfo.lastName || ''}"</p>
             </div>
 
             {/* Телефон */}

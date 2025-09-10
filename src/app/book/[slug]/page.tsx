@@ -7,7 +7,6 @@ import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
 import { EnhancedServiceSelection } from '@/components/EnhancedServiceSelection'
 import { EnhancedDateMasterTimeSelection } from '@/components/EnhancedDateMasterTimeSelection'
 import { EnhancedClientInfoAndConfirmation } from '@/components/EnhancedClientInfoAndConfirmation'
-import { DebugInfo } from '@/components/DebugInfo'
 import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, ClientInfo } from '@/types/booking'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,25 +66,82 @@ export default function BookingWidget() {
     loadInitialData()
   }, [slug])
 
-  // Простое заполнение полей данными из Telegram
+  // Умное заполнение полей: БД имеет приоритет над Telegram
   useEffect(() => {
-    // Простая проверка: если поля пустые и есть данные Telegram - заполняем
-    if (telegramWebApp.isAvailable && 
-        telegramWebApp.user?.id && 
-        !bookingData.clientInfo.firstName && 
-        !bookingData.clientInfo.lastName && 
-        telegramWebApp.user?.first_name) {
-      
-      setBookingData(prev => ({
-        ...prev,
-        clientInfo: {
-          ...prev.clientInfo,
-          firstName: telegramWebApp.user?.first_name || '',
-          lastName: telegramWebApp.user?.last_name || ''
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id) return
+
+    const loadClientData = async () => {
+      try {
+        // Получаем данные клиента из БД
+        const teamSlug = window.location.pathname.split('/')[2]
+        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          
+          if (data.client) {
+            // Клиент найден в БД
+            const dbFirstName = data.client.firstName || ''
+            const dbLastName = data.client.lastName || ''
+            
+            if (dbFirstName || dbLastName) {
+              // В БД есть данные - используем их
+              setBookingData(prev => ({
+                ...prev,
+                clientInfo: {
+                  ...prev.clientInfo,
+                  firstName: dbFirstName,
+                  lastName: dbLastName
+                }
+              }))
+            } else {
+              // В БД пусто - используем Telegram данные
+              setBookingData(prev => ({
+                ...prev,
+                clientInfo: {
+                  ...prev.clientInfo,
+                  firstName: telegramWebApp.user?.first_name || '',
+                  lastName: telegramWebApp.user?.last_name || ''
+                }
+              }))
+            }
+          } else {
+            // Клиент не найден - используем Telegram данные
+            setBookingData(prev => ({
+              ...prev,
+              clientInfo: {
+                ...prev.clientInfo,
+                firstName: telegramWebApp.user?.first_name || '',
+                lastName: telegramWebApp.user?.last_name || ''
+              }
+            }))
+          }
+        } else {
+          // Ошибка API - используем Telegram данные
+          setBookingData(prev => ({
+            ...prev,
+            clientInfo: {
+              ...prev.clientInfo,
+              firstName: telegramWebApp.user?.first_name || '',
+              lastName: telegramWebApp.user?.last_name || ''
+            }
+          }))
         }
-      }))
+      } catch (error) {
+        // Ошибка - используем Telegram данные
+        setBookingData(prev => ({
+          ...prev,
+          clientInfo: {
+            ...prev.clientInfo,
+            firstName: telegramWebApp.user?.first_name || '',
+            lastName: telegramWebApp.user?.last_name || ''
+          }
+        }))
+      }
     }
-  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, telegramWebApp.user?.first_name, telegramWebApp.user?.last_name])
+
+    loadClientData()
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id])
 
   const loadInitialData = async () => {
     try {
@@ -309,7 +365,6 @@ export default function BookingWidget() {
   // Лейаут для остальных шагов остаётся прежним в Card
   return (
     <div className={isDarkLocal ? 'min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8' : 'min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8'}>
-      <DebugInfo bookingData={bookingData} />
       <Card className={isDarkLocal ? 'w-full max-w-5xl bg-neutral-800/80 backdrop-blur-lg shadow-xl rounded-xl p-4 sm:p-6 lg:p-8 space-y-6 border-2 border-neutral-600 relative overflow-hidden' : 'w-full max-w-5xl bg-white/80 backdrop-blur-lg shadow-xl rounded-xl p-4 sm:p-6 lg:p-8 space-y-6 border-2 border-gray-300 relative overflow-hidden'}>
         {team?.team?.logoUrl && (
           <img

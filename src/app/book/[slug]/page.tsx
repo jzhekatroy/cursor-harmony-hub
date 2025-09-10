@@ -181,19 +181,24 @@ export default function BookingWidget() {
         })
       }).catch(e => console.error('Failed to send log:', e))
       
-      try {
-        const teamSlug = window.location.pathname.split('/')[2]
-        console.log(`🔍 Parent Fetching client for:
-          telegramId: ${telegramWebApp.user?.id}
-          teamSlug: ${teamSlug}`)
-        
-        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
-        
-        if (response.ok) {
-          const data = await response.json()
-          console.log(`📦 Parent Client data received:
-            ${JSON.stringify(data, null, 2)}`)
-          setExistingClient(data.client)
+           try {
+             const teamSlug = window.location.pathname.split('/')[2]
+             console.log(`🔍 Parent Fetching client for:
+               telegramId: ${telegramWebApp.user?.id}
+               teamSlug: ${teamSlug}`)
+             
+             const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
+             
+             console.log(`📡 Parent API response:
+               status: ${response.status}
+               ok: ${response.ok}
+               statusText: ${response.statusText}`)
+             
+             if (response.ok) {
+               const data = await response.json()
+               console.log(`📦 Parent Client data received:
+                 ${JSON.stringify(data, null, 2)}`)
+               setExistingClient(data.client)
           
           // Инициализируем поля на основе найденного клиента или Telegram данных
           if (data.client) {
@@ -276,11 +281,13 @@ export default function BookingWidget() {
               }).catch(e => console.error('Failed to send log:', e))
             }
           }
-        } else {
-          console.log(`❌ Parent Failed to fetch client data:
-            status: ${response.status}
-            statusText: ${response.statusText}`)
-        }
+             } else {
+               const errorText = await response.text()
+               console.log(`❌ Parent Failed to fetch client data:
+                 status: ${response.status}
+                 statusText: ${response.statusText}
+                 error: ${errorText}`)
+             }
       } catch (error) {
         console.error('Parent Error fetching existing client:', error)
       } finally {

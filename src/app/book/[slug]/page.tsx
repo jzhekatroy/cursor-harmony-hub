@@ -111,7 +111,11 @@ export default function BookingWidget() {
         isLoadingClient: ${isLoadingClient}
         needsInitialization: ${needsInitialization}
         currentFirstName: ${bookingData.clientInfo.firstName}
-        currentLastName: ${bookingData.clientInfo.lastName}`)
+        currentLastName: ${bookingData.clientInfo.lastName}
+        REASON: ${!telegramWebApp.isAvailable ? 'not available' : 
+                 !telegramWebApp.user?.id ? 'no user id' : 
+                 isLoadingClient ? 'loading client' : 
+                 !needsInitialization ? 'no need init' : 'unknown'}`)
       
       // Отправляем лог на сервер о том, что useEffect пропущен
       fetch('/api/telegram/logs', {

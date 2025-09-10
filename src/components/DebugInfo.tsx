@@ -39,6 +39,16 @@ export function DebugInfo({ bookingData }: DebugInfoProps) {
       addLog(`lastName: "${bookingData.clientInfo.lastName}"`)
       addLog(`telegramFirstName: "${telegramWebApp.user?.first_name}"`)
       addLog(`telegramLastName: "${telegramWebApp.user?.last_name}"`)
+      
+      // Диагностика причин пропуска useEffect
+      const skipReasons = []
+      if (!telegramWebApp.isAvailable) skipReasons.push('not available')
+      if (!telegramWebApp.user?.id) skipReasons.push('no user id')
+      if (skipReasons.length > 0) {
+        addLog(`SKIP REASONS: ${skipReasons.join(', ')}`)
+      } else {
+        addLog(`SHOULD RUN: useEffect should execute`)
+      }
     }
   }, [telegramWebApp.isAvailable, telegramWebApp.user, bookingData.clientInfo.firstName, bookingData.clientInfo.lastName])
 

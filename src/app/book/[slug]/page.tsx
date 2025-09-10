@@ -11,7 +11,6 @@ import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, Clie
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
-import { ThemeToggle } from '@/components/ThemeToggle'
 
 interface TeamData {
   team: {
@@ -285,9 +284,6 @@ export default function BookingWidget() {
   return (
     <div className={isDarkLocal ? 'min-h-screen bg-neutral-900 text-neutral-100 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8' : 'min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8'}>
       <Card className={isDarkLocal ? 'w-full max-w-5xl bg-neutral-800/80 backdrop-blur-lg shadow-xl rounded-xl p-4 sm:p-6 lg:p-8 space-y-6 border-2 border-neutral-600 relative overflow-hidden' : 'w-full max-w-5xl bg-white/80 backdrop-blur-lg shadow-xl rounded-xl p-4 sm:p-6 lg:p-8 space-y-6 border-2 border-gray-300 relative overflow-hidden'}>
-        <div className="flex items-center justify-end -mt-2">
-          <ThemeToggle />
-        </div>
         {team?.team?.logoUrl && (
           <img
             src={team.team.logoUrl}

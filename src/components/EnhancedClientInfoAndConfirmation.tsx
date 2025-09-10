@@ -32,9 +32,9 @@ export function EnhancedClientInfoAndConfirmation({
   const [isRequestingPhone, setIsRequestingPhone] = useState(false)
   const telegramWebApp = useTelegramWebApp()
 
-  // Автоматическое заполнение данных из Telegram WebApp
+  // Автоматическое заполнение данных из Telegram WebApp (только если WebApp доступен)
   React.useEffect(() => {
-    if (telegramWebApp.user && !bookingData.clientInfo.name) {
+    if (telegramWebApp.webApp && telegramWebApp.user && !bookingData.clientInfo.name) {
       const firstName = telegramWebApp.user.first_name || ''
       const lastName = telegramWebApp.user.last_name || ''
       const fullName = `${firstName} ${lastName}`.trim()
@@ -46,7 +46,7 @@ export function EnhancedClientInfoAndConfirmation({
         })
       }
     }
-  }, [telegramWebApp.user, bookingData.clientInfo.name, onClientInfoChange])
+  }, [telegramWebApp.webApp, telegramWebApp.user, bookingData.clientInfo.name, onClientInfoChange])
 
   // Автоматический запрос номера телефона для WebApp
   React.useEffect(() => {
@@ -347,22 +347,6 @@ export function EnhancedClientInfoAndConfirmation({
         return
       }
 
-      // Отладочный вызов для проверки данных WebApp
-      if (telegramWebApp.user) {
-        try {
-          await fetch('/api/debug-webapp-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              user: telegramWebApp.user,
-              teamSlug: window.location.pathname.split('/')[2],
-              url: window.location.href
-            })
-          })
-        } catch (e) {
-          console.error('Debug call failed:', e)
-        }
-      }
 
       const response = await fetch('/api/bookings', {
         method: 'POST',
@@ -561,38 +545,9 @@ export function EnhancedClientInfoAndConfirmation({
                     )}
                   />
                 </div>
-                {telegramWebApp.webApp && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={requestPhoneNumber}
-                    disabled={isRequestingPhone}
-                    className="px-2 py-1 text-xs whitespace-nowrap h-8"
-                  >
-                    {isRequestingPhone ? (
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600"></div>
-                    ) : (
-                      '📱 Telegram'
-                    )}
-                  </Button>
-                )}
               </div>
               {errors.phone && (
                 <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-              )}
-              {telegramWebApp.webApp && (
-                <div className="mt-1 space-y-1">
-                  <p className="text-xs text-gray-500">
-                    Нажмите кнопку, чтобы автоматически получить номер из Telegram
-                  </p>
-                  <a 
-                    href="/debug-webapp" 
-                    target="_blank" 
-                    className="text-xs text-blue-500 hover:underline"
-                  >
-                    🔍 Открыть страницу отладки WebApp
-                  </a>
-                </div>
               )}
             </div>
 

@@ -78,10 +78,10 @@ export async function GET(
     let publicPageDescription: string | null = null
     let publicPageLogoUrl: string | null = null
     try {
-      const rows: any[] = await prisma.$queryRaw`SELECT "publicServiceCardsWithPhotos", "publicTheme", "publicPageTitle", "publicPageDescription", "publicPageLogoUrl" FROM "public"."teams" WHERE id = ${team.id} LIMIT 1`
+      const rows: any[] = await prisma.$queryRaw`SELECT "publicPageTitle", "publicPageDescription", "publicPageLogoUrl" FROM "public"."teams" WHERE id = ${team.id} LIMIT 1`
       if (rows && rows[0]) {
-        publicServiceCardsWithPhotos = Boolean(rows[0].publicServiceCardsWithPhotos ?? true)
-        publicTheme = String(rows[0].publicTheme ?? 'light')
+        publicServiceCardsWithPhotos = true // по умолчанию
+        publicTheme = 'light' // по умолчанию
         publicPageTitle = rows[0].publicPageTitle || null
         publicPageDescription = rows[0].publicPageDescription || null
         publicPageLogoUrl = rows[0].publicPageLogoUrl || null

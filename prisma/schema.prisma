@@ -90,11 +90,11 @@ model Team {
   publicPageLogoUrl          String? // кастомный логотип для страницы записи
   
   // Публичные UX-настройки
-  publicServiceCardsWithPhotos Boolean @default(true)
-  publicTheme                  String  @default("light")
-  dailyBookingLimit            Int     @default(3) // лимит записей на клиента в день
-  notificationsEnabled         Boolean @default(true) // включить уведомления клиентам
-  reminderHours                Int     @default(24) // за сколько часов до записи отправлять напоминание
+  // publicServiceCardsWithPhotos Boolean @default(true)
+  // publicTheme                  String  @default("light")
+  // dailyBookingLimit            Int     @default(3) // лимит записей на клиента в день
+  // notificationsEnabled         Boolean @default(true) // включить уведомления клиентам
+  // reminderHours                Int     @default(24) // за сколько часов до записи отправлять напоминание
   
   createdAt                  DateTime   @default(now())
   updatedAt                  DateTime   @updatedAt

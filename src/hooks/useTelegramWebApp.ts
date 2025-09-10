@@ -250,7 +250,7 @@ export const useTelegramWebApp = () => {
 
         // Устанавливаем данные только если есть реальные данные пользователя
         // Это отличает настоящий WebApp от браузера с загруженным скриптом
-        const isRealWebApp = user && user.id && tg.initData && tg.initData !== ''
+        const isRealWebApp = Boolean(user && user.id && tg.initData && tg.initData !== '')
         
         setData(prev => ({
           ...prev,

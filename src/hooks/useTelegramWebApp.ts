@@ -248,19 +248,28 @@ export const useTelegramWebApp = () => {
           themeParams: tg.themeParams
         })
 
-        // Устанавливаем данные
+        // Устанавливаем данные только если есть реальные данные пользователя
+        // Это отличает настоящий WebApp от браузера с загруженным скриптом
+        const isRealWebApp = user && user.id && tg.initData && tg.initData !== ''
+        
         setData(prev => ({
           ...prev,
-          isAvailable: true,
-          isReady: true,
+          isAvailable: isRealWebApp,
+          isReady: isRealWebApp,
           user: user || null,
-          webApp: tg,
+          webApp: isRealWebApp ? tg : null,
           startParam: startParam || null,
           platform: tg.platform,
           version: tg.version,
           colorScheme: tg.colorScheme,
           themeParams: tg.themeParams
         }))
+
+        if (isRealWebApp) {
+          addLog('✅ Real Telegram WebApp detected with user data')
+        } else {
+          addLog('⚠️ Telegram WebApp script loaded but no real user data - treating as public page')
+        }
 
         // Настраиваем обработчики событий
         const handleViewportChanged = () => {

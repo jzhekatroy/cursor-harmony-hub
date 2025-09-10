@@ -57,9 +57,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Находим команду по slug
-    const team = await prisma.team.findUnique({
-      where: { slug: teamSlug }
+    // Находим команду по slug или bookingSlug
+    const team = await prisma.team.findFirst({
+      where: {
+        OR: [
+          { slug: teamSlug },
+          { bookingSlug: teamSlug }
+        ]
+      }
     })
 
     if (!team) {

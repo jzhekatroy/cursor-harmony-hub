@@ -65,9 +65,11 @@ export function EnhancedClientInfoAndConfirmation({
 
   // Функция для запроса номера телефона через Telegram WebApp
   const requestPhoneNumber = async () => {
-    if (!telegramWebApp.webApp) {
-      console.error('❌ Telegram WebApp недоступен')
-      alert('Telegram WebApp недоступен')
+    if (!telegramWebApp.webApp || !telegramWebApp.user) {
+      console.error('❌ Telegram WebApp недоступен или нет данных пользователя')
+      if (telegramWebApp.webApp) {
+        alert('Telegram WebApp недоступен')
+      }
       return
     }
 
@@ -139,6 +141,16 @@ export function EnhancedClientInfoAndConfirmation({
           setIsRequestingPhone(false)
           return
         }
+      }
+
+      // Проверяем версию WebApp только если метод requestContact доступен
+      const webAppVersion = telegramWebApp.webApp.version
+      console.log('📱 WebApp version:', webAppVersion)
+      
+      // Если версия WebApp меньше 6.1, requestContact может не работать корректно
+      if (webAppVersion && parseFloat(webAppVersion) < 6.1) {
+        console.log('⚠️ WebApp version', webAppVersion, 'may not support requestContact properly')
+        // Продолжаем выполнение, но с предупреждением
       }
 
       console.log('✅ requestContact method available, proceeding with contact request...')

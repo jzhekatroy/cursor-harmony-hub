@@ -41,6 +41,8 @@ export interface TimeSlot {
 
 export interface ClientInfo {
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone: string;
   email?: string;
   notes?: string;

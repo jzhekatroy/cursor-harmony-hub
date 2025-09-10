@@ -61,6 +61,8 @@ export function EnhancedClientInfoAndConfirmation({
             onClientInfoChange({
               ...bookingData.clientInfo,
               name: fullName,
+              firstName: data.client.firstName || telegramWebApp.user.first_name || '',
+              lastName: data.client.lastName || telegramWebApp.user.last_name || '',
               phone: data.client.phone || bookingData.clientInfo.phone,
               email: data.client.email || bookingData.clientInfo.email
             })
@@ -73,7 +75,9 @@ export function EnhancedClientInfoAndConfirmation({
             if (fullName) {
               onClientInfoChange({
                 ...bookingData.clientInfo,
-                name: fullName
+                name: fullName,
+                firstName: firstName,
+                lastName: lastName
               })
             }
           }
@@ -333,8 +337,12 @@ export function EnhancedClientInfoAndConfirmation({
   const validateForm = (): boolean => {
     const newErrors: Partial<ClientInfo> = {}
 
-    if (!bookingData.clientInfo.name.trim()) {
-      newErrors.name = 'Имя обязательно'
+    if (!bookingData.clientInfo.firstName?.trim()) {
+      newErrors.firstName = 'Имя обязательно'
+    }
+
+    if (!bookingData.clientInfo.lastName?.trim()) {
+      newErrors.lastName = 'Фамилия обязательна'
     }
 
     if (!bookingData.clientInfo.phone.trim()) {
@@ -405,7 +413,9 @@ export function EnhancedClientInfoAndConfirmation({
           masterId: bookingData.master?.id,
           startTime: startTime,
           clientData: {
-            name: bookingData.clientInfo.name,
+            name: `${bookingData.clientInfo.firstName || ''} ${bookingData.clientInfo.lastName || ''}`.trim(),
+            firstName: bookingData.clientInfo.firstName,
+            lastName: bookingData.clientInfo.lastName,
             phone: phoneE164,
             email: bookingData.clientInfo.email,
             notes: bookingData.clientInfo.notes,
@@ -588,25 +598,49 @@ export function EnhancedClientInfoAndConfirmation({
 
             {/* Имя */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
                 Ваше имя *
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
-                  id="name"
+                  id="firstName"
                   type="text"
                   placeholder="Введите ваше имя"
-                  value={bookingData.clientInfo.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  value={bookingData.clientInfo.firstName || ''}
+                  onChange={(e) => handleInputChange('firstName', e.target.value)}
                   className={cn(
                     "pl-10",
-                    errors.name ? 'border-red-500 focus:border-red-500' : ''
+                    errors.firstName ? 'border-red-500 focus:border-red-500' : ''
                   )}
                 />
               </div>
-              {errors.name && (
-                <p className="text-red-500 text-sm mt-1">{errors.name}</p>
+              {errors.firstName && (
+                <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
+              )}
+            </div>
+
+            {/* Фамилия */}
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                Ваша фамилия *
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Input
+                  id="lastName"
+                  type="text"
+                  placeholder="Введите вашу фамилию"
+                  value={bookingData.clientInfo.lastName || ''}
+                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  className={cn(
+                    "pl-10",
+                    errors.lastName ? 'border-red-500 focus:border-red-500' : ''
+                  )}
+                />
+              </div>
+              {errors.lastName && (
+                <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
               )}
             </div>
 

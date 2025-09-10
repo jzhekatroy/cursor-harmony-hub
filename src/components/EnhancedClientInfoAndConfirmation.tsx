@@ -35,36 +35,49 @@ export function EnhancedClientInfoAndConfirmation({
   const [isInitialized, setIsInitialized] = useState(false)
   const telegramWebApp = useTelegramWebApp()
 
+  console.log(`🎯 EnhancedClientInfoAndConfirmation rendered:
+    isAvailable: ${telegramWebApp.isAvailable}
+    user: ${JSON.stringify(telegramWebApp.user, null, 2)}
+    clientInfo: ${JSON.stringify(bookingData.clientInfo, null, 2)}`)
+
   // Поиск существующего клиента по telegramId (только для WebApp)
   React.useEffect(() => {
+    console.log(`🔄 useEffect triggered:
+      isAvailable: ${telegramWebApp.isAvailable}
+      userId: ${telegramWebApp.user?.id}
+      isLoadingClient: ${isLoadingClient}
+      isInitialized: ${isInitialized}
+      user: ${JSON.stringify(telegramWebApp.user, null, 2)}`)
+    
     const fetchExistingClient = async () => {
-      console.log('🔍 fetchExistingClient called:', {
-        isAvailable: telegramWebApp.isAvailable,
-        userId: telegramWebApp.user?.id,
-        isLoadingClient,
-        isInitialized
-      })
+      console.log(`🔍 fetchExistingClient called:
+        isAvailable: ${telegramWebApp.isAvailable}
+        userId: ${telegramWebApp.user?.id}
+        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}`)
       
       if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
-        console.log('❌ fetchExistingClient skipped:', {
-          isAvailable: telegramWebApp.isAvailable,
-          userId: telegramWebApp.user?.id,
-          isLoadingClient,
-          isInitialized
-        })
+        console.log(`❌ fetchExistingClient skipped:
+          isAvailable: ${telegramWebApp.isAvailable}
+          userId: ${telegramWebApp.user?.id}
+          isLoadingClient: ${isLoadingClient}
+          isInitialized: ${isInitialized}`)
         return
       }
 
       setIsLoadingClient(true)
       try {
         const teamSlug = window.location.pathname.split('/')[2]
-        console.log('🔍 Fetching client for:', { telegramId: telegramWebApp.user.id, teamSlug })
+        console.log(`🔍 Fetching client for:
+          telegramId: ${telegramWebApp.user.id}
+          teamSlug: ${teamSlug}`)
         
         const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user.id}&teamSlug=${teamSlug}`)
         
         if (response.ok) {
           const data = await response.json()
-          console.log('📦 Client data received:', data)
+          console.log(`📦 Client data received:
+            ${JSON.stringify(data, null, 2)}`)
           setExistingClient(data.client)
           
           // Инициализируем поля на основе найденного клиента или Telegram данных
@@ -74,7 +87,10 @@ export function EnhancedClientInfoAndConfirmation({
             const lastName = data.client.lastName || telegramWebApp.user.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
             
-            console.log('✅ Client found in DB, using DB data:', { firstName, lastName, fullName })
+            console.log(`✅ Client found in DB, using DB data:
+              firstName: ${firstName}
+              lastName: ${lastName}
+              fullName: ${fullName}`)
             
             const newClientInfo = {
               ...bookingData.clientInfo,
@@ -85,7 +101,8 @@ export function EnhancedClientInfoAndConfirmation({
               email: data.client.email || bookingData.clientInfo.email
             }
             
-            console.log('📝 Calling onClientInfoChange with:', newClientInfo)
+            console.log(`📝 Calling onClientInfoChange with:
+              ${JSON.stringify(newClientInfo, null, 2)}`)
             onClientInfoChange(newClientInfo)
             
             // Отправляем лог на сервер
@@ -110,7 +127,10 @@ export function EnhancedClientInfoAndConfirmation({
             const lastName = telegramWebApp.user.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
             
-            console.log('✅ Client not found in DB, using Telegram data:', { firstName, lastName, fullName })
+            console.log(`✅ Client not found in DB, using Telegram data:
+              firstName: ${firstName}
+              lastName: ${lastName}
+              fullName: ${fullName}`)
             
             if (fullName) {
               const newClientInfo = {
@@ -120,7 +140,8 @@ export function EnhancedClientInfoAndConfirmation({
                 lastName: lastName
               }
               
-              console.log('📝 Calling onClientInfoChange with:', newClientInfo)
+              console.log(`📝 Calling onClientInfoChange with:
+                ${JSON.stringify(newClientInfo, null, 2)}`)
               onClientInfoChange(newClientInfo)
               
               // Отправляем лог на сервер
@@ -141,7 +162,9 @@ export function EnhancedClientInfoAndConfirmation({
             }
           }
         } else {
-          console.log('❌ Failed to fetch client data:', response.status, response.statusText)
+          console.log(`❌ Failed to fetch client data:
+            status: ${response.status}
+            statusText: ${response.statusText}`)
         }
       } catch (error) {
         console.error('Error fetching existing client:', error)
@@ -666,7 +689,7 @@ export function EnhancedClientInfoAndConfirmation({
                   placeholder="Введите ваше имя"
                   value={bookingData.clientInfo.firstName || ''}
                   onChange={(e) => {
-                    console.log('📝 firstName changed:', e.target.value)
+                    console.log(`📝 firstName changed: "${e.target.value}"`)
                     handleInputChange('firstName', e.target.value)
                   }}
                   className={cn(
@@ -694,7 +717,7 @@ export function EnhancedClientInfoAndConfirmation({
                   placeholder="Введите вашу фамилию"
                   value={bookingData.clientInfo.lastName || ''}
                   onChange={(e) => {
-                    console.log('📝 lastName changed:', e.target.value)
+                    console.log(`📝 lastName changed: "${e.target.value}"`)
                     handleInputChange('lastName', e.target.value)
                   }}
                   className={cn(

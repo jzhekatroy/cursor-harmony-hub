@@ -92,12 +92,18 @@ export default function BookingWidget() {
       })
     }).catch(e => console.error('Failed to send log:', e))
     
-    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
+    // Проверяем, нужно ли инициализировать поля
+    const needsInitialization = !bookingData.clientInfo.firstName && !bookingData.clientInfo.lastName && 
+                                telegramWebApp.user?.first_name
+    
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || !needsInitialization) {
       console.log(`❌ Parent useEffect skipped:
         isAvailable: ${telegramWebApp.isAvailable}
         userId: ${telegramWebApp.user?.id}
         isLoadingClient: ${isLoadingClient}
-        isInitialized: ${isInitialized}`)
+        needsInitialization: ${needsInitialization}
+        currentFirstName: ${bookingData.clientInfo.firstName}
+        currentLastName: ${bookingData.clientInfo.lastName}`)
       
       // Отправляем лог на сервер о том, что useEffect пропущен
       fetch('/api/telegram/logs', {
@@ -110,7 +116,9 @@ export default function BookingWidget() {
             isAvailable: telegramWebApp.isAvailable,
             userId: telegramWebApp.user?.id,
             isLoadingClient: isLoadingClient,
-            isInitialized: isInitialized,
+            needsInitialization: needsInitialization,
+            currentFirstName: bookingData.clientInfo.firstName,
+            currentLastName: bookingData.clientInfo.lastName,
             timestamp: new Date().toISOString()
           }
         })
@@ -267,7 +275,7 @@ export default function BookingWidget() {
     }
 
     fetchExistingClient()
-  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id])
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, bookingData.clientInfo.firstName, bookingData.clientInfo.lastName])
 
   const loadInitialData = async () => {
     try {

@@ -104,7 +104,7 @@ export default function BookingWidget() {
       telegramLastName: "${telegramWebApp.user?.last_name}"
       needsInitialization: ${needsInitialization}`)
     
-    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || !needsInitialization) {
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || !needsInitialization || isInitialized) {
       console.log(`❌ Parent useEffect skipped:
         isAvailable: ${telegramWebApp.isAvailable}
         userId: ${telegramWebApp.user?.id}
@@ -114,7 +114,8 @@ export default function BookingWidget() {
         currentLastName: ${bookingData.clientInfo.lastName}
         REASON: ${!telegramWebApp.isAvailable ? 'not available' : 
                  !telegramWebApp.user?.id ? 'no user id' : 
-                 !needsInitialization ? 'no need init' : 'unknown'}`)
+                 !needsInitialization ? 'no need init' : 
+                 isInitialized ? 'already initialized' : 'unknown'}`)
       
       // Отправляем лог на сервер о том, что useEffect пропущен
       fetch('/api/telegram/logs', {

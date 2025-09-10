@@ -152,7 +152,7 @@ export default function BookingWidget() {
           level: 'INFO',
           message: 'PARENT_FETCH_EXISTING_CLIENT_STARTING',
           data: {
-            telegramId: telegramWebApp.user.id,
+            telegramId: telegramWebApp.user?.id,
             timestamp: new Date().toISOString()
           }
         })
@@ -161,10 +161,10 @@ export default function BookingWidget() {
       try {
         const teamSlug = window.location.pathname.split('/')[2]
         console.log(`🔍 Parent Fetching client for:
-          telegramId: ${telegramWebApp.user.id}
+          telegramId: ${telegramWebApp.user?.id}
           teamSlug: ${teamSlug}`)
         
-        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user.id}&teamSlug=${teamSlug}`)
+        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
         
         if (response.ok) {
           const data = await response.json()
@@ -175,8 +175,8 @@ export default function BookingWidget() {
           // Инициализируем поля на основе найденного клиента или Telegram данных
           if (data.client) {
             // Клиент найден - используем данные из БД
-            const firstName = data.client.firstName || telegramWebApp.user.first_name || ''
-            const lastName = data.client.lastName || telegramWebApp.user.last_name || ''
+            const firstName = data.client.firstName || telegramWebApp.user?.first_name || ''
+            const lastName = data.client.lastName || telegramWebApp.user?.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
             
             console.log(`✅ Parent Client found in DB, using DB data:
@@ -187,8 +187,8 @@ export default function BookingWidget() {
             const newClientInfo = {
               ...bookingData.clientInfo,
               name: fullName,
-              firstName: data.client.firstName || telegramWebApp.user.first_name || '',
-              lastName: data.client.lastName || telegramWebApp.user.last_name || '',
+              firstName: data.client.firstName || telegramWebApp.user?.first_name || '',
+              lastName: data.client.lastName || telegramWebApp.user?.last_name || '',
               phone: data.client.phone || bookingData.clientInfo.phone,
               email: data.client.email || bookingData.clientInfo.email
             }
@@ -215,8 +215,8 @@ export default function BookingWidget() {
             }).catch(e => console.error('Failed to send log:', e))
           } else {
             // Клиент не найден - используем данные из Telegram
-            const firstName = telegramWebApp.user.first_name || ''
-            const lastName = telegramWebApp.user.last_name || ''
+            const firstName = telegramWebApp.user?.first_name || ''
+            const lastName = telegramWebApp.user?.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
             
             console.log(`✅ Parent Client not found in DB, using Telegram data:

@@ -74,18 +74,32 @@ export default function BookingWidget() {
       try {
         // Получаем данные клиента из БД
         const teamSlug = window.location.pathname.split('/')[2]
+        console.log('🔍 Loading client data:', {
+          telegramId: telegramWebApp.user?.id,
+          teamSlug: teamSlug
+        })
+        
         const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
+        console.log('🔍 API response status:', response.status)
         
         if (response.ok) {
           const data = await response.json()
+          console.log('🔍 API response data:', data)
           
           if (data.client) {
             // Клиент найден в БД
             const dbFirstName = data.client.firstName || ''
             const dbLastName = data.client.lastName || ''
             
+            console.log('🔍 Client data from DB:', {
+              firstName: dbFirstName,
+              lastName: dbLastName,
+              fullClient: data.client
+            })
+            
             if (dbFirstName || dbLastName) {
               // В БД есть данные - используем их
+              console.log('✅ Using DB data:', { firstName: dbFirstName, lastName: dbLastName })
               setBookingData(prev => ({
                 ...prev,
                 clientInfo: {
@@ -96,6 +110,7 @@ export default function BookingWidget() {
               }))
             } else {
               // В БД пусто - используем Telegram данные
+              console.log('⚠️ DB data empty, using Telegram data')
               setBookingData(prev => ({
                 ...prev,
                 clientInfo: {
@@ -107,6 +122,7 @@ export default function BookingWidget() {
             }
           } else {
             // Клиент не найден - используем Telegram данные
+            console.log('❌ Client not found in DB, using Telegram data')
             setBookingData(prev => ({
               ...prev,
               clientInfo: {
@@ -118,6 +134,7 @@ export default function BookingWidget() {
           }
         } else {
           // Ошибка API - используем Telegram данные
+          console.log('❌ API error, using Telegram data')
           setBookingData(prev => ({
             ...prev,
             clientInfo: {
@@ -129,6 +146,7 @@ export default function BookingWidget() {
         }
       } catch (error) {
         // Ошибка - используем Telegram данные
+        console.log('❌ Error loading client data:', error)
         setBookingData(prev => ({
           ...prev,
           clientInfo: {

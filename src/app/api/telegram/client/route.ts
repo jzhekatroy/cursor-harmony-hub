@@ -7,6 +7,8 @@ export async function GET(request: NextRequest) {
     const telegramId = searchParams.get('telegramId')
     const teamSlug = searchParams.get('teamSlug')
 
+    console.log('🔍 Telegram client API called:', { telegramId, teamSlug })
+
     if (!telegramId || !teamSlug) {
       return NextResponse.json(
         { error: 'telegramId and teamSlug are required' },
@@ -49,6 +51,16 @@ export async function GET(request: NextRequest) {
         telegramLastName: true,
         telegramLanguageCode: true
       }
+    })
+
+    console.log('🔍 Client found in DB:', {
+      found: !!client,
+      client: client ? {
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        telegramId: client.telegramId?.toString()
+      } : null
     })
 
     return NextResponse.json({ client })

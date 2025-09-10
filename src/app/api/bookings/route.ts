@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     // Нормализуем телефон в E.164
     const { e164: phoneE164 } = toE164(clientData.phone || '', (team as any).countryCode || 'RU')
 
-    // Если нового клиента не находим по email/телефону, потребуем имя и телефон
+    // Для WebApp ищем по telegramId, для публичной страницы по телефону
     const emailTrim = (clientData.email || '').trim()
 
     let client = null as null | (typeof prisma.client extends { findFirst: any } ? any : never)

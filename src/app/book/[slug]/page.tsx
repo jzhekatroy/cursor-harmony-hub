@@ -56,10 +56,218 @@ export default function BookingWidget() {
     totalDuration: 0,
   })
 
+  // Состояния для инициализации клиента
+  const [isLoadingClient, setIsLoadingClient] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [existingClient, setExistingClient] = useState<any>(null)
+
   // Загрузка данных
   useEffect(() => {
     loadInitialData()
   }, [slug])
+
+  // Инициализация данных клиента при загрузке WebApp
+  useEffect(() => {
+    console.log(`🔄 Parent useEffect triggered:
+      isAvailable: ${telegramWebApp.isAvailable}
+      userId: ${telegramWebApp.user?.id}
+      isLoadingClient: ${isLoadingClient}
+      isInitialized: ${isInitialized}
+      user: ${JSON.stringify(telegramWebApp.user, null, 2)}`)
+    
+    // Отправляем лог на сервер для диагностики
+    fetch('/api/telegram/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'INFO',
+        message: 'PARENT_USE_EFFECT_TRIGGERED',
+        data: {
+          isAvailable: telegramWebApp.isAvailable,
+          userId: telegramWebApp.user?.id,
+          isLoadingClient: isLoadingClient,
+          isInitialized: isInitialized,
+          timestamp: new Date().toISOString()
+        }
+      })
+    }).catch(e => console.error('Failed to send log:', e))
+    
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
+      console.log(`❌ Parent useEffect skipped:
+        isAvailable: ${telegramWebApp.isAvailable}
+        userId: ${telegramWebApp.user?.id}
+        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}`)
+      
+      // Отправляем лог на сервер о том, что useEffect пропущен
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'WARN',
+          message: 'PARENT_USE_EFFECT_SKIPPED',
+          data: {
+            isAvailable: telegramWebApp.isAvailable,
+            userId: telegramWebApp.user?.id,
+            isLoadingClient: isLoadingClient,
+            isInitialized: isInitialized,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+      return
+    }
+
+    const fetchExistingClient = async () => {
+      console.log(`🔍 Parent fetchExistingClient called:
+        isAvailable: ${telegramWebApp.isAvailable}
+        userId: ${telegramWebApp.user?.id}
+        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}`)
+      
+      // Отправляем лог на сервер для диагностики
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'INFO',
+          message: 'PARENT_FETCH_EXISTING_CLIENT_CALLED',
+          data: {
+            isAvailable: telegramWebApp.isAvailable,
+            userId: telegramWebApp.user?.id,
+            isLoadingClient: isLoadingClient,
+            isInitialized: isInitialized,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+
+      setIsLoadingClient(true)
+      
+      // Отправляем лог на сервер о начале выполнения
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'INFO',
+          message: 'PARENT_FETCH_EXISTING_CLIENT_STARTING',
+          data: {
+            telegramId: telegramWebApp.user.id,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+      
+      try {
+        const teamSlug = window.location.pathname.split('/')[2]
+        console.log(`🔍 Parent Fetching client for:
+          telegramId: ${telegramWebApp.user.id}
+          teamSlug: ${teamSlug}`)
+        
+        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user.id}&teamSlug=${teamSlug}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          console.log(`📦 Parent Client data received:
+            ${JSON.stringify(data, null, 2)}`)
+          setExistingClient(data.client)
+          
+          // Инициализируем поля на основе найденного клиента или Telegram данных
+          if (data.client) {
+            // Клиент найден - используем данные из БД
+            const firstName = data.client.firstName || telegramWebApp.user.first_name || ''
+            const lastName = data.client.lastName || telegramWebApp.user.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+            
+            console.log(`✅ Parent Client found in DB, using DB data:
+              firstName: ${firstName}
+              lastName: ${lastName}
+              fullName: ${fullName}`)
+            
+            const newClientInfo = {
+              ...bookingData.clientInfo,
+              name: fullName,
+              firstName: data.client.firstName || telegramWebApp.user.first_name || '',
+              lastName: data.client.lastName || telegramWebApp.user.last_name || '',
+              phone: data.client.phone || bookingData.clientInfo.phone,
+              email: data.client.email || bookingData.clientInfo.email
+            }
+            
+            console.log(`📝 Parent Calling setBookingData with:
+              ${JSON.stringify(newClientInfo, null, 2)}`)
+            setBookingData(prev => ({ ...prev, clientInfo: newClientInfo }))
+            
+            // Отправляем лог на сервер
+            fetch('/api/telegram/logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                level: 'INFO',
+                message: 'PARENT_CLIENT_FOUND_IN_DB',
+                data: { 
+                  clientId: data.client.id,
+                  firstName: newClientInfo.firstName,
+                  lastName: newClientInfo.lastName,
+                  fullName: newClientInfo.name,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            }).catch(e => console.error('Failed to send log:', e))
+          } else {
+            // Клиент не найден - используем данные из Telegram
+            const firstName = telegramWebApp.user.first_name || ''
+            const lastName = telegramWebApp.user.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+            
+            console.log(`✅ Parent Client not found in DB, using Telegram data:
+              firstName: ${firstName}
+              lastName: ${lastName}
+              fullName: ${fullName}`)
+            
+            if (fullName) {
+              const newClientInfo = {
+                ...bookingData.clientInfo,
+                name: fullName,
+                firstName: firstName,
+                lastName: lastName
+              }
+              
+              console.log(`📝 Parent Calling setBookingData with:
+                ${JSON.stringify(newClientInfo, null, 2)}`)
+              setBookingData(prev => ({ ...prev, clientInfo: newClientInfo }))
+              
+              // Отправляем лог на сервер
+              fetch('/api/telegram/logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  level: 'INFO',
+                  message: 'PARENT_CLIENT_NOT_FOUND_USING_TELEGRAM',
+                  data: { 
+                    firstName: newClientInfo.firstName,
+                    lastName: newClientInfo.lastName,
+                    fullName: newClientInfo.name,
+                    timestamp: new Date().toISOString()
+                  }
+                })
+              }).catch(e => console.error('Failed to send log:', e))
+            }
+          }
+        } else {
+          console.log(`❌ Parent Failed to fetch client data:
+            status: ${response.status}
+            statusText: ${response.statusText}`)
+        }
+      } catch (error) {
+        console.error('Parent Error fetching existing client:', error)
+      } finally {
+        setIsLoadingClient(false)
+        setIsInitialized(true)
+      }
+    }
+
+    fetchExistingClient()
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id])
 
   const loadInitialData = async () => {
     try {

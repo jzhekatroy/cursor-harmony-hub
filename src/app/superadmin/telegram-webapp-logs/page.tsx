@@ -139,31 +139,28 @@ export default function TelegramWebAppLogsPage() {
               <p>Логи не найдены</p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {filteredLogs.map((log) => (
-                <div key={log.id} className="border rounded-lg p-4 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={getLevelColor(log.level)}>
-                        {log.level}
-                      </Badge>
-                      <span className="text-sm text-gray-600">
-                        {formatDate(log.createdAt)}
-                      </span>
-                    </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {filteredLogs.map((log, index) => (
+                <div key={log.id} className="border-l-4 border-blue-200 pl-3 py-2 bg-gray-50 rounded-r">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant={getLevelColor(log.level)} className="text-xs">
+                      {log.level}
+                    </Badge>
+                    <span className="text-xs text-gray-600">
+                      {formatDate(log.createdAt)}
+                    </span>
+                    <span className="text-xs text-gray-400">#{filteredLogs.length - index}</span>
                   </div>
                   
-                  <div className="mb-2">
-                    <p className="font-medium text-gray-900">{log.message}</p>
-                  </div>
+                  <div className="text-sm font-medium text-gray-900 mb-1">{log.message}</div>
                   
                   {log.data && (
-                    <div className="mt-2">
+                    <div className="mt-1">
                       <details className="cursor-pointer">
-                        <summary className="text-sm text-blue-600 hover:text-blue-800">
+                        <summary className="text-xs text-blue-600 hover:text-blue-800">
                           Показать данные
                         </summary>
-                        <pre className="mt-2 p-3 bg-gray-100 rounded text-xs overflow-x-auto">
+                        <pre className="mt-1 p-2 bg-white rounded text-xs overflow-x-auto border">
                           {JSON.stringify(log.data, null, 2)}
                         </pre>
                       </details>

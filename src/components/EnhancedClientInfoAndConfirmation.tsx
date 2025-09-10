@@ -49,6 +49,49 @@ export function EnhancedClientInfoAndConfirmation({
       isInitialized: ${isInitialized}
       user: ${JSON.stringify(telegramWebApp.user, null, 2)}`)
     
+    // Отправляем лог на сервер для диагностики
+    fetch('/api/telegram/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'INFO',
+        message: 'USE_EFFECT_TRIGGERED',
+        data: {
+          isAvailable: telegramWebApp.isAvailable,
+          userId: telegramWebApp.user?.id,
+          isLoadingClient: isLoadingClient,
+          isInitialized: isInitialized,
+          timestamp: new Date().toISOString()
+        }
+      })
+    }).catch(e => console.error('Failed to send log:', e))
+    
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
+      console.log(`❌ useEffect skipped:
+        isAvailable: ${telegramWebApp.isAvailable}
+        userId: ${telegramWebApp.user?.id}
+        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}`)
+      
+      // Отправляем лог на сервер о том, что useEffect пропущен
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'WARN',
+          message: 'USE_EFFECT_SKIPPED',
+          data: {
+            isAvailable: telegramWebApp.isAvailable,
+            userId: telegramWebApp.user?.id,
+            isLoadingClient: isLoadingClient,
+            isInitialized: isInitialized,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+      return
+    }
+    
     const fetchExistingClient = async () => {
       console.log(`🔍 fetchExistingClient called:
         isAvailable: ${telegramWebApp.isAvailable}
@@ -56,16 +99,65 @@ export function EnhancedClientInfoAndConfirmation({
         isLoadingClient: ${isLoadingClient}
         isInitialized: ${isInitialized}`)
       
+      // Отправляем лог на сервер для диагностики
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'INFO',
+          message: 'FETCH_EXISTING_CLIENT_CALLED',
+          data: {
+            isAvailable: telegramWebApp.isAvailable,
+            userId: telegramWebApp.user?.id,
+            isLoadingClient: isLoadingClient,
+            isInitialized: isInitialized,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+      
       if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
         console.log(`❌ fetchExistingClient skipped:
           isAvailable: ${telegramWebApp.isAvailable}
           userId: ${telegramWebApp.user?.id}
           isLoadingClient: ${isLoadingClient}
           isInitialized: ${isInitialized}`)
+        
+        // Отправляем лог на сервер о том, что функция пропущена
+        fetch('/api/telegram/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            level: 'WARN',
+            message: 'FETCH_EXISTING_CLIENT_SKIPPED',
+            data: {
+              isAvailable: telegramWebApp.isAvailable,
+              userId: telegramWebApp.user?.id,
+              isLoadingClient: isLoadingClient,
+              isInitialized: isInitialized,
+              timestamp: new Date().toISOString()
+            }
+          })
+        }).catch(e => console.error('Failed to send log:', e))
         return
       }
 
       setIsLoadingClient(true)
+      
+      // Отправляем лог на сервер о начале выполнения
+      fetch('/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: 'INFO',
+          message: 'FETCH_EXISTING_CLIENT_STARTING',
+          data: {
+            telegramId: telegramWebApp.user.id,
+            timestamp: new Date().toISOString()
+          }
+        })
+      }).catch(e => console.error('Failed to send log:', e))
+      
       try {
         const teamSlug = window.location.pathname.split('/')[2]
         console.log(`🔍 Fetching client for:
@@ -175,7 +267,7 @@ export function EnhancedClientInfoAndConfirmation({
     }
 
     fetchExistingClient()
-  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, onClientInfoChange, isLoadingClient, isInitialized])
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, onClientInfoChange])
 
   // Автоматический запрос номера телефона для WebApp
   React.useEffect(() => {

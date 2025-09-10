@@ -66,6 +66,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               <Link href="/superadmin/telegram-logs" className="block px-3 py-2 rounded hover:bg-gray-50 text-gray-700">📱 Telegram Logs</Link>
             </li>
             <li>
+              <Link href="/superadmin/telegram-webapp-logs" className="block px-3 py-2 rounded hover:bg-gray-50 text-gray-700">🔍 WebApp Debug</Link>
+            </li>
+            <li>
               <Link href="/debug-phone-logs" className="block px-3 py-2 rounded hover:bg-gray-50 text-gray-700">📞 Логи телефона</Link>
             </li>
             <li>

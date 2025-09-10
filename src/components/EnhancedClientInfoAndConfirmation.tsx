@@ -76,14 +76,34 @@ export function EnhancedClientInfoAndConfirmation({
             
             console.log('✅ Client found in DB, using DB data:', { firstName, lastName, fullName })
             
-            onClientInfoChange({
+            const newClientInfo = {
               ...bookingData.clientInfo,
               name: fullName,
               firstName: data.client.firstName || telegramWebApp.user.first_name || '',
               lastName: data.client.lastName || telegramWebApp.user.last_name || '',
               phone: data.client.phone || bookingData.clientInfo.phone,
               email: data.client.email || bookingData.clientInfo.email
-            })
+            }
+            
+            console.log('📝 Calling onClientInfoChange with:', newClientInfo)
+            onClientInfoChange(newClientInfo)
+            
+            // Отправляем лог на сервер
+            fetch('/api/telegram/logs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                level: 'INFO',
+                message: 'CLIENT_FOUND_IN_DB',
+                data: { 
+                  clientId: data.client.id,
+                  firstName: newClientInfo.firstName,
+                  lastName: newClientInfo.lastName,
+                  fullName: newClientInfo.name,
+                  timestamp: new Date().toISOString()
+                }
+              })
+            }).catch(e => console.error('Failed to send log:', e))
           } else {
             // Клиент не найден - используем данные из Telegram
             const firstName = telegramWebApp.user.first_name || ''
@@ -93,12 +113,31 @@ export function EnhancedClientInfoAndConfirmation({
             console.log('✅ Client not found in DB, using Telegram data:', { firstName, lastName, fullName })
             
             if (fullName) {
-              onClientInfoChange({
+              const newClientInfo = {
                 ...bookingData.clientInfo,
                 name: fullName,
                 firstName: firstName,
                 lastName: lastName
-              })
+              }
+              
+              console.log('📝 Calling onClientInfoChange with:', newClientInfo)
+              onClientInfoChange(newClientInfo)
+              
+              // Отправляем лог на сервер
+              fetch('/api/telegram/logs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  level: 'INFO',
+                  message: 'CLIENT_NOT_FOUND_USING_TELEGRAM',
+                  data: { 
+                    firstName: newClientInfo.firstName,
+                    lastName: newClientInfo.lastName,
+                    fullName: newClientInfo.name,
+                    timestamp: new Date().toISOString()
+                  }
+                })
+              }).catch(e => console.error('Failed to send log:', e))
             }
           }
         } else {

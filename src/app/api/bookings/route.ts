@@ -299,8 +299,8 @@ export async function POST(request: NextRequest) {
       
       // Пытаемся создать клиента, если он не найден. На случай гонки (P2002) — перезапрашиваем существующего
       try {
-      client = await prisma.client.create({
-        data: {
+        client = await prisma.client.create({
+          data: {
             email: emailForCreate,
             phone: phoneE164,
             telegramId: clientData.telegramId ? BigInt(clientData.telegramId) : null,
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
             telegramLastName: clientData.telegramLastName || null,
             firstName: clientData.firstName || parsedFirstName,
             lastName: clientData.lastName || parsedLastName,
-          address: clientData.address,
+            address: clientData.address,
             teamId: team.id,
             source: clientData.telegramId ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE'
           }

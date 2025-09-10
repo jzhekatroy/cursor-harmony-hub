@@ -95,7 +95,7 @@ export default function BookingWidget() {
     
     // Проверяем, нужно ли инициализировать поля
     const needsInitialization = !bookingData.clientInfo.firstName && !bookingData.clientInfo.lastName && 
-                                telegramWebApp.user?.first_name
+                                !!telegramWebApp.user?.first_name
     
     console.log(`🔍 Parent needsInitialization check:
       firstName: "${bookingData.clientInfo.firstName}"

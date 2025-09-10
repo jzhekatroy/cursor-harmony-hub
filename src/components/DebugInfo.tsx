@@ -32,7 +32,7 @@ export function DebugInfo({ bookingData }: DebugInfoProps) {
       
       const needsInitialization = !bookingData.clientInfo.firstName && 
                                 !bookingData.clientInfo.lastName && 
-                                telegramWebApp.user?.first_name
+                                !!telegramWebApp.user?.first_name
       
       addLog(`needsInitialization: ${needsInitialization}`)
       addLog(`firstName: "${bookingData.clientInfo.firstName}"`)

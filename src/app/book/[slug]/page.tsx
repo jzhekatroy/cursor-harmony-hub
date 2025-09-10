@@ -96,6 +96,13 @@ export default function BookingWidget() {
     const needsInitialization = !bookingData.clientInfo.firstName && !bookingData.clientInfo.lastName && 
                                 telegramWebApp.user?.first_name
     
+    console.log(`🔍 Parent needsInitialization check:
+      firstName: "${bookingData.clientInfo.firstName}"
+      lastName: "${bookingData.clientInfo.lastName}"
+      telegramFirstName: "${telegramWebApp.user?.first_name}"
+      telegramLastName: "${telegramWebApp.user?.last_name}"
+      needsInitialization: ${needsInitialization}`)
+    
     if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || !needsInitialization) {
       console.log(`❌ Parent useEffect skipped:
         isAvailable: ${telegramWebApp.isAvailable}

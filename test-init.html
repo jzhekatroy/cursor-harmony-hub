@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Client Init</title>
+</head>
+<body>
+    <h1>Test Client Initialization</h1>
+    <div id="output"></div>
+    
+    <script>
+        // Симулируем Telegram WebApp данные
+        const mockTelegramWebApp = {
+            isAvailable: true,
+            user: {
+                id: 1420482895,
+                first_name: "Евгений",
+                last_name: "Троянов"
+            }
+        };
+        
+        // Симулируем bookingData
+        let bookingData = {
+            clientInfo: {
+                firstName: '',
+                lastName: '',
+                name: '',
+                phone: '',
+                email: '',
+                notes: ''
+            }
+        };
+        
+        // Тестируем логику needsInitialization
+        const needsInitialization = !bookingData.clientInfo.firstName && 
+                                  !bookingData.clientInfo.lastName && 
+                                  mockTelegramWebApp.user?.first_name;
+        
+        console.log('Test results:');
+        console.log('needsInitialization:', needsInitialization);
+        console.log('currentFirstName:', bookingData.clientInfo.firstName);
+        console.log('currentLastName:', bookingData.clientInfo.lastName);
+        console.log('telegramFirstName:', mockTelegramWebApp.user?.first_name);
+        console.log('telegramLastName:', mockTelegramWebApp.user?.last_name);
+        
+        document.getElementById('output').innerHTML = `
+            <p><strong>needsInitialization:</strong> ${needsInitialization}</p>
+            <p><strong>currentFirstName:</strong> "${bookingData.clientInfo.firstName}"</p>
+            <p><strong>currentLastName:</strong> "${bookingData.clientInfo.lastName}"</p>
+            <p><strong>telegramFirstName:</strong> "${mockTelegramWebApp.user?.first_name}"</p>
+            <p><strong>telegramLastName:</strong> "${mockTelegramWebApp.user?.last_name}"</p>
+        `;
+    </script>
+</body>
+</html>

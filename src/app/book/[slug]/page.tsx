@@ -71,11 +71,17 @@ export default function BookingWidget() {
     console.log('🔍 useEffect triggered:', {
       isAvailable: telegramWebApp.isAvailable,
       userId: telegramWebApp.user?.id,
-      user: telegramWebApp.user
+      user: telegramWebApp.user,
+      timestamp: new Date().toISOString()
     })
     
-    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id) {
-      console.log('❌ useEffect skipped - conditions not met')
+    if (!telegramWebApp.isAvailable) {
+      console.log('❌ useEffect skipped - telegramWebApp.isAvailable is false')
+      return
+    }
+    
+    if (!telegramWebApp.user?.id) {
+      console.log('❌ useEffect skipped - telegramWebApp.user?.id is undefined')
       return
     }
 

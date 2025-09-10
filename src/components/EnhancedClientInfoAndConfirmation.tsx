@@ -30,9 +30,7 @@ export function EnhancedClientInfoAndConfirmation({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showBookingSummary, setShowBookingSummary] = useState(true)
   const [isRequestingPhone, setIsRequestingPhone] = useState(false)
-  const [existingClient, setExistingClient] = useState<any>(null)
-  const [isLoadingClient, setIsLoadingClient] = useState(false)
-  const [isInitialized, setIsInitialized] = useState(false)
+  // Старые состояния удалены - логика загрузки клиента теперь в основном компоненте
   const telegramWebApp = useTelegramWebApp()
 
   console.log(`🎯 EnhancedClientInfoAndConfirmation rendered:
@@ -40,8 +38,8 @@ export function EnhancedClientInfoAndConfirmation({
     user: ${JSON.stringify(telegramWebApp.user, null, 2)}
     clientInfo: ${JSON.stringify(bookingData.clientInfo, null, 2)}`)
 
-  // Поиск существующего клиента по telegramId (только для WebApp)
-  React.useEffect(() => {
+  // Старый useEffect удален - теперь логика загрузки клиента в основном компоненте
+  // React.useEffect(() => {
     console.log(`🔄 useEffect triggered:
       isAvailable: ${telegramWebApp.isAvailable}
       userId: ${telegramWebApp.user?.id}

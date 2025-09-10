@@ -199,27 +199,42 @@ export async function PUT(
       }
     }
 
+    // Подготавливаем данные для обновления, сохраняя существующие Telegram данные если они не переданы
+    const updateData: any = {
+      firstName,
+      lastName,
+      email,
+      phone,
+      vkId,
+      whatsapp,
+      instagram,
+      notificationsEnabled,
+      preferredLanguage,
+      dailyBookingLimit,
+      isBlocked,
+      lastActivity: new Date()
+    }
+
+    // Обновляем Telegram данные только если они переданы
+    if (telegramId !== undefined) {
+      updateData.telegramId = telegramId ? BigInt(telegramId) : null
+    }
+    if (telegramUsername !== undefined) {
+      updateData.telegramUsername = telegramUsername
+    }
+    if (telegramFirstName !== undefined) {
+      updateData.telegramFirstName = telegramFirstName
+    }
+    if (telegramLastName !== undefined) {
+      updateData.telegramLastName = telegramLastName
+    }
+    if (telegramLanguageCode !== undefined) {
+      updateData.telegramLanguageCode = telegramLanguageCode
+    }
+
     const updatedClient = await prisma.client.update({
       where: { id },
-      data: {
-        firstName,
-        lastName,
-        email,
-        phone,
-        telegramId: telegramId ? BigInt(telegramId) : null,
-        telegramUsername,
-        telegramFirstName,
-        telegramLastName,
-        telegramLanguageCode,
-        vkId,
-        whatsapp,
-        instagram,
-        notificationsEnabled,
-        preferredLanguage,
-        dailyBookingLimit,
-        isBlocked,
-        lastActivity: new Date()
-      }
+      data: updateData
     })
 
     // Конвертируем BigInt в строки для сериализации JSON

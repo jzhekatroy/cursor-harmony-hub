@@ -277,8 +277,8 @@ export async function POST(request: NextRequest) {
       let emailForCreate = emailTrim
       if (!emailForCreate) {
         if (isWebApp) {
-          // Для WebApp создаем уникальный email на основе telegramId + timestamp
-          emailForCreate = `telegram_${clientData.telegramId}_${Date.now()}@noemail.local`
+          // Для WebApp оставляем email пустым - используем только telegramId
+          emailForCreate = ''
         } else {
           // Для публичной страницы оставляем пустым
           emailForCreate = ''

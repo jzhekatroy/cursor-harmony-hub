@@ -307,8 +307,8 @@ export async function POST(request: NextRequest) {
             telegramUsername: clientData.telegramUsername || null,
             telegramFirstName: clientData.telegramFirstName || null,
             telegramLastName: clientData.telegramLastName || null,
-            firstName: clientData.firstName ?? parsedFirstName,
-            lastName: clientData.lastName ?? parsedLastName,
+            firstName: clientData.firstName || parsedFirstName,
+            lastName: clientData.lastName || parsedLastName,
           address: clientData.address,
             teamId: team.id,
             source: clientData.telegramId ? 'TELEGRAM_WEBAPP' : 'PUBLIC_PAGE'
@@ -381,8 +381,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Обновляем данные клиента с новыми значениями от пользователя
       const updateData: any = {
-        firstName: clientData.firstName ?? parsedFirstName,
-        lastName: clientData.lastName ?? parsedLastName,
+        firstName: clientData.firstName || parsedFirstName,
+        lastName: clientData.lastName || parsedLastName,
         phone: phoneE164 || client.phone
       }
       

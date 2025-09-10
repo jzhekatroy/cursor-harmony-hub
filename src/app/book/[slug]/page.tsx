@@ -69,9 +69,6 @@ export default function BookingWidget() {
 
   // Инициализация данных клиента при загрузке WebApp
   useEffect(() => {
-    // Сбрасываем isInitialized в начале каждого useEffect
-    setIsInitialized(false)
-    
     console.log(`🔄 Parent useEffect triggered:
       isAvailable: ${telegramWebApp.isAvailable}
       userId: ${telegramWebApp.user?.id}
@@ -107,7 +104,7 @@ export default function BookingWidget() {
       telegramLastName: "${telegramWebApp.user?.last_name}"
       needsInitialization: ${needsInitialization}`)
     
-    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || !needsInitialization) {
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || !needsInitialization) {
       console.log(`❌ Parent useEffect skipped:
         isAvailable: ${telegramWebApp.isAvailable}
         userId: ${telegramWebApp.user?.id}

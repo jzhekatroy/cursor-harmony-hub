@@ -68,7 +68,16 @@ export default function BookingWidget() {
 
   // Умное заполнение полей: БД имеет приоритет над Telegram
   useEffect(() => {
-    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id) return
+    console.log('🔍 useEffect triggered:', {
+      isAvailable: telegramWebApp.isAvailable,
+      userId: telegramWebApp.user?.id,
+      user: telegramWebApp.user
+    })
+    
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id) {
+      console.log('❌ useEffect skipped - conditions not met')
+      return
+    }
 
     const loadClientData = async () => {
       try {

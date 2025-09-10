@@ -76,7 +76,6 @@ export default function BookingWidget() {
     console.log(`🔄 Parent useEffect triggered:
       isAvailable: ${telegramWebApp.isAvailable}
       userId: ${telegramWebApp.user?.id}
-      isLoadingClient: ${isLoadingClient}
       isInitialized: ${isInitialized}
       needsInitialization: ${needsInitialization}
       user: ${JSON.stringify(telegramWebApp.user, null, 2)}`)
@@ -91,7 +90,6 @@ export default function BookingWidget() {
         data: {
           isAvailable: telegramWebApp.isAvailable,
           userId: telegramWebApp.user?.id,
-          isLoadingClient: isLoadingClient,
           isInitialized: isInitialized,
           needsInitialization: needsInitialization,
           timestamp: new Date().toISOString()
@@ -110,7 +108,7 @@ export default function BookingWidget() {
       console.log(`❌ Parent useEffect skipped:
         isAvailable: ${telegramWebApp.isAvailable}
         userId: ${telegramWebApp.user?.id}
-        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}
         needsInitialization: ${needsInitialization}
         currentFirstName: ${bookingData.clientInfo.firstName}
         currentLastName: ${bookingData.clientInfo.lastName}
@@ -143,7 +141,7 @@ export default function BookingWidget() {
       console.log(`🔍 Parent fetchExistingClient called:
         isAvailable: ${telegramWebApp.isAvailable}
         userId: ${telegramWebApp.user?.id}
-        isLoadingClient: ${isLoadingClient}
+        isInitialized: ${isInitialized}
         isInitialized: ${isInitialized}`)
       
       // Отправляем лог на сервер для диагностики
@@ -156,7 +154,6 @@ export default function BookingWidget() {
           data: {
             isAvailable: telegramWebApp.isAvailable,
             userId: telegramWebApp.user?.id,
-            isLoadingClient: isLoadingClient,
             isInitialized: isInitialized,
             timestamp: new Date().toISOString()
           }

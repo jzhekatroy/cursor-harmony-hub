@@ -30,27 +30,68 @@ export function EnhancedClientInfoAndConfirmation({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showBookingSummary, setShowBookingSummary] = useState(true)
   const [isRequestingPhone, setIsRequestingPhone] = useState(false)
+  const [existingClient, setExistingClient] = useState<any>(null)
+  const [isLoadingClient, setIsLoadingClient] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
   const telegramWebApp = useTelegramWebApp()
 
-  // Автоматическое заполнение данных из Telegram WebApp (только если WebApp доступен)
+  // Поиск существующего клиента по telegramId (только для WebApp)
   React.useEffect(() => {
-    if (telegramWebApp.webApp && telegramWebApp.user && !bookingData.clientInfo.name) {
-      const firstName = telegramWebApp.user.first_name || ''
-      const lastName = telegramWebApp.user.last_name || ''
-      const fullName = `${firstName} ${lastName}`.trim()
-      
-      if (fullName) {
-        onClientInfoChange({
-          ...bookingData.clientInfo,
-          name: fullName
-        })
+    const fetchExistingClient = async () => {
+      if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
+        return
+      }
+
+      setIsLoadingClient(true)
+      try {
+        const teamSlug = window.location.pathname.split('/')[2]
+        const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user.id}&teamSlug=${teamSlug}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          setExistingClient(data.client)
+          
+          // Инициализируем поля на основе найденного клиента или Telegram данных
+          if (data.client) {
+            // Клиент найден - используем данные из БД
+            const firstName = data.client.firstName || telegramWebApp.user.first_name || ''
+            const lastName = data.client.lastName || telegramWebApp.user.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+            
+            onClientInfoChange({
+              ...bookingData.clientInfo,
+              name: fullName,
+              phone: data.client.phone || bookingData.clientInfo.phone,
+              email: data.client.email || bookingData.clientInfo.email
+            })
+          } else {
+            // Клиент не найден - используем данные из Telegram
+            const firstName = telegramWebApp.user.first_name || ''
+            const lastName = telegramWebApp.user.last_name || ''
+            const fullName = `${firstName} ${lastName}`.trim()
+            
+            if (fullName) {
+              onClientInfoChange({
+                ...bookingData.clientInfo,
+                name: fullName
+              })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching existing client:', error)
+      } finally {
+        setIsLoadingClient(false)
+        setIsInitialized(true)
       }
     }
-  }, [telegramWebApp.webApp, telegramWebApp.user, bookingData.clientInfo.name, onClientInfoChange])
+
+    fetchExistingClient()
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, onClientInfoChange, isLoadingClient, isInitialized])
 
   // Автоматический запрос номера телефона для WebApp
   React.useEffect(() => {
-    if (telegramWebApp.webApp && !bookingData.clientInfo.phone && !isRequestingPhone) {
+    if (telegramWebApp.isAvailable && telegramWebApp.webApp && !bookingData.clientInfo.phone && !isRequestingPhone) {
       // Небольшая задержка, чтобы пользователь увидел форму
       const timer = setTimeout(() => {
         if (telegramWebApp.webApp && !bookingData.clientInfo.phone) {
@@ -61,15 +102,12 @@ export function EnhancedClientInfoAndConfirmation({
       
       return () => clearTimeout(timer)
     }
-  }, [telegramWebApp.webApp, bookingData.clientInfo.phone, isRequestingPhone])
+  }, [telegramWebApp.isAvailable, telegramWebApp.webApp, bookingData.clientInfo.phone, isRequestingPhone])
 
   // Функция для запроса номера телефона через Telegram WebApp
   const requestPhoneNumber = async () => {
-    if (!telegramWebApp.webApp || !telegramWebApp.user) {
+    if (!telegramWebApp.isAvailable || !telegramWebApp.webApp || !telegramWebApp.user) {
       console.error('❌ Telegram WebApp недоступен или нет данных пользователя')
-      if (telegramWebApp.webApp) {
-        alert('Telegram WebApp недоступен')
-      }
       return
     }
 
@@ -122,22 +160,13 @@ export function EnhancedClientInfoAndConfirmation({
             setIsRequestingPhone(false)
             if (granted) {
               console.log('✅ Write access granted, but phone number still needs manual input')
-              if (telegramWebApp.webApp) {
-                alert('Доступ к записи предоставлен, но номер телефона нужно ввести вручную')
-              }
             } else {
               console.log('❌ Write access denied')
-              if (telegramWebApp.webApp) {
-                alert('Доступ к записи не предоставлен. Пожалуйста, введите номер телефона вручную.')
-              }
             }
           })
           return
         } else {
           console.log('❌ No fallback methods available')
-          if (telegramWebApp.webApp) {
-            alert('Функция запроса номера телефона недоступна в этой версии Telegram. Пожалуйста, введите номер вручную.')
-          }
           setIsRequestingPhone(false)
           return
         }
@@ -208,9 +237,6 @@ export function EnhancedClientInfoAndConfirmation({
           telegramWebApp.webApp?.offEvent('contact', handleContactRequested)
         } else {
           console.log('❌ Контакт не получен или нет номера телефона:', contact)
-          if (telegramWebApp.webApp) {
-            alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
-          }
           
           // Отправляем лог об ошибке на сервер
           fetch('/api/telegram/logs', {
@@ -285,10 +311,7 @@ export function EnhancedClientInfoAndConfirmation({
       console.error('❌ Error message:', error?.message)
       console.error('❌ Error stack:', error?.stack)
       
-      // Показываем alert только для WebApp, для публичной страницы не показываем
-      if (telegramWebApp.webApp) {
-        alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
-      }
+      // Логируем ошибку, но не показываем alert
       setIsRequestingPhone(false)
       
       // Отправляем лог об ошибке на сервер
@@ -524,6 +547,45 @@ export function EnhancedClientInfoAndConfirmation({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Telegram данные (только для WebApp) */}
+            {telegramWebApp.isAvailable && telegramWebApp.user && (
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 className="text-sm font-medium text-blue-800 mb-3">Данные из Telegram</h3>
+                
+                {/* Имя в Telegram */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Имя в Telegram
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Input
+                      type="text"
+                      value={telegramWebApp.user.first_name || ''}
+                      disabled
+                      className="pl-10 bg-gray-100 text-gray-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Фамилия в Telegram */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Фамилия в Telegram
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Input
+                      type="text"
+                      value={telegramWebApp.user.last_name || ''}
+                      disabled
+                      className="pl-10 bg-gray-100 text-gray-600"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Имя */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">

@@ -38,17 +38,33 @@ export function EnhancedClientInfoAndConfirmation({
   // Поиск существующего клиента по telegramId (только для WebApp)
   React.useEffect(() => {
     const fetchExistingClient = async () => {
+      console.log('🔍 fetchExistingClient called:', {
+        isAvailable: telegramWebApp.isAvailable,
+        userId: telegramWebApp.user?.id,
+        isLoadingClient,
+        isInitialized
+      })
+      
       if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id || isLoadingClient || isInitialized) {
+        console.log('❌ fetchExistingClient skipped:', {
+          isAvailable: telegramWebApp.isAvailable,
+          userId: telegramWebApp.user?.id,
+          isLoadingClient,
+          isInitialized
+        })
         return
       }
 
       setIsLoadingClient(true)
       try {
         const teamSlug = window.location.pathname.split('/')[2]
+        console.log('🔍 Fetching client for:', { telegramId: telegramWebApp.user.id, teamSlug })
+        
         const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user.id}&teamSlug=${teamSlug}`)
         
         if (response.ok) {
           const data = await response.json()
+          console.log('📦 Client data received:', data)
           setExistingClient(data.client)
           
           // Инициализируем поля на основе найденного клиента или Telegram данных
@@ -57,6 +73,8 @@ export function EnhancedClientInfoAndConfirmation({
             const firstName = data.client.firstName || telegramWebApp.user.first_name || ''
             const lastName = data.client.lastName || telegramWebApp.user.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
+            
+            console.log('✅ Client found in DB, using DB data:', { firstName, lastName, fullName })
             
             onClientInfoChange({
               ...bookingData.clientInfo,
@@ -72,6 +90,8 @@ export function EnhancedClientInfoAndConfirmation({
             const lastName = telegramWebApp.user.last_name || ''
             const fullName = `${firstName} ${lastName}`.trim()
             
+            console.log('✅ Client not found in DB, using Telegram data:', { firstName, lastName, fullName })
+            
             if (fullName) {
               onClientInfoChange({
                 ...bookingData.clientInfo,
@@ -81,6 +101,8 @@ export function EnhancedClientInfoAndConfirmation({
               })
             }
           }
+        } else {
+          console.log('❌ Failed to fetch client data:', response.status, response.statusText)
         }
       } catch (error) {
         console.error('Error fetching existing client:', error)
@@ -339,10 +361,6 @@ export function EnhancedClientInfoAndConfirmation({
 
     if (!bookingData.clientInfo.firstName?.trim()) {
       newErrors.firstName = 'Имя обязательно'
-    }
-
-    if (!bookingData.clientInfo.lastName?.trim()) {
-      newErrors.lastName = 'Фамилия обязательна'
     }
 
     if (!bookingData.clientInfo.phone.trim()) {
@@ -608,7 +626,10 @@ export function EnhancedClientInfoAndConfirmation({
                   type="text"
                   placeholder="Введите ваше имя"
                   value={bookingData.clientInfo.firstName || ''}
-                  onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  onChange={(e) => {
+                    console.log('📝 firstName changed:', e.target.value)
+                    handleInputChange('firstName', e.target.value)
+                  }}
                   className={cn(
                     "pl-10",
                     errors.firstName ? 'border-red-500 focus:border-red-500' : ''
@@ -618,12 +639,13 @@ export function EnhancedClientInfoAndConfirmation({
               {errors.firstName && (
                 <p className="text-red-500 text-sm mt-1">{errors.firstName}</p>
               )}
+              <p className="text-xs text-gray-500">Debug: firstName = "{bookingData.clientInfo.firstName || ''}"</p>
             </div>
 
             {/* Фамилия */}
             <div>
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                Ваша фамилия *
+                Ваша фамилия
               </label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -632,7 +654,10 @@ export function EnhancedClientInfoAndConfirmation({
                   type="text"
                   placeholder="Введите вашу фамилию"
                   value={bookingData.clientInfo.lastName || ''}
-                  onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  onChange={(e) => {
+                    console.log('📝 lastName changed:', e.target.value)
+                    handleInputChange('lastName', e.target.value)
+                  }}
                   className={cn(
                     "pl-10",
                     errors.lastName ? 'border-red-500 focus:border-red-500' : ''
@@ -642,6 +667,7 @@ export function EnhancedClientInfoAndConfirmation({
               {errors.lastName && (
                 <p className="text-red-500 text-sm mt-1">{errors.lastName}</p>
               )}
+              <p className="text-xs text-gray-500">Debug: lastName = "{bookingData.clientInfo.lastName || ''}"</p>
             </div>
 
             {/* Телефон */}

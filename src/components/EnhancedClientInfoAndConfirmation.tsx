@@ -120,16 +120,22 @@ export function EnhancedClientInfoAndConfirmation({
             setIsRequestingPhone(false)
             if (granted) {
               console.log('✅ Write access granted, but phone number still needs manual input')
-              alert('Доступ к записи предоставлен, но номер телефона нужно ввести вручную')
+              if (telegramWebApp.webApp) {
+                alert('Доступ к записи предоставлен, но номер телефона нужно ввести вручную')
+              }
             } else {
               console.log('❌ Write access denied')
-              alert('Доступ к записи не предоставлен. Пожалуйста, введите номер телефона вручную.')
+              if (telegramWebApp.webApp) {
+                alert('Доступ к записи не предоставлен. Пожалуйста, введите номер телефона вручную.')
+              }
             }
           })
           return
         } else {
           console.log('❌ No fallback methods available')
-          alert('Функция запроса номера телефона недоступна в этой версии Telegram. Пожалуйста, введите номер вручную.')
+          if (telegramWebApp.webApp) {
+            alert('Функция запроса номера телефона недоступна в этой версии Telegram. Пожалуйста, введите номер вручную.')
+          }
           setIsRequestingPhone(false)
           return
         }
@@ -190,7 +196,9 @@ export function EnhancedClientInfoAndConfirmation({
           telegramWebApp.webApp?.offEvent('contact', handleContactRequested)
         } else {
           console.log('❌ Контакт не получен или нет номера телефона:', contact)
-          alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
+          if (telegramWebApp.webApp) {
+            alert('Не удалось получить номер телефона. Пожалуйста, введите его вручную.')
+          }
           
           // Отправляем лог об ошибке на сервер
           fetch('/api/telegram/logs', {
@@ -265,7 +273,10 @@ export function EnhancedClientInfoAndConfirmation({
       console.error('❌ Error message:', error?.message)
       console.error('❌ Error stack:', error?.stack)
       
-      alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
+      // Показываем alert только для WebApp, для публичной страницы не показываем
+      if (telegramWebApp.webApp) {
+        alert('Ошибка при запросе номера телефона. Пожалуйста, введите номер вручную.')
+      }
       setIsRequestingPhone(false)
       
       // Отправляем лог об ошибке на сервер

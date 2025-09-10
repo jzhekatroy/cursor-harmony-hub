@@ -69,22 +69,12 @@ export default function BookingWidget() {
 
   // Простое заполнение полей данными из Telegram
   useEffect(() => {
-    console.log(`🔄 SIMPLE FILL: useEffect triggered`)
-    console.log(`🔄 SIMPLE FILL: isAvailable: ${telegramWebApp.isAvailable}`)
-    console.log(`🔄 SIMPLE FILL: userId: ${telegramWebApp.user?.id}`)
-    console.log(`🔄 SIMPLE FILL: firstName: "${bookingData.clientInfo.firstName}"`)
-    console.log(`🔄 SIMPLE FILL: lastName: "${bookingData.clientInfo.lastName}"`)
-    console.log(`🔄 SIMPLE FILL: telegramFirstName: "${telegramWebApp.user?.first_name}"`)
-    console.log(`🔄 SIMPLE FILL: telegramLastName: "${telegramWebApp.user?.last_name}"`)
-    
     // Простая проверка: если поля пустые и есть данные Telegram - заполняем
     if (telegramWebApp.isAvailable && 
         telegramWebApp.user?.id && 
         !bookingData.clientInfo.firstName && 
         !bookingData.clientInfo.lastName && 
         telegramWebApp.user?.first_name) {
-      
-      console.log(`✅ SIMPLE FILL: Filling fields with Telegram data`)
       
       setBookingData(prev => ({
         ...prev,
@@ -94,10 +84,6 @@ export default function BookingWidget() {
           lastName: telegramWebApp.user?.last_name || ''
         }
       }))
-      
-      console.log(`✅ SIMPLE FILL: Fields filled successfully`)
-    } else {
-      console.log(`❌ SIMPLE FILL: Skipped - conditions not met`)
     }
   }, [telegramWebApp.isAvailable, telegramWebApp.user?.id, telegramWebApp.user?.first_name, telegramWebApp.user?.last_name])
 

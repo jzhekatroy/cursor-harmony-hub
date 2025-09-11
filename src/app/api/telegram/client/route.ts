@@ -8,6 +8,20 @@ export async function GET(request: NextRequest) {
     const teamSlug = searchParams.get('teamSlug')
 
     console.log('🔍 Telegram client API called:', { telegramId, teamSlug })
+    
+    // Отправляем лог на сервер
+    try {
+      await fetch('https://test.2minutes.ru/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'TELEGRAM_CLIENT_API_CALLED',
+          data: { telegramId, teamSlug, timestamp: new Date().toISOString() }
+        })
+      })
+    } catch (e) {
+      console.error('Failed to send log:', e)
+    }
 
     if (!telegramId || !teamSlug) {
       return NextResponse.json(
@@ -69,6 +83,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ client })
   } catch (error) {
     console.error('Error fetching Telegram client:', error)
+    
+    // Отправляем лог ошибки на сервер
+    try {
+      await fetch('https://test.2minutes.ru/api/telegram/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: 'TELEGRAM_CLIENT_API_ERROR',
+          data: { 
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            timestamp: new Date().toISOString()
+          }
+        })
+      })
+    } catch (e) {
+      console.error('Failed to send error log:', e)
+    }
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

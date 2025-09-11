@@ -412,6 +412,13 @@ export default function BookingWidget() {
           {/* Горизонтальная граница после описания - более четкая */}
           <div className={`border-t-4 mb-8 ${isDarkLocal ? 'border-gray-500' : 'border-amber-300'}`}></div>
           
+          {/* Уведомления об активных записях */}
+          <ActiveBookingsNotification
+            activeBookings={activeBookings}
+            onCancelBooking={handleCancelBooking}
+            isLoading={isLoadingBookings}
+          />
+          
           {/* Нижняя часть с услугами */}
           <div className="rounded-2xl p-6">
             <EnhancedServiceSelection
@@ -440,13 +447,6 @@ export default function BookingWidget() {
           />
         )}
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
-
-        {/* Уведомления об активных записях */}
-        <ActiveBookingsNotification
-          activeBookings={activeBookings}
-          onCancelBooking={handleCancelBooking}
-          isLoading={isLoadingBookings}
-        />
 
         <div className="relative min-h-[400px]">
           {currentStep === 'select-date-time' && team && masters.length > 0 && (

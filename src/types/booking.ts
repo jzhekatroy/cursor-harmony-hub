@@ -66,7 +66,7 @@ export interface Team {
   slug: string;
 }
 
-export type BookingStep = 'select-services' | 'select-date-time' | 'client-info';
+export type BookingStep = 'start' | 'select-services' | 'select-date-time' | 'client-info';
 
 export const stepNames: Record<BookingStep, string> = {
   'select-services': 'Выбор услуг',

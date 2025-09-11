@@ -69,6 +69,7 @@ export interface Team {
 export type BookingStep = 'start' | 'select-services' | 'select-date-time' | 'client-info';
 
 export const stepNames: Record<BookingStep, string> = {
+  'start': 'Стартовая страница',
   'select-services': 'Выбор услуг',
   'select-date-time': 'Дата и время',
   'client-info': 'Контактные данные'

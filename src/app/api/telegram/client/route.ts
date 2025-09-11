@@ -80,7 +80,20 @@ export async function GET(request: NextRequest) {
       searchParams: { telegramId, teamSlug, teamId: team.id }
     })
 
-    return NextResponse.json({ client })
+    return NextResponse.json({ 
+      client: client ? {
+        id: client.id,
+        firstName: client.firstName,
+        lastName: client.lastName,
+        email: client.email,
+        phone: client.phone,
+        telegramId: client.telegramId ? client.telegramId.toString() : null,
+        telegramUsername: client.telegramUsername,
+        telegramFirstName: client.telegramFirstName,
+        telegramLastName: client.telegramLastName,
+        telegramLanguageCode: client.telegramLanguageCode
+      } : null
+    })
   } catch (error) {
     console.error('Error fetching Telegram client:', error)
     

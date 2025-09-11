@@ -112,20 +112,20 @@ export default function BookingWidget() {
               fullClient: data.client
             })
             
-            if (dbFirstName || dbLastName) {
-              // В БД есть данные - используем их
-              console.log('✅ Using DB data:', { firstName: dbFirstName, lastName: dbLastName })
-              setBookingData(prev => ({
-                ...prev,
-                clientInfo: {
-                  ...prev.clientInfo,
-                  firstName: dbFirstName,
-                  lastName: dbLastName
-                }
-              }))
-            } else {
-              // В БД пусто - используем Telegram данные
-              console.log('⚠️ DB data empty, using Telegram data')
+            // Всегда используем данные из БД, если они есть (даже если пустые)
+            console.log('✅ Using DB data:', { firstName: dbFirstName, lastName: dbLastName })
+            setBookingData(prev => ({
+              ...prev,
+              clientInfo: {
+                ...prev.clientInfo,
+                firstName: dbFirstName,
+                lastName: dbLastName
+              }
+            }))
+            
+            // Если в БД пусто, заполняем Telegram данными
+            if (!dbFirstName && !dbLastName) {
+              console.log('⚠️ DB data empty, filling with Telegram data')
               setBookingData(prev => ({
                 ...prev,
                 clientInfo: {

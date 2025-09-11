@@ -544,6 +544,11 @@ export function EnhancedClientInfoAndConfirmation({
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
                 Ваше имя *
               </label>
+              {telegramWebApp.user?.first_name && (
+                <p className="text-xs text-gray-500 mb-1">
+                  Имя в Telegram: {telegramWebApp.user.first_name}
+                </p>
+              )}
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input
@@ -571,6 +576,11 @@ export function EnhancedClientInfoAndConfirmation({
               <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
                 Ваша фамилия
               </label>
+              {telegramWebApp.user?.last_name && (
+                <p className="text-xs text-gray-500 mb-1">
+                  Фамилия в Telegram: {telegramWebApp.user.last_name}
+                </p>
+              )}
               <div className="relative">
                 <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <Input

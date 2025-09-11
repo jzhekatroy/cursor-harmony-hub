@@ -9,6 +9,18 @@ export async function GET(
   try {
     const { teamId } = await context.params
 
+    // Проверяем, что команда существует
+    const team = await prisma.team.findUnique({
+      where: { id: teamId }
+    })
+
+    if (!team) {
+      return NextResponse.json(
+        { error: 'Team not found' },
+        { status: 404 }
+      )
+    }
+
     // Получаем или создаем настройки для команды
     let settings = await prisma.notificationSettings.findUnique({
       where: { teamId }
@@ -27,8 +39,16 @@ export async function GET(
     return NextResponse.json({ settings })
   } catch (error) {
     console.error('Error fetching notification settings:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      teamId: await context.params.then(p => p.teamId).catch(() => 'unknown')
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }

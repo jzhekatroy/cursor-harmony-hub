@@ -7,6 +7,7 @@ import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
 import { EnhancedServiceSelection } from '@/components/EnhancedServiceSelection'
 import { EnhancedDateMasterTimeSelection } from '@/components/EnhancedDateMasterTimeSelection'
 import { EnhancedClientInfoAndConfirmation } from '@/components/EnhancedClientInfoAndConfirmation'
+import ActiveBookingsNotification from '@/components/ActiveBookingsNotification'
 import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, ClientInfo } from '@/types/booking'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,10 @@ export default function BookingWidget() {
   const [isLoadingClient, setIsLoadingClient] = useState(false)
   const [isInitialized, setIsInitialized] = useState(false)
   const [existingClient, setExistingClient] = useState<any>(null)
+  
+  // Состояния для активных записей
+  const [activeBookings, setActiveBookings] = useState<any[]>([])
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false)
 
   // Загрузка данных
   useEffect(() => {
@@ -147,6 +152,33 @@ export default function BookingWidget() {
     }
 
     loadClientData()
+  }, [telegramWebApp.isAvailable, telegramWebApp.user?.id])
+
+  // Загрузка активных записей клиента
+  useEffect(() => {
+    if (!telegramWebApp.isAvailable || !telegramWebApp.user?.id) {
+      return
+    }
+
+    const loadActiveBookings = async () => {
+      setIsLoadingBookings(true)
+      try {
+        const teamSlug = window.location.pathname.split('/')[2]
+        const response = await fetch(`/api/telegram/active-bookings?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          setActiveBookings(data.activeBookings || [])
+        }
+      } catch (error) {
+        console.error('Error loading active bookings:', error)
+        setActiveBookings([])
+      } finally {
+        setIsLoadingBookings(false)
+      }
+    }
+
+    loadActiveBookings()
   }, [telegramWebApp.isAvailable, telegramWebApp.user?.id])
 
   const loadInitialData = async () => {
@@ -262,6 +294,34 @@ export default function BookingWidget() {
       totalDuration: 0,
     })
     setCurrentStep('select-services') // Вернуться к началу
+  }
+
+  // Функция для отмены записи
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      const teamSlug = window.location.pathname.split('/')[2]
+      const response = await fetch('/api/telegram/cancel-booking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          bookingId,
+          telegramId: telegramWebApp.user?.id,
+          teamSlug
+        })
+      })
+
+      if (response.ok) {
+        // Удаляем отмененную запись из списка активных
+        setActiveBookings(prev => prev.filter(booking => booking.id !== bookingId))
+      } else {
+        throw new Error('Failed to cancel booking')
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error)
+      throw error
+    }
   }
 
   // Публичная страница: тема берётся из настроек команды, слушатели не нужны
@@ -380,6 +440,13 @@ export default function BookingWidget() {
           />
         )}
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">{team.team?.name}</h1>
+
+        {/* Уведомления об активных записях */}
+        <ActiveBookingsNotification
+          activeBookings={activeBookings}
+          onCancelBooking={handleCancelBooking}
+          isLoading={isLoadingBookings}
+        />
 
         <div className="relative min-h-[400px]">
           {currentStep === 'select-date-time' && team && masters.length > 0 && (

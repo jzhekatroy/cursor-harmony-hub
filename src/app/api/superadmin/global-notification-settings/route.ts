@@ -19,8 +19,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ settings })
   } catch (error) {
     console.error('Error fetching global notification settings:', error)
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    })
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
@@ -86,30 +93,36 @@ export async function PUT(request: NextRequest) {
     }
 
     // Обновляем настройки
-    const settings = await prisma.globalNotificationSettings.upsert({
-      where: { id: 'global' },
-      update: {
-        maxRequestsPerMinute,
-        requestDelayMs,
-        maxRetryAttempts,
-        retryDelayMs,
-        exponentialBackoff,
-        failureThreshold,
-        recoveryTimeoutMs,
-        enabled
-      },
-      create: {
-        id: 'global',
-        maxRequestsPerMinute: maxRequestsPerMinute || 25,
-        requestDelayMs: requestDelayMs || 2000,
-        maxRetryAttempts: maxRetryAttempts || 3,
-        retryDelayMs: retryDelayMs || 5000,
-        exponentialBackoff: exponentialBackoff !== undefined ? exponentialBackoff : true,
-        failureThreshold: failureThreshold || 5,
-        recoveryTimeoutMs: recoveryTimeoutMs || 60000,
-        enabled: enabled !== undefined ? enabled : true
-      }
-    })
+    let settings = await prisma.globalNotificationSettings.findFirst()
+    
+    if (settings) {
+      settings = await prisma.globalNotificationSettings.update({
+        where: { id: settings.id },
+        data: {
+          maxRequestsPerMinute: maxRequestsPerMinute !== undefined ? maxRequestsPerMinute : settings.maxRequestsPerMinute,
+          requestDelayMs: requestDelayMs !== undefined ? requestDelayMs : settings.requestDelayMs,
+          maxRetryAttempts: maxRetryAttempts !== undefined ? maxRetryAttempts : settings.maxRetryAttempts,
+          retryDelayMs: retryDelayMs !== undefined ? retryDelayMs : settings.retryDelayMs,
+          exponentialBackoff: exponentialBackoff !== undefined ? exponentialBackoff : settings.exponentialBackoff,
+          failureThreshold: failureThreshold !== undefined ? failureThreshold : settings.failureThreshold,
+          recoveryTimeoutMs: recoveryTimeoutMs !== undefined ? recoveryTimeoutMs : settings.recoveryTimeoutMs,
+          enabled: enabled !== undefined ? enabled : settings.enabled
+        }
+      })
+    } else {
+      settings = await prisma.globalNotificationSettings.create({
+        data: {
+          maxRequestsPerMinute: maxRequestsPerMinute || 25,
+          requestDelayMs: requestDelayMs || 2000,
+          maxRetryAttempts: maxRetryAttempts || 3,
+          retryDelayMs: retryDelayMs || 5000,
+          exponentialBackoff: exponentialBackoff !== undefined ? exponentialBackoff : true,
+          failureThreshold: failureThreshold || 5,
+          recoveryTimeoutMs: recoveryTimeoutMs || 60000,
+          enabled: enabled !== undefined ? enabled : true
+        }
+      })
+    }
 
     return NextResponse.json({ 
       success: true, 
@@ -128,30 +141,36 @@ export async function PUT(request: NextRequest) {
 // Сбросить настройки к дефолтным
 export async function POST(request: NextRequest) {
   try {
-    const settings = await prisma.globalNotificationSettings.upsert({
-      where: { id: 'global' },
-      update: {
-        maxRequestsPerMinute: 25,
-        requestDelayMs: 2000,
-        maxRetryAttempts: 3,
-        retryDelayMs: 5000,
-        exponentialBackoff: true,
-        failureThreshold: 5,
-        recoveryTimeoutMs: 60000,
-        enabled: true
-      },
-      create: {
-        id: 'global',
-        maxRequestsPerMinute: 25,
-        requestDelayMs: 2000,
-        maxRetryAttempts: 3,
-        retryDelayMs: 5000,
-        exponentialBackoff: true,
-        failureThreshold: 5,
-        recoveryTimeoutMs: 60000,
-        enabled: true
-      }
-    })
+    let settings = await prisma.globalNotificationSettings.findFirst()
+    
+    if (settings) {
+      settings = await prisma.globalNotificationSettings.update({
+        where: { id: settings.id },
+        data: {
+          maxRequestsPerMinute: 25,
+          requestDelayMs: 2000,
+          maxRetryAttempts: 3,
+          retryDelayMs: 5000,
+          exponentialBackoff: true,
+          failureThreshold: 5,
+          recoveryTimeoutMs: 60000,
+          enabled: true
+        }
+      })
+    } else {
+      settings = await prisma.globalNotificationSettings.create({
+        data: {
+          maxRequestsPerMinute: 25,
+          requestDelayMs: 2000,
+          maxRetryAttempts: 3,
+          retryDelayMs: 5000,
+          exponentialBackoff: true,
+          failureThreshold: 5,
+          recoveryTimeoutMs: 60000,
+          enabled: true
+        }
+      })
+    }
 
     return NextResponse.json({ 
       success: true, 

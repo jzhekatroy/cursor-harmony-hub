@@ -4,10 +4,10 @@ import { prisma } from '@/lib/prisma'
 // Получить настройки команды
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  context: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const { teamId } = params
+    const { teamId } = await context.params
 
     // Получаем или создаем настройки для команды
     let settings = await prisma.notificationSettings.findUnique({
@@ -37,10 +37,10 @@ export async function GET(
 // Обновить настройки команды
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  context: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const { teamId } = params
+    const { teamId } = await context.params
     const body = await request.json()
 
     const {
@@ -140,10 +140,10 @@ export async function PUT(
 // Сбросить настройки к дефолтным
 export async function POST(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  context: { params: Promise<{ teamId: string }> }
 ) {
   try {
-    const { teamId } = params
+    const { teamId } = await context.params
 
     const settings = await prisma.notificationSettings.upsert({
       where: { teamId },

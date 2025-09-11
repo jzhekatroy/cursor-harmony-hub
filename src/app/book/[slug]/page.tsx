@@ -68,20 +68,11 @@ export default function BookingWidget() {
 
   // Умное заполнение полей: БД имеет приоритет над Telegram
   useEffect(() => {
-    console.log('🔍 useEffect triggered:', {
-      isAvailable: telegramWebApp.isAvailable,
-      userId: telegramWebApp.user?.id,
-      user: telegramWebApp.user,
-      timestamp: new Date().toISOString()
-    })
-    
     if (!telegramWebApp.isAvailable) {
-      console.log('❌ useEffect skipped - telegramWebApp.isAvailable is false')
       return
     }
     
     if (!telegramWebApp.user?.id) {
-      console.log('❌ useEffect skipped - telegramWebApp.user?.id is undefined')
       return
     }
 
@@ -89,31 +80,17 @@ export default function BookingWidget() {
       try {
         // Получаем данные клиента из БД
         const teamSlug = window.location.pathname.split('/')[2]
-        console.log('🔍 Loading client data:', {
-          telegramId: telegramWebApp.user?.id,
-          teamSlug: teamSlug
-        })
-        
         const response = await fetch(`/api/telegram/client?telegramId=${telegramWebApp.user?.id}&teamSlug=${teamSlug}`)
-        console.log('🔍 API response status:', response.status)
-        
+
         if (response.ok) {
           const data = await response.json()
-          console.log('🔍 API response data:', data)
-          
+
           if (data.client) {
             // Клиент найден в БД
             const dbFirstName = data.client.firstName || ''
             const dbLastName = data.client.lastName || ''
-            
-            console.log('🔍 Client data from DB:', {
-              firstName: dbFirstName,
-              lastName: dbLastName,
-              fullClient: data.client
-            })
-            
+
             // Всегда используем данные из БД, если они есть (даже если пустые)
-            console.log('✅ Using DB data:', { firstName: dbFirstName, lastName: dbLastName })
             setBookingData(prev => ({
               ...prev,
               clientInfo: {
@@ -122,10 +99,9 @@ export default function BookingWidget() {
                 lastName: dbLastName
               }
             }))
-            
+
             // Если в БД пусто, заполняем Telegram данными
             if (!dbFirstName && !dbLastName) {
-              console.log('⚠️ DB data empty, filling with Telegram data')
               setBookingData(prev => ({
                 ...prev,
                 clientInfo: {
@@ -137,7 +113,6 @@ export default function BookingWidget() {
             }
           } else {
             // Клиент не найден - используем Telegram данные
-            console.log('❌ Client not found in DB, using Telegram data')
             setBookingData(prev => ({
               ...prev,
               clientInfo: {
@@ -149,7 +124,6 @@ export default function BookingWidget() {
           }
         } else {
           // Ошибка API - используем Telegram данные
-          console.log('❌ API error, using Telegram data')
           setBookingData(prev => ({
             ...prev,
             clientInfo: {
@@ -161,7 +135,6 @@ export default function BookingWidget() {
         }
       } catch (error) {
         // Ошибка - используем Telegram данные
-        console.log('❌ Error loading client data:', error)
         setBookingData(prev => ({
           ...prev,
           clientInfo: {

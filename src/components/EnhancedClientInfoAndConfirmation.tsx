@@ -317,6 +317,25 @@ export function EnhancedClientInfoAndConfirmation({
     }
   }
 
+  // Функции для копирования Telegram данных в поля
+  const copyTelegramFirstName = () => {
+    if (telegramWebApp.user?.first_name) {
+      onClientInfoChange({
+        ...bookingData.clientInfo,
+        firstName: telegramWebApp.user.first_name
+      })
+    }
+  }
+
+  const copyTelegramLastName = () => {
+    if (telegramWebApp.user?.last_name) {
+      onClientInfoChange({
+        ...bookingData.clientInfo,
+        lastName: telegramWebApp.user.last_name
+      })
+    }
+  }
+
   const handleConfirm = async () => {
     if (!validateForm()) {
       return
@@ -546,7 +565,13 @@ export function EnhancedClientInfoAndConfirmation({
               </label>
               {telegramWebApp.user?.first_name && (
                 <p className="text-xs text-gray-500 mb-1">
-                  Имя в Telegram: {telegramWebApp.user.first_name}
+                  <button
+                    type="button"
+                    onClick={copyTelegramFirstName}
+                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                  >
+                    Имя в Telegram: {telegramWebApp.user.first_name}
+                  </button>
                 </p>
               )}
               <div className="relative">
@@ -557,7 +582,6 @@ export function EnhancedClientInfoAndConfirmation({
                   placeholder="Введите ваше имя"
                   value={bookingData.clientInfo.firstName || ''}
                   onChange={(e) => {
-                    console.log(`📝 firstName changed: "${e.target.value}"`)
                     handleInputChange('firstName', e.target.value)
                   }}
                   className={cn(
@@ -578,7 +602,13 @@ export function EnhancedClientInfoAndConfirmation({
               </label>
               {telegramWebApp.user?.last_name && (
                 <p className="text-xs text-gray-500 mb-1">
-                  Фамилия в Telegram: {telegramWebApp.user.last_name}
+                  <button
+                    type="button"
+                    onClick={copyTelegramLastName}
+                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                  >
+                    Фамилия в Telegram: {telegramWebApp.user.last_name}
+                  </button>
                 </p>
               )}
               <div className="relative">
@@ -589,7 +619,6 @@ export function EnhancedClientInfoAndConfirmation({
                   placeholder="Введите вашу фамилию"
                   value={bookingData.clientInfo.lastName || ''}
                   onChange={(e) => {
-                    console.log(`📝 lastName changed: "${e.target.value}"`)
                     handleInputChange('lastName', e.target.value)
                   }}
                   className={cn(

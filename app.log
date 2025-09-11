@@ -1,0 +1,123 @@
+
+> beauty-booking@0.1.0 start
+> next start
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+   ▲ Next.js 15.4.5
+   - Local:        http://localhost:3000
+   - Network:      http://5.131.249.68:3000
+
+ ✓ Starting...
+ ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+ ✓ Ready in 607ms
+Ошибка получения свободных слотов: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.master.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:805
+
+→ 1 (()=>{var a={};a.id=407,a.ids=[183,407],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},1664:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>F,patchFetch:()=>E,routeModule:()=>A,serverHooks:()=>D,workAsyncStorage:()=>B,workUnitAsyncStorage:()=>C});var d={};c.r(d),c.d(d,{GET:()=>w});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183);async function w(a,{params:b}){let c="",d="",e=60;try{let{searchParams:f}=new URL(a.url);if(d=f.get("date")||"",e=parseInt(f.get("duration")||"60"),!d)return u.NextResponse.json({error:"Параметр date обязателен"},{status:400});c=(await b).id;let g=await v.prisma.master.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/masters/[id]/available-slots/route.js:1:805)
+    at async w (.next/server/app/api/masters/[id]/available-slots/route.js:1:783)
+    at async k (.next/server/app/api/masters/[id]/available-slots/route.js:1:5777)
+    at async g (.next/server/app/api/masters/[id]/available-slots/route.js:1:6780) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}
+Детали ошибки: {
+  message: '\n' +
+    'Invalid `v.prisma.master.findUnique()` invocation in\n' +
+    '/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:805\n' +
+    '\n' +
+    '→ 1 (()=>{var a={};a.id=407,a.ids=[183,407],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},1664:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>F,patchFetch:()=>E,routeModule:()=>A,serverHooks:()=>D,workAsyncStorage:()=>B,workUnitAsyncStorage:()=>C});var d={};c.r(d),c.d(d,{GET:()=>w});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183);async function w(a,{params:b}){let c="",d="",e=60;try{let{searchParams:f}=new URL(a.url);if(d=f.get("date")||"",e=parseInt(f.get("duration")||"60"),!d)return u.NextResponse.json({error:"Параметр date обязателен"},{status:400});c=(await b).id;let g=await v.prisma.master.findUnique(\n' +
+    'The column `main.teams.bookingSlug` does not exist in the current database.',
+  stack: 'PrismaClientKnownRequestError: \n' +
+    'Invalid `v.prisma.master.findUnique()` invocation in\n' +
+    '/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:805\n' +
+    '\n' +
+    '→ 1 (()=>{var a={};a.id=407,a.ids=[183,407],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},1664:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>F,patchFetch:()=>E,routeModule:()=>A,serverHooks:()=>D,workAsyncStorage:()=>B,workUnitAsyncStorage:()=>C});var d={};c.r(d),c.d(d,{GET:()=>w});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183);async function w(a,{params:b}){let c="",d="",e=60;try{let{searchParams:f}=new URL(a.url);if(d=f.get("date")||"",e=parseInt(f.get("duration")||"60"),!d)return u.NextResponse.json({error:"Параметр date обязателен"},{status:400});c=(await b).id;let g=await v.prisma.master.findUnique(\n' +
+    'The column `main.teams.bookingSlug` does not exist in the current database.\n' +
+    '    at ri.handleRequestError (/home/beautyapp/beauty-booking/node_modules/@prisma/client/runtime/library.js:121:7459)\n' +
+    '    at ri.handleAndLogRequestError (/home/beautyapp/beauty-booking/node_modules/@prisma/client/runtime/library.js:121:6784)\n' +
+    '    at ri.request (/home/beautyapp/beauty-booking/node_modules/@prisma/client/runtime/library.js:121:6491)\n' +
+    '    at async l (/home/beautyapp/beauty-booking/node_modules/@prisma/client/runtime/library.js:130:9812)\n' +
+    '    at async w (/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:783)\n' +
+    '    at async rb.do (/home/beautyapp/beauty-booking/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:5:21059)\n' +
+    '    at async rb.handle (/home/beautyapp/beauty-booking/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:5:25902)\n' +
+    '    at async k (/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:5777)\n' +
+    '    at async rb.handleResponse (/home/beautyapp/beauty-booking/node_modules/next/dist/compiled/next-server/app-route.runtime.prod.js:1:104365)\n' +
+    '    at async g (/home/beautyapp/beauty-booking/.next/server/app/api/masters/[id]/available-slots/route.js:1:6780)',
+  masterId: 'cmdzot6ue0005dk2bzaf5iy96',
+  date: '2025-01-15',
+  serviceDuration: 60
+}
+Login error: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.user.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/auth/login/route.js:1:2251
+
+→ 1 (()=>{var a={};a.id=758,a.ids=[183,758],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},12909:(a,b,c)=>{"use strict";c.d(b,{Aq:()=>k,BE:()=>h,GU:()=>m,HU:()=>i,hashPassword:()=>g,nr:()=>j,oC:()=>l});var d=c(85663),e=c(43205),f=c.n(e);let g=async a=>d.Ay.hash(a,12),h=async(a,b)=>d.Ay.compare(a,b),i=a=>f().sign(a,process.env.JWT_SECRET,{expiresIn:"7d"}),j=a=>f().verify(a,process.env.JWT_SECRET),k=a=>a&&a.startsWith("Bearer ")?a.substring(7):null,l=()=>{let a=Math.floor(9999999*Math.random()).toString().padStart(7,"0");return`B0${a}`},m=()=>{let a=Date.now().toString(36),b=Math.random().toString(36).substr(2,5);return`BK${a}${b}`.toUpperCase()}},27910:a=>{"use strict";a.exports=require("stream")},28354:a=>{"use strict";a.exports=require("util")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},31183:(a,b,c)=>{"use strict";c.d(b,{prisma:()=>e});var d=c(96330);let e=globalThis.prisma??new d.PrismaClient},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55511:a=>{"use strict";a.exports=require("crypto")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},78335:()=>{},79428:a=>{"use strict";a.exports=require("buffer")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},90948:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183),w=c(12909);async function x(a){try{let{email:b,password:c}=await a.json();if(!b||!c)return u.NextResponse.json({error:"Email и пароль обязательны для заполнения"},{status:400});let d=await v.prisma.user.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/auth/login/route.js:1:2251)
+    at async x (.next/server/app/api/auth/login/route.js:1:2231)
+    at async k (.next/server/app/api/auth/login/route.js:1:5883)
+    at async g (.next/server/app/api/auth/login/route.js:1:6886) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}
+Login error: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.user.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/auth/login/route.js:1:2251
+
+→ 1 (()=>{var a={};a.id=758,a.ids=[183,758],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},12909:(a,b,c)=>{"use strict";c.d(b,{Aq:()=>k,BE:()=>h,GU:()=>m,HU:()=>i,hashPassword:()=>g,nr:()=>j,oC:()=>l});var d=c(85663),e=c(43205),f=c.n(e);let g=async a=>d.Ay.hash(a,12),h=async(a,b)=>d.Ay.compare(a,b),i=a=>f().sign(a,process.env.JWT_SECRET,{expiresIn:"7d"}),j=a=>f().verify(a,process.env.JWT_SECRET),k=a=>a&&a.startsWith("Bearer ")?a.substring(7):null,l=()=>{let a=Math.floor(9999999*Math.random()).toString().padStart(7,"0");return`B0${a}`},m=()=>{let a=Date.now().toString(36),b=Math.random().toString(36).substr(2,5);return`BK${a}${b}`.toUpperCase()}},27910:a=>{"use strict";a.exports=require("stream")},28354:a=>{"use strict";a.exports=require("util")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},31183:(a,b,c)=>{"use strict";c.d(b,{prisma:()=>e});var d=c(96330);let e=globalThis.prisma??new d.PrismaClient},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55511:a=>{"use strict";a.exports=require("crypto")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},78335:()=>{},79428:a=>{"use strict";a.exports=require("buffer")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},90948:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183),w=c(12909);async function x(a){try{let{email:b,password:c}=await a.json();if(!b||!c)return u.NextResponse.json({error:"Email и пароль обязательны для заполнения"},{status:400});let d=await v.prisma.user.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/auth/login/route.js:1:2251)
+    at async x (.next/server/app/api/auth/login/route.js:1:2231)
+    at async k (.next/server/app/api/auth/login/route.js:1:5883)
+    at async g (.next/server/app/api/auth/login/route.js:1:6886) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}
+Login error: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.user.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/auth/login/route.js:1:2251
+
+→ 1 (()=>{var a={};a.id=758,a.ids=[183,758],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},12909:(a,b,c)=>{"use strict";c.d(b,{Aq:()=>k,BE:()=>h,GU:()=>m,HU:()=>i,hashPassword:()=>g,nr:()=>j,oC:()=>l});var d=c(85663),e=c(43205),f=c.n(e);let g=async a=>d.Ay.hash(a,12),h=async(a,b)=>d.Ay.compare(a,b),i=a=>f().sign(a,process.env.JWT_SECRET,{expiresIn:"7d"}),j=a=>f().verify(a,process.env.JWT_SECRET),k=a=>a&&a.startsWith("Bearer ")?a.substring(7):null,l=()=>{let a=Math.floor(9999999*Math.random()).toString().padStart(7,"0");return`B0${a}`},m=()=>{let a=Date.now().toString(36),b=Math.random().toString(36).substr(2,5);return`BK${a}${b}`.toUpperCase()}},27910:a=>{"use strict";a.exports=require("stream")},28354:a=>{"use strict";a.exports=require("util")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},31183:(a,b,c)=>{"use strict";c.d(b,{prisma:()=>e});var d=c(96330);let e=globalThis.prisma??new d.PrismaClient},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55511:a=>{"use strict";a.exports=require("crypto")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},78335:()=>{},79428:a=>{"use strict";a.exports=require("buffer")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},90948:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183),w=c(12909);async function x(a){try{let{email:b,password:c}=await a.json();if(!b||!c)return u.NextResponse.json({error:"Email и пароль обязательны для заполнения"},{status:400});let d=await v.prisma.user.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/auth/login/route.js:1:2251)
+    at async x (.next/server/app/api/auth/login/route.js:1:2231)
+    at async k (.next/server/app/api/auth/login/route.js:1:5883)
+    at async g (.next/server/app/api/auth/login/route.js:1:6886) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}
+Login error: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.user.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/auth/login/route.js:1:2251
+
+→ 1 (()=>{var a={};a.id=758,a.ids=[183,758],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},10846:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},12909:(a,b,c)=>{"use strict";c.d(b,{Aq:()=>k,BE:()=>h,GU:()=>m,HU:()=>i,hashPassword:()=>g,nr:()=>j,oC:()=>l});var d=c(85663),e=c(43205),f=c.n(e);let g=async a=>d.Ay.hash(a,12),h=async(a,b)=>d.Ay.compare(a,b),i=a=>f().sign(a,process.env.JWT_SECRET,{expiresIn:"7d"}),j=a=>f().verify(a,process.env.JWT_SECRET),k=a=>a&&a.startsWith("Bearer ")?a.substring(7):null,l=()=>{let a=Math.floor(9999999*Math.random()).toString().padStart(7,"0");return`B0${a}`},m=()=>{let a=Date.now().toString(36),b=Math.random().toString(36).substr(2,5);return`BK${a}${b}`.toUpperCase()}},27910:a=>{"use strict";a.exports=require("stream")},28354:a=>{"use strict";a.exports=require("util")},29294:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-async-storage.external.js")},31183:(a,b,c)=>{"use strict";c.d(b,{prisma:()=>e});var d=c(96330);let e=globalThis.prisma??new d.PrismaClient},44870:a=>{"use strict";a.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},55511:a=>{"use strict";a.exports=require("crypto")},63033:a=>{"use strict";a.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},78335:()=>{},79428:a=>{"use strict";a.exports=require("buffer")},86439:a=>{"use strict";a.exports=require("next/dist/shared/lib/no-fallback-error.external")},90948:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>D,patchFetch:()=>C,routeModule:()=>y,serverHooks:()=>B,workAsyncStorage:()=>z,workUnitAsyncStorage:()=>A});var d={};c.r(d),c.d(d,{POST:()=>x});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183),w=c(12909);async function x(a){try{let{email:b,password:c}=await a.json();if(!b||!c)return u.NextResponse.json({error:"Email и пароль обязательны для заполнения"},{status:400});let d=await v.prisma.user.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/auth/login/route.js:1:2251)
+    at async x (.next/server/app/api/auth/login/route.js:1:2231)
+    at async k (.next/server/app/api/auth/login/route.js:1:5883)
+    at async g (.next/server/app/api/auth/login/route.js:1:6886) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}
+Get team error: Error [PrismaClientKnownRequestError]: 
+Invalid `v.prisma.team.findUnique()` invocation in
+/home/beautyapp/beauty-booking/.next/server/app/api/teams/[slug]/route.js:1:719
+
+→ 1 (()=>{var a={};a.id=80,a.ids=[80,183],a.modules={261:a=>{"use strict";a.exports=require("next/dist/shared/lib/router/utils/app-paths")},3295:a=>{"use strict";a.exports=require("next/dist/server/app-render/after-task-async-storage.external.js")},8298:(a,b,c)=>{"use strict";c.r(b),c.d(b,{handler:()=>C,patchFetch:()=>B,routeModule:()=>x,serverHooks:()=>A,workAsyncStorage:()=>y,workUnitAsyncStorage:()=>z});var d={};c.r(d),c.d(d,{GET:()=>w});var e=c(96559),f=c(48088),g=c(37719),h=c(26191),i=c(81289),j=c(261),k=c(92603),l=c(39893),m=c(14823),n=c(47220),o=c(66946),p=c(47912),q=c(99786),r=c(46143),s=c(86439),t=c(43365),u=c(32190),v=c(31183);async function w(a,{params:b}){try{let{slug:a}=await b,c=await v.prisma.team.findUnique(
+The column `main.teams.bookingSlug` does not exist in the current database.
+    at <unknown> (.next/server/app/api/teams/[slug]/route.js:1:719)
+    at async w (.next/server/app/api/teams/[slug]/route.js:1:699)
+    at async k (.next/server/app/api/teams/[slug]/route.js:1:4831)
+    at async g (.next/server/app/api/teams/[slug]/route.js:1:5834) {
+  code: 'P2022',
+  meta: [Object],
+  clientVersion: '6.13.0'
+}

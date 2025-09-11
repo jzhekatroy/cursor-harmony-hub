@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       mastersCount: team._count.users,
       clientsCount: team._count.clients,
       bookingsCount: team._count.bookings,
-      notificationsEnabled: team.notificationSettings?.length > 0 ? team.notificationSettings[0].enabled : true
+      notificationsEnabled: team.notificationSettings?.enabled ?? true
     }))
 
     return NextResponse.json({ total, page, pageSize, teams: teamsWithCounts })

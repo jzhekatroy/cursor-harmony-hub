@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
         master: {
           select: {
             id: true,
-            name: true
+            firstName: true,
+            lastName: true
           }
         },
         services: {
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
       status: booking.status,
       master: {
         id: booking.master.id,
-        name: booking.master.name
+        name: `${booking.master.firstName} ${booking.master.lastName}`.trim()
       },
       services: booking.services.map(bs => ({
         id: bs.service.id,

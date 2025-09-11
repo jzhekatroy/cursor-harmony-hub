@@ -113,6 +113,7 @@ model Team {
   loginLogs            UserLoginLog[]
   notificationSettings NotificationSettings?
   telegramErrors       TelegramError[]
+  notificationLogs     NotificationLog[]
   clientActions        ClientAction[]
 
   @@map("teams")
@@ -291,6 +292,7 @@ model Client {
   events                ClientEvent[]
   actions               ClientAction[]
   telegramErrors        TelegramError[]
+  notificationLogs      NotificationLog[]
 
   @@unique([email, teamId])
   @@map("clients")
@@ -477,6 +479,16 @@ model NotificationSettings {
   bookingRescheduleTemplate     String?  @map("booking_reschedule_template")
   reminderTemplate              String?  @map("reminder_template")
   
+  // Настройки отправки сообщений
+  maxRequestsPerMinute          Int      @default(25) @map("max_requests_per_minute")
+  requestDelayMs                Int      @default(2000) @map("request_delay_ms")
+  maxRetryAttempts              Int      @default(3) @map("max_retry_attempts")
+  retryDelayMs                  Int      @default(5000) @map("retry_delay_ms")
+  exponentialBackoff            Boolean  @default(true) @map("exponential_backoff")
+  failureThreshold              Int      @default(5) @map("failure_threshold")
+  recoveryTimeoutMs             Int      @default(60000) @map("recovery_timeout_ms")
+  enabled                       Boolean  @default(true) @map("enabled")
+  
   createdAt                     DateTime @default(now()) @map("created_at")
   updatedAt                     DateTime @updatedAt @map("updated_at")
   
@@ -534,6 +546,38 @@ model UserLoginLog {
   @@index([userId, createdAt])
   @@index([teamId, createdAt])
   @@map("user_login_logs")
+}
+
+// Логи отправки уведомлений
+model NotificationLog {
+  id                String   @id @default(cuid())
+  teamId            String   @map("team_id")
+  team              Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  type              String   // 'manual_send', 'booking_created', 'reminder'
+  clientId          String   @map("client_id")
+  client            Client?  @relation(fields: [clientId], references: [id])
+  message           String
+  status            String   // 'SUCCESS', 'FAILED'
+  
+  // Детали отправки
+  telegramMessageId String?  @map("telegram_message_id")
+  errorMessage      String?  @map("error_message")
+  attempts          Int      @default(1)
+  processingTimeMs  Int?     @map("processing_time_ms")
+  
+  // Метаданные
+  userAgent         String?  @map("user_agent")
+  ipAddress         String?  @map("ip_address")
+  
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@index([teamId, createdAt])
+  @@index([type, createdAt])
+  @@index([status, createdAt])
+  @@index([clientId, createdAt])
+  @@map("notification_logs")
 }
 
 // Логи взаимодействия с Telegram WebApp

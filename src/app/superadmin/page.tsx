@@ -14,6 +14,7 @@ interface TeamRow {
   mastersCount: number
   clientsCount: number
   bookingsCount: number
+  notificationsEnabled: boolean
 }
 
 export default function SuperAdminPage() {
@@ -85,10 +86,11 @@ export default function SuperAdminPage() {
                     <th className="px-3 py-2 text-left w-[12%]">Дата регистрации</th>
                     <th className="px-3 py-2 text-left w-[10%]">Статус</th>
                     <th className="px-3 py-2 text-left w-[14%]">Контакт</th>
-                    <th className="px-3 py-2 text-right w-[8%]">Сотр.</th>
-                    <th className="px-3 py-2 text-right w-[8%]">Клиент.</th>
-                    <th className="px-3 py-2 text-right w-[8%]">Брони</th>
-                    <th className="px-3 py-2 text-right w-[10%]">Лимит маст.</th>
+                    <th className="px-3 py-2 text-right w-[6%]">Сотр.</th>
+                    <th className="px-3 py-2 text-right w-[6%]">Клиент.</th>
+                    <th className="px-3 py-2 text-right w-[6%]">Брони</th>
+                    <th className="px-3 py-2 text-right w-[8%]">Лимит маст.</th>
+                    <th className="px-3 py-2 text-center w-[8%]">Уведомления</th>
                     <th className="px-3 py-2 text-right w-[12%]">Действия</th>
                   </tr>
                 </thead>
@@ -111,6 +113,31 @@ export default function SuperAdminPage() {
                       <td className="px-3 py-2 text-right tabular-nums">{t.clientsCount}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{t.bookingsCount}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{t.masterLimit}</td>
+                      <td className="px-3 py-2 text-center">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={t.notificationsEnabled}
+                            onChange={async (e) => {
+                              try {
+                                const token = localStorage.getItem('token')
+                                const res = await fetch(`/api/superadmin/notifications/settings/${t.id}`, {
+                                  method: 'PUT',
+                                  headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ enabled: e.target.checked })
+                                })
+                                if (!res.ok) throw new Error('Ошибка обновления настроек')
+                                await load(true)
+                              } catch (error) {
+                                alert('Не удалось обновить настройки уведомлений')
+                                // Возвращаем предыдущее состояние
+                                e.target.checked = t.notificationsEnabled
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          />
+                        </label>
+                      </td>
                       <td className="px-3 py-2 text-right space-x-2">
                         {t.status === 'ACTIVE' ? (
                           <button

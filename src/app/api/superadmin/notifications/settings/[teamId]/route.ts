@@ -63,82 +63,16 @@ export async function PUT(
     const { teamId } = await context.params
     const body = await request.json()
 
-    const {
-      maxRequestsPerMinute,
-      requestDelayMs,
-      maxRetryAttempts,
-      retryDelayMs,
-      exponentialBackoff,
-      failureThreshold,
-      recoveryTimeoutMs,
-      enabled
-    } = body
-
-    // Валидация
-    if (maxRequestsPerMinute && (maxRequestsPerMinute < 1 || maxRequestsPerMinute > 30)) {
-      return NextResponse.json(
-        { error: 'maxRequestsPerMinute must be between 1 and 30' },
-        { status: 400 }
-      )
-    }
-
-    if (requestDelayMs && (requestDelayMs < 100 || requestDelayMs > 10000)) {
-      return NextResponse.json(
-        { error: 'requestDelayMs must be between 100 and 10000' },
-        { status: 400 }
-      )
-    }
-
-    if (maxRetryAttempts && (maxRetryAttempts < 1 || maxRetryAttempts > 10)) {
-      return NextResponse.json(
-        { error: 'maxRetryAttempts must be between 1 and 10' },
-        { status: 400 }
-      )
-    }
-
-    if (retryDelayMs && (retryDelayMs < 1000 || retryDelayMs > 30000)) {
-      return NextResponse.json(
-        { error: 'retryDelayMs must be between 1000 and 30000' },
-        { status: 400 }
-      )
-    }
-
-    if (failureThreshold && (failureThreshold < 1 || failureThreshold > 20)) {
-      return NextResponse.json(
-        { error: 'failureThreshold must be between 1 and 20' },
-        { status: 400 }
-      )
-    }
-
-    if (recoveryTimeoutMs && (recoveryTimeoutMs < 10000 || recoveryTimeoutMs > 300000)) {
-      return NextResponse.json(
-        { error: 'recoveryTimeoutMs must be between 10000 and 300000' },
-        { status: 400 }
-      )
-    }
+    const { enabled } = body
 
     // Обновляем настройки
     const settings = await prisma.notificationSettings.upsert({
       where: { teamId },
       update: {
-        maxRequestsPerMinute,
-        requestDelayMs,
-        maxRetryAttempts,
-        retryDelayMs,
-        exponentialBackoff,
-        failureThreshold,
-        recoveryTimeoutMs,
         enabled
       },
       create: {
         teamId,
-        maxRequestsPerMinute: maxRequestsPerMinute || 25,
-        requestDelayMs: requestDelayMs || 2000,
-        maxRetryAttempts: maxRetryAttempts || 3,
-        retryDelayMs: retryDelayMs || 5000,
-        exponentialBackoff: exponentialBackoff !== undefined ? exponentialBackoff : true,
-        failureThreshold: failureThreshold || 5,
-        recoveryTimeoutMs: recoveryTimeoutMs || 60000,
         enabled: enabled !== undefined ? enabled : true
       }
     })
@@ -168,24 +102,10 @@ export async function POST(
     const settings = await prisma.notificationSettings.upsert({
       where: { teamId },
       update: {
-        maxRequestsPerMinute: 25,
-        requestDelayMs: 2000,
-        maxRetryAttempts: 3,
-        retryDelayMs: 5000,
-        exponentialBackoff: true,
-        failureThreshold: 5,
-        recoveryTimeoutMs: 60000,
         enabled: true
       },
       create: {
         teamId,
-        maxRequestsPerMinute: 25,
-        requestDelayMs: 2000,
-        maxRetryAttempts: 3,
-        retryDelayMs: 5000,
-        exponentialBackoff: true,
-        failureThreshold: 5,
-        recoveryTimeoutMs: 60000,
         enabled: true
       }
     })

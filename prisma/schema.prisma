@@ -480,19 +480,38 @@ model NotificationSettings {
   reminderTemplate              String?  @map("reminder_template")
   
   // Настройки отправки сообщений
-  maxRequestsPerMinute          Int      @default(25) @map("max_requests_per_minute")
-  requestDelayMs                Int      @default(2000) @map("request_delay_ms")
-  maxRetryAttempts              Int      @default(3) @map("max_retry_attempts")
-  retryDelayMs                  Int      @default(5000) @map("retry_delay_ms")
-  exponentialBackoff            Boolean  @default(true) @map("exponential_backoff")
-  failureThreshold              Int      @default(5) @map("failure_threshold")
-  recoveryTimeoutMs             Int      @default(60000) @map("recovery_timeout_ms")
   enabled                       Boolean  @default(true) @map("enabled")
   
   createdAt                     DateTime @default(now()) @map("created_at")
   updatedAt                     DateTime @updatedAt @map("updated_at")
   
   @@map("notification_settings")
+}
+
+// Глобальные настройки системы уведомлений
+model GlobalNotificationSettings {
+  id                            String   @id @default(cuid())
+  
+  // Rate Limiting - Ограничение скорости отправки
+  maxRequestsPerMinute          Int      @default(25) @map("max_requests_per_minute")
+  requestDelayMs                Int      @default(2000) @map("request_delay_ms")
+  
+  // Retry Logic - Логика повторных попыток
+  maxRetryAttempts              Int      @default(3) @map("max_retry_attempts")
+  retryDelayMs                  Int      @default(5000) @map("retry_delay_ms")
+  exponentialBackoff            Boolean  @default(true) @map("exponential_backoff")
+  
+  // Circuit Breaker - Автоматический выключатель при сбоях
+  failureThreshold              Int      @default(5) @map("failure_threshold")
+  recoveryTimeoutMs             Int      @default(60000) @map("recovery_timeout_ms")
+  
+  // Общие настройки
+  enabled                       Boolean  @default(true) @map("enabled")
+  
+  createdAt                     DateTime @default(now()) @map("created_at")
+  updatedAt                     DateTime @updatedAt @map("updated_at")
+  
+  @@map("global_notification_settings")
 }
 
 // Очередь уведомлений

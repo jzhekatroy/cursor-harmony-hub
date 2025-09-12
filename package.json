@@ -19,7 +19,7 @@
     "pg:logs": "docker compose logs -f postgres",
     "pg:stop": "docker compose stop postgres",
     "data:export": "tsx scripts/export-postgres-data.ts",
-    "data:import": "tsx scripts/import-to-postgres.ts",
+    "data:import": "tsx scripts/import-to-postgres.ts"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",

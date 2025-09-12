@@ -46,41 +46,29 @@ jobs:
       run: |
         echo "🚀 Deploying to production server..."
         
-        # Создаем архив для деплоя
-        tar -czf deploy.tar.gz .next package.json package-lock.json prisma .env.example
+        # Создаем SSH ключ из секрета
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.HOST }} >> ~/.ssh/known_hosts
         
-        # Копируем файлы на сервер
-        echo "📦 Uploading files to server..."
-        scp -o StrictHostKeyChecking=no deploy.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}/
-        
-        # Подключаемся к серверу и разворачиваем
+        # Подключаемся к серверу и деплоим
         echo "🔄 Deploying on server..."
-        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          cd ${{ secrets.SERVER_PATH }}
+        ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST }} << 'EOF'
+          cd /home/beautyapp/beauty-booking
           
           # Останавливаем приложение
           echo "⏹️ Stopping application..."
-          pm2 stop beauty-booking || echo "App not running"
+          sudo pkill -f "npm start" || echo "App not running"
           
-          # Создаем бэкап
-          echo "💾 Creating backup..."
-          if [ -d "backup" ]; then
-            rm -rf backup.old
-            mv backup backup.old
-          fi
-          if [ -d "current" ]; then
-            mv current backup
-          fi
-          
-          # Распаковываем новый код
-          echo "📦 Extracting new code..."
-          mkdir -p current
-          cd current
-          tar -xzf ../deploy.tar.gz
+          # Получаем последние изменения
+          echo "📥 Pulling latest changes..."
+          git fetch origin
+          git reset --hard origin/main
           
           # Устанавливаем зависимости
-          echo "📥 Installing dependencies..."
-          npm ci --production
+          echo "📦 Installing dependencies..."
+          npm ci
           
           # Генерируем Prisma Client
           echo "🔧 Generating Prisma Client..."
@@ -90,12 +78,25 @@ jobs:
           echo "🔄 Running database migrations..."
           npx prisma migrate deploy
           
+          # Собираем приложение
+          echo "🔨 Building application..."
+          sudo -u beautyapp npm run build
+          
           # Запускаем приложение
           echo "🚀 Starting application..."
-          pm2 start npm --name "beauty-booking" -- start
+          sudo -u beautyapp nohup npm start > nohup.out 2>&1 &
           
-          # Очищаем временные файлы
-          rm -f ../deploy.tar.gz
+          # Ждем запуска
+          sleep 10
+          
+          # Проверяем что запустилось
+          if curl -f http://localhost:3000/api/status > /dev/null 2>&1; then
+            echo "✅ Application started successfully!"
+          else
+            echo "❌ Application failed to start, checking logs..."
+            tail -20 nohup.out
+            exit 1
+          fi
           
           echo "✅ Deployment completed!"
         EOF

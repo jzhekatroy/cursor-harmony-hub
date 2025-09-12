@@ -618,3 +618,8 @@ model TelegramLog {
   @@index([level])
   @@map("telegram_logs")
 }
+
+generator client {
+  provider = "prisma-client-js"
+  log = ["query", "info", "warn", "error"]
+}

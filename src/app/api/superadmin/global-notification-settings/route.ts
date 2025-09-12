@@ -185,3 +185,52 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function GET() {
+  try {
+    console.log('🔍 DEBUG: Starting global notification settings GET request')
+    
+    // Проверим, что Prisma видит таблицу
+    console.log(' DEBUG: Checking if table exists...')
+    const tableExists = await prisma.$queryRaw`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'global_notification_settings'
+      );
+    `
+    console.log('🔍 DEBUG: Table exists:', tableExists)
+    
+    // Проверим структуру таблицы
+    console.log('🔍 DEBUG: Checking table structure...')
+    const tableStructure = await prisma.$queryRaw`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'global_notification_settings' 
+      ORDER BY ordinal_position;
+    `
+    console.log(' DEBUG: Table structure:', tableStructure)
+    
+    // Попробуем получить данные
+    console.log(' DEBUG: Trying to get data...')
+    const settings = await prisma.globalNotificationSettings.findFirst()
+    console.log('🔍 DEBUG: Settings:', settings)
+    
+    return NextResponse.json(settings || {
+      id: 'global',
+      maxRequestsPerMinute: 25,
+      requestDelayMs: 2000,
+      maxRetryAttempts: 3,
+      retryDelayMs: 5000,
+      exponentialBackoff: true,
+      failureThreshold: 5,
+      recoveryTimeoutMs: 60000,
+      enabled: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+  } catch (error) {
+    console.error('❌ DEBUG: Error in global notification settings:', error)
+    return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
+  }
+}

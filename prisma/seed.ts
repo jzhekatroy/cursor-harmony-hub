@@ -266,7 +266,7 @@ async function main() {
   await prisma.bookingService.create({
     data: {
       bookingId: booking1.id,
-      serviceId: services.find(s => s.name === 'Маникюр классический')!.id,
+      serviceId: services.find((s: any) => s.name === 'Маникюр классический')!.id,
       price: 1800,
     }
   })
@@ -291,7 +291,7 @@ async function main() {
   await prisma.bookingService.create({
     data: {
       bookingId: booking2.id,
-      serviceId: services.find(s => s.name === 'Стрижка женская')!.id,
+      serviceId: services.find((s: any) => s.name === 'Стрижка женская')!.id,
       price: 2500,
     }
   })

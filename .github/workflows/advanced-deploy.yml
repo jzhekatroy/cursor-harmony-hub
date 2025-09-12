@@ -13,6 +13,7 @@ on:
 
 env:
   NODE_VERSION: '18'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
 jobs:
   pre-deploy-checks:
@@ -35,8 +36,6 @@ jobs:
       
     - name: Type Check
       run: npm run build
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Check if deployment is needed
       id: check
@@ -70,8 +69,6 @@ jobs:
       
     - name: Generate Prisma Client
       run: npx prisma generate
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Backup Database (if possible)
       run: |
@@ -83,23 +80,17 @@ jobs:
       run: |
         echo "🔄 Running database migrations..."
         npx prisma migrate deploy
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Verify Migration Success
       run: |
         echo "✅ Verifying migration success..."
         npx prisma db push --accept-data-loss
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Run Database Seed (if needed)
       run: |
         echo "🌱 Seeding database..."
         npx prisma db seed
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        continue-on-error: true
+      continue-on-error: true
 
   deploy:
     needs: [pre-deploy-checks, database-migration]
@@ -121,13 +112,9 @@ jobs:
       
     - name: Generate Prisma Client
       run: npx prisma generate
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Build Application
       run: npm run build
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Deploy to Production
       run: |

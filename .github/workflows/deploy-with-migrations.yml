@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+env:
+  NODE_VERSION: '18'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -24,28 +28,18 @@ jobs:
       
     - name: Generate Prisma Client
       run: npx prisma generate
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Run Database Migrations
       run: npx prisma migrate deploy
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Verify Database Schema
       run: npx prisma db push --accept-data-loss
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Seed Database (if needed)
       run: npx prisma db seed
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Build Application
       run: npm run build
-      env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
     - name: Deploy to Production
       run: |

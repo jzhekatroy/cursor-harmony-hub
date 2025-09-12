@@ -42,24 +42,63 @@ jobs:
     - name: Build Application
       run: npm run build
         
-    - name: Deploy to Production
+    - name: Deploy to Production Server
       run: |
-        echo "🚀 Deploying to production..."
-        echo "📝 Configure your deployment method below:"
-        echo ""
-        echo "For Vercel:"
-        echo "  - Install Vercel CLI: npm i -g vercel"
-        echo "  - Deploy: vercel --prod --token \$VERCEL_TOKEN"
-        echo ""
-        echo "For Railway:"
-        echo "  - Install Railway CLI: npm i -g @railway/cli"
-        echo "  - Deploy: railway up --token \$RAILWAY_TOKEN"
-        echo ""
-        echo "For custom server:"
-        echo "  - Use rsync or scp to copy files"
-        echo "  - SSH to server and restart services"
-        echo ""
-        echo "For now, this is a placeholder - configure your actual deployment!"
+        echo "🚀 Deploying to production server..."
+        
+        # Создаем архив для деплоя
+        tar -czf deploy.tar.gz .next package.json package-lock.json prisma .env.example
+        
+        # Копируем файлы на сервер
+        echo "📦 Uploading files to server..."
+        scp -o StrictHostKeyChecking=no deploy.tar.gz ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}/
+        
+        # Подключаемся к серверу и разворачиваем
+        echo "🔄 Deploying on server..."
+        ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          cd ${{ secrets.SERVER_PATH }}
+          
+          # Останавливаем приложение
+          echo "⏹️ Stopping application..."
+          pm2 stop beauty-booking || echo "App not running"
+          
+          # Создаем бэкап
+          echo "💾 Creating backup..."
+          if [ -d "backup" ]; then
+            rm -rf backup.old
+            mv backup backup.old
+          fi
+          if [ -d "current" ]; then
+            mv current backup
+          fi
+          
+          # Распаковываем новый код
+          echo "📦 Extracting new code..."
+          mkdir -p current
+          cd current
+          tar -xzf ../deploy.tar.gz
+          
+          # Устанавливаем зависимости
+          echo "📥 Installing dependencies..."
+          npm ci --production
+          
+          # Генерируем Prisma Client
+          echo "🔧 Generating Prisma Client..."
+          npx prisma generate
+          
+          # Запускаем миграции
+          echo "🔄 Running database migrations..."
+          npx prisma migrate deploy
+          
+          # Запускаем приложение
+          echo "🚀 Starting application..."
+          pm2 start npm --name "beauty-booking" -- start
+          
+          # Очищаем временные файлы
+          rm -f ../deploy.tar.gz
+          
+          echo "✅ Deployment completed!"
+        EOF
         
     - name: Health Check
       run: |

@@ -20,10 +20,6 @@
     "pg:stop": "docker compose stop postgres",
     "data:export": "tsx scripts/export-postgres-data.ts",
     "data:import": "tsx scripts/import-to-postgres.ts",
-    "db:health": "node scripts/check-database-health.js",
-    "db:fix": "node fix-database-simple.js",
-    "deploy:check": "npm run db:health && npm run build",
-    "deploy:full": "npm run db:migrate:deploy && npm run db:seed && npm run build"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.19",

@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  log = ["query", "info", "warn", "error"]
 }
 
 datasource db {
@@ -619,7 +620,3 @@ model TelegramLog {
   @@map("telegram_logs")
 }
 
-generator client {
-  provider = "prisma-client-js"
-  log = ["query", "info", "warn", "error"]
-}

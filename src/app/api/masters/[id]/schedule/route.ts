@@ -165,7 +165,7 @@ export async function PUT(
     }
 
     // Обновляем расписание в транзакции
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Удаляем существующее расписание
       await tx.masterSchedule.deleteMany({
         where: {

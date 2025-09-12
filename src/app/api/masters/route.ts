@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(rawPassword)
 
     // Создаем мастера в транзакции
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Создаем пользователя
       const user = await tx.user.create({
         data: {

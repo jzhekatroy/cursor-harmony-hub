@@ -440,7 +440,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Создаем НЕСКОЛЬКО бронирований подряд (по одной услуге на бронь) в транзакции
-    const createdIds = await prisma.$transaction(async (tx) => {
+    const createdIds = await prisma.$transaction(async (tx: any) => {
       const created: string[] = []
       let currentStart = new Date(utcStartDateTime)
       for (const service of services) {
@@ -707,7 +707,7 @@ export async function GET(request: NextRequest) {
       select: { id: true, clientId: true }
     })
     if (outdated.length > 0) {
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: any) => {
         await tx.booking.updateMany({
           where: { teamId, status: 'CONFIRMED', endTime: { lt: new Date() } },
           data: { status: 'COMPLETED' }

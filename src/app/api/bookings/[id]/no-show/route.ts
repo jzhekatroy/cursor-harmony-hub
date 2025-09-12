@@ -45,7 +45,7 @@ export async function POST(
       return NextResponse.json({ error: 'Отметить как «Не пришёл» можно только завершившиеся записи' }, { status: 400 })
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.booking.update({
         where: { id },
         data: { status: BookingStatus.NO_SHOW }

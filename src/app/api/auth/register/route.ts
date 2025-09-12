@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hashPassword(password)
 
     // Создание команды и администратора в транзакции
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Создание команды
       const team = await tx.team.create({
         data: {

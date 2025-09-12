@@ -212,7 +212,7 @@ export async function PUT(
 
     // Если есть изменения или смена услуги, обновляем бронирование
     if (Object.keys(updateData).length > 0 || serviceId) {
-      const updatedBooking = await prisma.$transaction(async (tx) => {
+      const updatedBooking = await prisma.$transaction(async (tx: any) => {
         // Обновляем бронирование
         const booking = await tx.booking.update({
           where: { id: bookingId },

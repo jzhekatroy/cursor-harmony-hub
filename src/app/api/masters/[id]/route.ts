@@ -68,7 +68,7 @@ export async function PUT(
       }
 
       // Обновляем статус мастера и пользователя
-      const updatedMaster = await prisma.$transaction(async (tx) => {
+      const updatedMaster = await prisma.$transaction(async (tx: any) => {
         // Обновляем статус пользователя
         await tx.user.update({
           where: { id: existingMaster.userId },
@@ -130,7 +130,7 @@ export async function PUT(
     }
 
     // Обновляем мастера в транзакции
-    const updatedMaster = await prisma.$transaction(async (tx) => {
+    const updatedMaster = await prisma.$transaction(async (tx: any) => {
       // Обновляем данные пользователя если нужно
       const userUpdateData: any = {}
       if (firstName) userUpdateData.firstName = firstName.trim()
@@ -258,7 +258,7 @@ export async function DELETE(
     }
 
     // Деактивируем мастера и пользователя
-    const deactivatedMaster = await prisma.$transaction(async (tx) => {
+    const deactivatedMaster = await prisma.$transaction(async (tx: any) => {
       // Деактивируем пользователя
       await tx.user.update({
         where: { id: existingMaster.userId },

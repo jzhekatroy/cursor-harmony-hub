@@ -53,7 +53,7 @@ export async function POST(
     }
 
     // Отмена в транзакции + лог
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       const updated = await tx.booking.update({
         where: { id },
         data: { status: BookingStatus.CANCELLED_BY_SALON }

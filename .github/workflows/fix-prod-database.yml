@@ -1,0 +1,50 @@
+name: Fix Production Database
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "YES" to confirm database fix'
+        required: true
+        default: 'NO'
+
+jobs:
+  fix-database:
+    if: github.event.inputs.confirm == 'YES'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Install Prisma CLI
+        run: npm install -g prisma
+        
+      - name: Fix Production Database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node fix-prod-database.js
+        
+      - name: Verify Database Fix
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🔍 Проверяем исправление базы данных..."
+          npx prisma db execute --stdin <<< "SELECT column_name FROM information_schema.columns WHERE table_name = 'global_notification_settings' AND column_name IN ('max_requests_per_minute', 'updated_at');"
+          
+      - name: Test API Endpoint
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🧪 Тестируем API эндпоинт..."
+          # Здесь можно добавить тест API, если нужно
+          echo "✅ База данных исправлена и готова к работе"

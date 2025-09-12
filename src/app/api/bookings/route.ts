@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { generateBookingNumber } from '@/lib/auth'
-import { BookingStatus } from '@prisma/client'
+import { BookingStatus } from '@/lib/enums'
 import jwt from 'jsonwebtoken'
 import { utcToSalonTime, createDateInSalonTimezone } from '@/lib/timezone'
 import { toE164 } from '@/lib/phone'

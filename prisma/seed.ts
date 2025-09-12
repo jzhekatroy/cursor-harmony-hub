@@ -1,35 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-
-// Определяем enums локально, так как Prisma Client не экспортирует их
-const UserRole = {
-  SUPER_ADMIN: 'SUPER_ADMIN',
-  ADMIN: 'ADMIN', 
-  MASTER: 'MASTER'
-} as const
-
-const TeamStatus = {
-  ACTIVE: 'ACTIVE',
-  DISABLED: 'DISABLED'
-} as const
-
-const BookingStatus = {
-  NEW: 'NEW',
-  CONFIRMED: 'CONFIRMED',
-  COMPLETED: 'COMPLETED',
-  CANCELLED_BY_CLIENT: 'CANCELLED_BY_CLIENT',
-  CANCELLED_BY_SALON: 'CANCELLED_BY_SALON',
-  NO_SHOW: 'NO_SHOW'
-} as const
-
-const ActionType = {
-  NEW: 'NEW',
-  CONFIRMED: 'CONFIRMED',
-  COMPLETED: 'COMPLETED',
-  NO_SHOW: 'NO_SHOW',
-  CANCELLED_BY_CLIENT: 'CANCELLED_BY_CLIENT',
-  CANCELLED_BY_SALON: 'CANCELLED_BY_SALON',
-  UPDATED: 'UPDATED'
-} as const
+import { UserRole, TeamStatus, BookingStatus, ActionType } from '../src/lib/enums'
 import { hashPassword, generateTeamNumber, generateBookingNumber } from '../src/lib/auth'
 
 const prisma = new PrismaClient()

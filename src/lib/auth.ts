@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
-import { UserRole } from '@prisma/client'
+import { UserRole } from './enums'
 
 export interface JWTPayload {
   userId: string

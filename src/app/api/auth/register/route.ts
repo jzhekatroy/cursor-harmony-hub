@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, generateTeamNumber, generateToken } from '@/lib/auth'
-import { UserRole } from '@prisma/client'
+import { UserRole } from '@/lib/enums'
 
 export async function POST(request: NextRequest) {
   try {

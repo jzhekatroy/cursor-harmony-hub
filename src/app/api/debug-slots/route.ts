@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { BookingStatus } from '@prisma/client'
+import { BookingStatus } from '@/lib/enums'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)

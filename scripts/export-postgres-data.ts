@@ -11,7 +11,7 @@ async function main() {
     await mkdir(outDir, { recursive: true })
   }
 
-  // Читаем данные из SQLite через Prisma
+  // Читаем данные из PostgreSQL через Prisma
   const teams = await prisma.team.findMany()
   const users = await prisma.user.findMany()
   const masters = await prisma.master.findMany()
@@ -54,7 +54,7 @@ async function main() {
 
   const outPath = join(outDir, 'export.json')
   await writeFile(outPath, JSON.stringify(payload), 'utf8')
-  console.log(`✔ Exported data to ${outPath}`)
+  console.log(`✔ Exported PostgreSQL data to ${outPath}`)
 }
 
 main()

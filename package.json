@@ -18,7 +18,7 @@
     "pg:up": "docker compose up -d postgres",
     "pg:logs": "docker compose logs -f postgres",
     "pg:stop": "docker compose stop postgres",
-    "data:export": "tsx scripts/export-sqlite-data.ts",
+    "data:export": "tsx scripts/export-postgres-data.ts",
     "data:import": "tsx scripts/import-to-postgres.ts"
   },
   "dependencies": {
@@ -45,7 +45,6 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.62.0",
-    "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
     "zod": "^4.0.14"
   },

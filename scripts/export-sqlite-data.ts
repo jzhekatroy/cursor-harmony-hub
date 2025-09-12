@@ -29,9 +29,9 @@ async function main() {
   const webhooks = await prisma.webhook.findMany()
 
   // Приводим Decimal к строкам
-  const services = servicesRaw.map(s => ({ ...s, price: s.price.toString() }))
-  const bookings = bookingsRaw.map(b => ({ ...b, totalPrice: b.totalPrice.toString() }))
-  const bookingServices = bookingServicesRaw.map(bs => ({ ...bs, price: bs.price.toString() }))
+  const services = servicesRaw.map((s: any) => ({ ...s, price: s.price.toString() }))
+  const bookings = bookingsRaw.map((b: any) => ({ ...b, totalPrice: b.totalPrice.toString() }))
+  const bookingServices = bookingServicesRaw.map((bs: any) => ({ ...bs, price: bs.price.toString() }))
 
   const payload = {
     exportedAt: new Date().toISOString(),

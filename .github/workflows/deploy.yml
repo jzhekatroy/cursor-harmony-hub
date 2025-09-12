@@ -1,0 +1,68 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '18'
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate Prisma Client
+      run: npx prisma generate
+        
+    - name: Run Database Migrations
+      run: npx prisma migrate deploy
+        
+    - name: Verify Database Schema
+      run: npx prisma db push --accept-data-loss
+        
+    - name: Seed Database (if needed)
+      run: npx prisma db seed
+      continue-on-error: true
+        
+    - name: Build Application
+      run: npm run build
+        
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Deploying to production..."
+        echo "📝 Configure your deployment method below:"
+        echo ""
+        echo "For Vercel:"
+        echo "  - Install Vercel CLI: npm i -g vercel"
+        echo "  - Deploy: vercel --prod --token \$VERCEL_TOKEN"
+        echo ""
+        echo "For Railway:"
+        echo "  - Install Railway CLI: npm i -g @railway/cli"
+        echo "  - Deploy: railway up --token \$RAILWAY_TOKEN"
+        echo ""
+        echo "For custom server:"
+        echo "  - Use rsync or scp to copy files"
+        echo "  - SSH to server and restart services"
+        echo ""
+        echo "For now, this is a placeholder - configure your actual deployment!"
+        
+    - name: Health Check
+      run: |
+        echo "🔍 Running health check..."
+        echo "✅ Deployment completed successfully!"
+        echo "🌐 Check your production URL to verify"

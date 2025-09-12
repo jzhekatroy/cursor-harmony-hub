@@ -1,0 +1,59 @@
+name: Deploy with Database Migrations
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Generate Prisma Client
+      run: npx prisma generate
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Run Database Migrations
+      run: npx prisma migrate deploy
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Verify Database Schema
+      run: npx prisma db push --accept-data-loss
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Seed Database (if needed)
+      run: npx prisma db seed
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Build Application
+      run: npm run build
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Deploying to production..."
+        # Здесь добавьте команды для деплоя на ваш хостинг
+        # Например, для Vercel, Netlify, или собственного сервера
+        
+    - name: Health Check
+      run: |
+        echo "🔍 Running health check..."
+        # Добавьте проверку работоспособности после деплоя

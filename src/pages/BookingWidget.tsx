@@ -145,6 +145,7 @@ export default function BookingWidget() {
   }
 
   const handleDateTimeSelect = (date: string, master: Master | null, timeSlot: TimeSlot | null) => {
+    console.log('handleDateTimeSelect called:', { date, master: master?.firstName, timeSlot: timeSlot?.time })
     setBookingData(prev => ({
       ...prev,
       date,
@@ -193,17 +194,23 @@ export default function BookingWidget() {
   }
 
   const goToNextStep = () => {
+    console.log('goToNextStep called, currentStep:', currentStep)
     if (currentStep === 'select-services') {
+      console.log('Moving to select-date-time')
       setCurrentStep('select-date-time')
     } else if (currentStep === 'select-date-time') {
+      console.log('Moving to client-info')
       setCurrentStep('client-info')
     }
   }
 
   const goToPreviousStep = () => {
+    console.log('goToPreviousStep called, currentStep:', currentStep)
     if (currentStep === 'select-date-time') {
+      console.log('Moving to select-services')
       setCurrentStep('select-services')
     } else if (currentStep === 'client-info') {
+      console.log('Moving to select-date-time')
       setCurrentStep('select-date-time')
     }
   }

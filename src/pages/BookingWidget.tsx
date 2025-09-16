@@ -246,100 +246,110 @@ export default function BookingWidget() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Заголовок */}
-      <div className="bg-card shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">
-                {team.team.publicPageTitle || 'Запись на услуги'}
-              </h1>
-              {team.team.publicPageDescription && (
-                <p className="text-muted-foreground mt-1">{team.team.publicPageDescription}</p>
-              )}
-            </div>
-            {team.team.publicPageLogoUrl && (
+    <div className="min-h-screen bg-gradient-to-br from-primary-soft via-background to-secondary-soft">
+      {/* Modern Header with Glass Effect */}
+      <div className="glass sticky top-0 z-50 border-b border-border/30">
+        <div className="max-w-md mx-auto px-4 py-4">
+          <div className="text-center animate-fade-in">
+            <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              {team.team.publicPageTitle || '✨ Запись на услуги'}
+            </h1>
+            {team.team.publicPageDescription && (
+              <p className="text-muted-foreground text-sm mt-1">{team.team.publicPageDescription}</p>
+            )}
+          </div>
+          {team.team.publicPageLogoUrl && (
+            <div className="flex justify-center mt-2">
               <img 
                 src={team.team.publicPageLogoUrl} 
                 alt="Logo" 
-                className="h-12 w-auto"
+                className="h-8 w-auto animate-pulse-soft"
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Основной контент */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="space-y-6">
-          {/* Уведомление об активных записях */}
-          <ActiveBookingsNotification 
-            activeBookings={activeBookings}
-            isLoading={isLoadingBookings}
-          />
+      {/* Mobile-First Content */}
+      <div className="max-w-md mx-auto px-4 py-6 pb-safe-area">
+        <div className="space-y-4">
+          {/* Active Bookings with Modern Style */}
+          <div className="animate-slide-down">
+            <ActiveBookingsNotification 
+              activeBookings={activeBookings}
+              isLoading={isLoadingBookings}
+            />
+          </div>
 
-          {/* Шаги записи */}
-          <div className="space-y-6">
+          {/* Step Content with Smooth Transitions */}
+          <div className="space-y-4">
             {currentStep === 'select-services' && (
-              <EnhancedServiceSelection
-                serviceGroups={serviceGroups}
-                selectedServices={bookingData.services}
-                onServiceSelect={handleServiceSelect}
-                onNext={goToNextStep}
-                showImagesOverride={team.team.publicServiceCardsWithPhotos}
-              />
+              <div className="animate-enter">
+                <EnhancedServiceSelection
+                  serviceGroups={serviceGroups}
+                  selectedServices={bookingData.services}
+                  onServiceSelect={handleServiceSelect}
+                  onNext={goToNextStep}
+                  showImagesOverride={team.team.publicServiceCardsWithPhotos}
+                />
+              </div>
             )}
 
             {currentStep === 'select-date-time' && (
-              <EnhancedDateMasterTimeSelection
-                masters={masters}
-                selectedServices={bookingData.services}
-                selectedDate={bookingData.date}
-                selectedMaster={bookingData.master}
-                selectedTimeSlot={bookingData.timeSlot}
-                onDateTimeSelect={handleDateTimeSelect}
-                bookingStep={team.team.bookingStep}
-                salonTimezone={team.team.timezone}
-                onNext={goToNextStep}
-              />
+              <div className="animate-enter">
+                <EnhancedDateMasterTimeSelection
+                  masters={masters}
+                  selectedServices={bookingData.services}
+                  selectedDate={bookingData.date}
+                  selectedMaster={bookingData.master}
+                  selectedTimeSlot={bookingData.timeSlot}
+                  onDateTimeSelect={handleDateTimeSelect}
+                  bookingStep={team.team.bookingStep}
+                  salonTimezone={team.team.timezone}
+                  onNext={goToNextStep}
+                />
+              </div>
             )}
 
             {currentStep === 'client-info' && (
-              <EnhancedClientInfoAndConfirmation
-                bookingData={bookingData}
-                onClientInfoChange={handleClientInfoChange}
-                onBookingConfirmed={handleBookingConfirmed}
-              />
+              <div className="animate-enter">
+                <EnhancedClientInfoAndConfirmation
+                  bookingData={bookingData}
+                  onClientInfoChange={handleClientInfoChange}
+                  onBookingConfirmed={handleBookingConfirmed}
+                />
+              </div>
             )}
           </div>
 
-          {/* Навигация */}
-          <div className="flex justify-between">
-            {currentStep !== 'select-services' && (
-              <Button
-                variant="outline"
-                onClick={goToPreviousStep}
-                className="flex items-center gap-2"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Назад
-              </Button>
-            )}
-            
-            {currentStep !== 'client-info' && (
-              <Button
-                onClick={goToNextStep}
-                disabled={
-                  (currentStep === 'select-services' && bookingData.services.length === 0) ||
-                  (currentStep === 'select-date-time' && (!bookingData.date || !bookingData.timeSlot))
-                }
-                className="flex items-center gap-2 ml-auto"
-              >
-                Далее
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            )}
+          {/* Mobile Navigation with Glass Effect */}
+          <div className="glass rounded-2xl p-4 mt-6 sticky bottom-4">
+            <div className="flex justify-between items-center">
+              {currentStep !== 'select-services' ? (
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  className="rounded-full px-6 touch-target border-border/50 hover:bg-muted/50"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Назад
+                </Button>
+              ) : <div />}
+              
+              {currentStep !== 'client-info' && (
+                <Button
+                  onClick={goToNextStep}
+                  disabled={
+                    (currentStep === 'select-services' && bookingData.services.length === 0) ||
+                    (currentStep === 'select-date-time' && (!bookingData.date || !bookingData.timeSlot))
+                  }
+                  className="button-primary rounded-full px-6 touch-target disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Далее
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>

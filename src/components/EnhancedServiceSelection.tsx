@@ -53,122 +53,135 @@ export function EnhancedServiceSelection({
   }
 
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Заголовок с переключателем */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Выберите услуги</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">С фото</span>
-          <button
-            onClick={() => setShowImages(!showImages)}
-            className={cn(
-              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-              showImages ? "bg-primary" : "bg-muted"
-            )}
-          >
-            <span
+    <div className={cn("space-y-4", className)}>
+      {/* Modern Header with Toggle */}
+      <div className="modern-card rounded-2xl p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+            💅 Выберите услуги
+          </h2>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Фото</span>
+            <button
+              onClick={() => setShowImages(!showImages)}
               className={cn(
-                "inline-block h-4 w-4 transform rounded-full bg-background transition-transform",
-                showImages ? "translate-x-6" : "translate-x-1"
+                "relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300",
+                showImages ? "bg-gradient-primary shadow-lg shadow-primary/25" : "bg-muted"
               )}
-            />
-          </button>
+            >
+              <span
+                className={cn(
+                  "inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-300",
+                  showImages ? "translate-x-5" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Группы услуг */}
-      {serviceGroups.map((group) => (
-        <Card key={group.id} className="overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              {group.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-              {group.services.map((service) => {
-                const isSelected = selectedServices.some(s => s.id === service.id)
-                
-                return (
-                  <Card
-                    key={service.id}
-                    className={cn(
-                      "cursor-pointer transition-all duration-200 hover:shadow-md",
-                      isSelected ? "ring-2 ring-primary bg-primary/5" : "hover:shadow-sm"
-                    )}
-                    onClick={() => handleServiceToggle(service)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          className="mt-1"
-                        />
-                        <div className="flex-1 min-w-0">
-                          {showImages && (service.image || service.photoUrl) && (
-                            <div className="mb-3">
-                              <ImageWithFallback
-                                src={service.image || service.photoUrl}
-                                alt={service.name}
-                                className="w-full h-32 object-cover rounded-lg"
-                              />
+      {/* Service Groups with Modern Design */}
+      {serviceGroups.map((group, groupIndex) => (
+        <div key={group.id} className="animate-fade-in" style={{ animationDelay: `${groupIndex * 100}ms` }}>
+          <Card className="modern-card rounded-2xl overflow-hidden border-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="w-4 h-4 text-primary" />
+                {group.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="space-y-3 p-4">
+                {group.services.map((service, serviceIndex) => {
+                  const isSelected = selectedServices.some(s => s.id === service.id)
+                  
+                  return (
+                    <Card
+                      key={service.id}
+                      className={cn(
+                        "cursor-pointer transition-all duration-300 rounded-xl border-0 touch-target animate-slide-up",
+                        isSelected 
+                          ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10 scale-[1.02]" 
+                          : "hover:shadow-md hover:scale-[1.01] bg-gradient-card"
+                      )}
+                      style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
+                      onClick={() => handleServiceToggle(service)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1">
+                            <Checkbox
+                              checked={isSelected}
+                              className="rounded-full"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            {showImages && (service.image || service.photoUrl) && (
+                              <div className="mb-3">
+                                <ImageWithFallback
+                                  src={service.image || service.photoUrl}
+                                  alt={service.name}
+                                  className="w-full h-24 object-cover rounded-xl shadow-sm"
+                                />
+                              </div>
+                            )}
+                            <h3 className="font-semibold text-foreground mb-1 text-sm">
+                              {service.name}
+                            </h3>
+                            {service.description && (
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                {service.description}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                {service.duration} мин
+                              </span>
+                              <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full">
+                                {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
+                              </span>
                             </div>
-                          )}
-                          <h3 className="font-semibold mb-1">
-                            {service.name}
-                          </h3>
-                          {service.description && (
-                            <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                              {service.description}
-                            </p>
-                          )}
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="flex items-center gap-1 text-muted-foreground">
-                              <Clock className="w-4 h-4" />
-                              {service.duration} мин
-                            </span>
-                            <span className="font-semibold text-primary">
-                              {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
-                            </span>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ))}
 
-      {/* Итого */}
+      {/* Modern Summary Card */}
       {selectedServices.length > 0 && (
-        <Card className="bg-primary text-primary-foreground">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold">Выбрано услуг: {selectedServices.length}</h3>
-                <p className="text-sm opacity-90">
-                  Общее время: {totalDuration} мин
-                </p>
+        <div className="animate-scale-in">
+          <Card className="bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <h3 className="font-bold text-sm">✨ Выбрано: {selectedServices.length}</h3>
+                  <p className="text-xs opacity-90">
+                    ⏱️ {totalDuration} мин
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold mb-2">
+                    {new Intl.NumberFormat('ru-RU').format(totalPrice)} ₽
+                  </p>
+                  <Button
+                    onClick={handleNext}
+                    className="bg-white/20 text-primary-foreground hover:bg-white/30 rounded-full px-4 py-2 text-sm font-semibold backdrop-blur-sm border border-white/20 touch-target"
+                  >
+                    Продолжить
+                    <ArrowRight className="w-3 h-3 ml-2" />
+                  </Button>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold">
-                  {new Intl.NumberFormat('ru-RU').format(totalPrice)} ₽
-                </p>
-                <Button
-                  onClick={handleNext}
-                  className="mt-2 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
-                >
-                  Продолжить
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

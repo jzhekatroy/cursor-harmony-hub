@@ -103,6 +103,46 @@ export default {
         "glow": {
           "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.3)" },
           "50%": { boxShadow: "0 0 30px hsl(var(--primary) / 0.5)" }
+        },
+        "morph-in": {
+          "0%": {
+            transform: "scale(0.8) rotateY(-15deg)",
+            opacity: "0"
+          },
+          "100%": {
+            transform: "scale(1) rotateY(0deg)",
+            opacity: "1"
+          }
+        },
+        "slide-in-left": {
+          "0%": {
+            transform: "translateX(-100%)",
+            opacity: "0"
+          },
+          "100%": {
+            transform: "translateX(0)",
+            opacity: "1"
+          }
+        },
+        "slide-in-right": {
+          "0%": {
+            transform: "translateX(100%)",
+            opacity: "0"
+          },
+          "100%": {
+            transform: "translateX(0)",
+            opacity: "1"
+          }
+        },
+        "float": {
+          "0%, 100%": { 
+            transform: "translateY(0px) rotate(0deg)",
+            opacity: "0.2"
+          },
+          "50%": { 
+            transform: "translateY(-20px) rotate(180deg)",
+            opacity: "0.4"
+          }
         }
       },
       animation: {
@@ -117,12 +157,17 @@ export default {
         "pulse-soft": "pulse-soft 3s ease-in-out infinite",
         "glow": "glow 2s ease-in-out infinite",
         "enter": "fade-in 0.4s ease-out, scale-in 0.3s ease-out",
-        "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out"
+        "exit": "fade-out 0.3s ease-out, scale-out 0.2s ease-out",
+        "morph-in": "morph-in 0.6s ease-out",
+        "slide-in-left": "slide-in-left 0.6s ease-out",
+        "slide-in-right": "slide-in-right 0.6s ease-out",
+        "float": "float 8s ease-in-out infinite"
       },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-soft': 'var(--gradient-soft)',
-        'gradient-card': 'var(--gradient-card)'
+        'gradient-card': 'var(--gradient-card)',
+        'gradient-hero': 'var(--gradient-hero)'
       },
     },
   },

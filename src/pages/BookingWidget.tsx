@@ -7,6 +7,7 @@ import { EnhancedClientInfoAndConfirmation } from '@/components/EnhancedClientIn
 import ActiveBookingsNotification from '@/components/ActiveBookingsNotification'
 import { Service, ServiceGroup, Master, TimeSlot, BookingData, BookingStep, ClientInfo, TeamData } from '@/types/booking'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
@@ -246,83 +247,146 @@ export default function BookingWidget() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-soft via-background to-secondary-soft">
-      {/* Modern Header with Glass Effect */}
+    <div className="min-h-screen hero-bg relative">
+      {/* Floating Background Elements */}
+      <div className="floating-element top-10 left-10 w-16 h-16 bg-gradient-primary rounded-full opacity-20 animate-float"></div>
+      <div className="floating-element top-32 right-20 w-8 h-8 bg-gradient-to-r from-secondary to-accent rounded-full"></div>
+      <div className="floating-element bottom-40 left-20 w-12 h-12 bg-accent rounded-full"></div>
+      
+      {/* Responsive Header */}
       <div className="glass sticky top-0 z-50 border-b border-border/30">
-        <div className="max-w-md mx-auto px-4 py-4">
-          <div className="text-center animate-fade-in">
-            <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
-              {team.team.publicPageTitle || '✨ Запись на услуги'}
-            </h1>
-            {team.team.publicPageDescription && (
-              <p className="text-muted-foreground text-sm mt-1">{team.team.publicPageDescription}</p>
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {/* Desktop Layout */}
+            <div className="hidden md:flex items-center gap-4">
+              {team.team.publicPageLogoUrl && (
+                <img 
+                  src={team.team.publicPageLogoUrl} 
+                  alt="Logo" 
+                  className="h-10 w-auto animate-pulse-soft"
+                />
+              )}
+              <div>
+                <h1 className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  {team.team.publicPageTitle || 'Запись на услуги'}
+                </h1>
+                {team.team.publicPageDescription && (
+                  <p className="text-muted-foreground text-sm">{team.team.publicPageDescription}</p>
+                )}
+              </div>
+            </div>
+            
+            {/* Mobile Layout */}
+            <div className="md:hidden text-center flex-1 animate-fade-in">
+              <h1 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+                {team.team.publicPageTitle || 'Запись на услуги'}
+              </h1>
+              {team.team.publicPageDescription && (
+                <p className="text-muted-foreground text-xs mt-1">{team.team.publicPageDescription}</p>
+              )}
+            </div>
+            
+            {/* Logo for mobile */}
+            {team.team.publicPageLogoUrl && (
+              <div className="md:hidden">
+                <img 
+                  src={team.team.publicPageLogoUrl} 
+                  alt="Logo" 
+                  className="h-8 w-auto animate-pulse-soft"
+                />
+              </div>
             )}
           </div>
-          {team.team.publicPageLogoUrl && (
-            <div className="flex justify-center mt-2">
-              <img 
-                src={team.team.publicPageLogoUrl} 
-                alt="Logo" 
-                className="h-8 w-auto animate-pulse-soft"
-              />
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Mobile-First Content */}
-      <div className="max-w-md mx-auto px-4 py-6 pb-safe-area">
-        <div className="space-y-4">
-          {/* Active Bookings with Modern Style */}
-          <div className="animate-slide-down">
-            <ActiveBookingsNotification 
-              activeBookings={activeBookings}
-              isLoading={isLoadingBookings}
-            />
+      {/* Responsive Content Layout */}
+      <div className="max-w-7xl mx-auto px-4 py-6 pb-safe-area">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Main Content Area */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Active Bookings with Modern Style */}
+            <div className="animate-slide-down">
+              <ActiveBookingsNotification 
+                activeBookings={activeBookings}
+                isLoading={isLoadingBookings}
+              />
+            </div>
+
+            {/* Step Content with Smooth Transitions */}
+            <div className="space-y-4">
+              {currentStep === 'select-services' && (
+                <div className="animate-morph-in">
+                  <EnhancedServiceSelection
+                    serviceGroups={serviceGroups}
+                    selectedServices={bookingData.services}
+                    onServiceSelect={handleServiceSelect}
+                    onNext={goToNextStep}
+                    showImagesOverride={team.team.publicServiceCardsWithPhotos}
+                  />
+                </div>
+              )}
+
+              {currentStep === 'select-date-time' && (
+                <div className="animate-slide-in-right">
+                  <EnhancedDateMasterTimeSelection
+                    masters={masters}
+                    selectedServices={bookingData.services}
+                    selectedDate={bookingData.date}
+                    selectedMaster={bookingData.master}
+                    selectedTimeSlot={bookingData.timeSlot}
+                    onDateTimeSelect={handleDateTimeSelect}
+                    bookingStep={team.team.bookingStep}
+                    salonTimezone={team.team.timezone}
+                    onNext={goToNextStep}
+                  />
+                </div>
+              )}
+
+              {currentStep === 'client-info' && (
+                <div className="animate-slide-in-left">
+                  <EnhancedClientInfoAndConfirmation
+                    bookingData={bookingData}
+                    onClientInfoChange={handleClientInfoChange}
+                    onBookingConfirmed={handleBookingConfirmed}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Step Content with Smooth Transitions */}
-          <div className="space-y-4">
-            {currentStep === 'select-services' && (
-              <div className="animate-enter">
-                <EnhancedServiceSelection
-                  serviceGroups={serviceGroups}
-                  selectedServices={bookingData.services}
-                  onServiceSelect={handleServiceSelect}
-                  onNext={goToNextStep}
-                  showImagesOverride={team.team.publicServiceCardsWithPhotos}
-                />
-              </div>
-            )}
-
-            {currentStep === 'select-date-time' && (
-              <div className="animate-enter">
-                <EnhancedDateMasterTimeSelection
-                  masters={masters}
-                  selectedServices={bookingData.services}
-                  selectedDate={bookingData.date}
-                  selectedMaster={bookingData.master}
-                  selectedTimeSlot={bookingData.timeSlot}
-                  onDateTimeSelect={handleDateTimeSelect}
-                  bookingStep={team.team.bookingStep}
-                  salonTimezone={team.team.timezone}
-                  onNext={goToNextStep}
-                />
-              </div>
-            )}
-
-            {currentStep === 'client-info' && (
-              <div className="animate-enter">
-                <EnhancedClientInfoAndConfirmation
-                  bookingData={bookingData}
-                  onClientInfoChange={handleClientInfoChange}
-                  onBookingConfirmed={handleBookingConfirmed}
-                />
-              </div>
-            )}
+          {/* Sidebar for Desktop - Booking Summary */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-24 space-y-4">
+              {bookingData.services.length > 0 && (
+                <Card className="modern-card rounded-2xl p-4 animate-fade-in">
+                  <h3 className="font-bold text-foreground mb-3">📋 Ваша запись</h3>
+                  <div className="space-y-3">
+                    {bookingData.services.map((service) => (
+                      <div key={service.id} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{service.name}</span>
+                        <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
+                      </div>
+                    ))}
+                    <div className="border-t pt-2 mt-2">
+                      <div className="flex justify-between font-bold">
+                        <span>Итого:</span>
+                        <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Время: {bookingData.totalDuration} мин
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
+        </div>
 
-          {/* Mobile Navigation with Glass Effect */}
+        {/* Responsive Navigation */}
+        <div className="lg:col-span-8">
           <div className="glass rounded-2xl p-4 mt-6 sticky bottom-4">
             <div className="flex justify-between items-center">
               {currentStep !== 'select-services' ? (

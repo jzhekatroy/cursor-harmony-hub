@@ -58,7 +58,7 @@ export function EnhancedServiceSelection({
       <div className="modern-card rounded-2xl p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-            💅 Выберите услуги
+            Выберите услуги
           </h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Фото</span>
@@ -80,7 +80,7 @@ export function EnhancedServiceSelection({
         </div>
       </div>
 
-      {/* Service Groups with Modern Design */}
+      {/* Responsive Service Groups */}
       {serviceGroups.map((group, groupIndex) => (
         <div key={group.id} className="animate-fade-in" style={{ animationDelay: `${groupIndex * 100}ms` }}>
           <Card className="modern-card rounded-2xl overflow-hidden border-0">
@@ -91,77 +91,132 @@ export function EnhancedServiceSelection({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="space-y-3 p-4">
-                {group.services.map((service, serviceIndex) => {
-                  const isSelected = selectedServices.some(s => s.id === service.id)
-                  
-                  return (
-                    <Card
-                      key={service.id}
-                      className={cn(
-                        "cursor-pointer transition-all duration-300 rounded-xl border-0 touch-target animate-slide-up",
-                        isSelected 
-                          ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10 scale-[1.02]" 
-                          : "hover:shadow-md hover:scale-[1.01] bg-gradient-card"
-                      )}
-                      style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
-                      onClick={() => handleServiceToggle(service)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          <div className="mt-1">
-                            <Checkbox
-                              checked={isSelected}
-                              className="rounded-full"
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            {showImages && (service.image || service.photoUrl) && (
-                              <div className="mb-3">
-                                <ImageWithFallback
-                                  src={service.image || service.photoUrl}
-                                  alt={service.name}
-                                  className="w-full h-24 object-cover rounded-xl shadow-sm"
-                                />
+              {/* Desktop Grid Layout */}
+              <div className="hidden md:block">
+                <div className="service-grid-desktop p-4">
+                  {group.services.map((service, serviceIndex) => {
+                    const isSelected = selectedServices.some(s => s.id === service.id)
+                    
+                    return (
+                      <Card
+                        key={service.id}
+                        className={cn(
+                          "morph-card cursor-pointer transition-all duration-500 rounded-xl border-0 touch-target animate-morph-in",
+                          isSelected 
+                            ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10" 
+                            : "hover:shadow-xl hover:shadow-primary/20 bg-gradient-card"
+                        )}
+                        style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
+                        onClick={() => handleServiceToggle(service)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              <Checkbox checked={isSelected} className="rounded-full" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {showImages && (service.image || service.photoUrl) && (
+                                <div className="mb-3">
+                                  <ImageWithFallback
+                                    src={service.image || service.photoUrl}
+                                    alt={service.name}
+                                    className="w-full h-32 object-cover rounded-xl shadow-sm"
+                                  />
+                                </div>
+                              )}
+                              <h3 className="font-semibold text-foreground mb-1">{service.name}</h3>
+                              {service.description && (
+                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                                  {service.description}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  {service.duration} мин
+                                </span>
+                                <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full">
+                                  {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
+                                </span>
                               </div>
-                            )}
-                            <h3 className="font-semibold text-foreground mb-1 text-sm">
-                              {service.name}
-                            </h3>
-                            {service.description && (
-                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
-                                {service.description}
-                              </p>
-                            )}
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="flex items-center gap-1 text-muted-foreground">
-                                <Clock className="w-3 h-3" />
-                                {service.duration} мин
-                              </span>
-                              <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full">
-                                {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
-                              </span>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Mobile Stack Layout */}
+              <div className="md:hidden">
+                <div className="service-stack-mobile p-4">
+                  {group.services.map((service, serviceIndex) => {
+                    const isSelected = selectedServices.some(s => s.id === service.id)
+                    
+                    return (
+                      <Card
+                        key={service.id}
+                        className={cn(
+                          "cursor-pointer transition-all duration-300 rounded-xl border-0 touch-target animate-slide-up",
+                          isSelected 
+                            ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10 scale-[1.02]" 
+                            : "hover:shadow-md hover:scale-[1.01] bg-gradient-card"
+                        )}
+                        style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
+                        onClick={() => handleServiceToggle(service)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="mt-1">
+                              <Checkbox checked={isSelected} className="rounded-full" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {showImages && (service.image || service.photoUrl) && (
+                                <div className="mb-3">
+                                  <ImageWithFallback
+                                    src={service.image || service.photoUrl}
+                                    alt={service.name}
+                                    className="w-full h-24 object-cover rounded-xl shadow-sm"
+                                  />
+                                </div>
+                              )}
+                              <h3 className="font-semibold text-foreground mb-1 text-sm">{service.name}</h3>
+                              {service.description && (
+                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                                  {service.description}
+                                </p>
+                              )}
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="flex items-center gap-1 text-muted-foreground">
+                                  <Clock className="w-3 h-3" />
+                                  {service.duration} мин
+                                </span>
+                                <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full">
+                                  {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       ))}
 
-      {/* Modern Summary Card */}
+      {/* Mobile Summary Card (Hidden on Desktop) */}
       {selectedServices.length > 0 && (
-        <div className="animate-scale-in">
+        <div className="animate-scale-in md:hidden">
           <Card className="bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-sm">✨ Выбрано: {selectedServices.length}</h3>
+                  <h3 className="font-bold text-sm">Выбрано: {selectedServices.length}</h3>
                   <p className="text-xs opacity-90">
                     ⏱️ {totalDuration} мин
                   </p>

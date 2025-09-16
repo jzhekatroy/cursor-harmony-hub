@@ -19,25 +19,25 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 240 25% 9%;
 
-    /* Professional blue-purple palette */
-    --primary: 240 80% 65%;  /* Deep blue */
+    /* Calm blue-slate palette */
+    --primary: 220 35% 55%;  /* Muted slate blue */
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 245 85% 75%;
-    --primary-soft: 240 80% 97%;
+    --primary-glow: 220 40% 65%;
+    --primary-soft: 220 35% 97%;
 
-    /* Elegant accent colors */
-    --secondary: 260 75% 70%;  /* Purple accent */
+    /* Subtle accent colors */
+    --secondary: 240 25% 65%;  /* Soft gray-blue */
     --secondary-foreground: 0 0% 100%;
-    --secondary-soft: 260 75% 97%;
+    --secondary-soft: 240 25% 97%;
 
     /* Neutral and muted tones */
     --muted: 240 20% 96%;
     --muted-foreground: 240 15% 45%;
 
-    /* Success accent */
-    --accent: 200 85% 60%;  /* Turquoise */
+    /* Minimal accent */
+    --accent: 200 40% 55%;  /* Muted teal */
     --accent-foreground: 240 25% 9%;
-    --accent-soft: 200 85% 95%;
+    --accent-soft: 200 40% 95%;
 
     /* Status colors */
     --destructive: 0 85% 60%;
@@ -51,11 +51,11 @@ All colors MUST be HSL.
     --input: 240 20% 92%;
     --ring: 240 80% 65%;
 
-    /* Professional gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(240 80% 65%), hsl(260 75% 70%));
-    --gradient-soft: linear-gradient(135deg, hsl(240 80% 97%), hsl(260 75% 97%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(240 20% 98%));
-    --gradient-hero: linear-gradient(135deg, hsl(240 80% 65%) 0%, hsl(260 75% 70%) 50%, hsl(200 85% 60%) 100%);
+    /* Subtle gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(220 35% 55%), hsl(240 25% 65%));
+    --gradient-soft: linear-gradient(135deg, hsl(220 35% 97%), hsl(240 25% 97%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 15% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 35% 55%) 0%, hsl(240 25% 65%) 50%, hsl(200 40% 55%) 100%);
 
     /* Enhanced radius for modern look */
     --radius: 1rem;
@@ -89,14 +89,14 @@ All colors MUST be HSL.
     --popover: 240 15% 12%;
     --popover-foreground: 240 20% 95%;
 
-    /* Professional dark primaries */
-    --primary: 240 80% 70%;
+    /* Calm dark primaries */
+    --primary: 220 35% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 245 85% 80%;
-    --primary-soft: 240 80% 15%;
+    --primary-glow: 220 40% 70%;
+    --primary-soft: 220 35% 15%;
 
     /* Dark secondary */
-    --secondary: 260 75% 75%;
+    --secondary: 240 25% 70%;
     --secondary-foreground: 0 0% 100%;
     --secondary-soft: 260 75% 15%;
 

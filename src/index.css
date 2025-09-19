@@ -160,85 +160,154 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* Modern card with subtle shadow and gradient */
-  .modern-card {
-    @apply bg-gradient-card backdrop-blur-sm border border-border/50 shadow-lg shadow-primary/5;
-  }
-
-  /* Interactive button states */
-  .button-primary {
-    @apply bg-gradient-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.98] transition-all duration-200;
-  }
-
-  /* Smooth mobile touch styles */
-  .touch-target {
-    @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
-  }
-
-  /* Glass morphism effect */
-  .glass {
-    @apply bg-white/80 dark:bg-card/80 backdrop-blur-md border border-white/20;
-  }
-
-  /* Floating elements with unique animations */
-  .floating-element {
-    @apply absolute pointer-events-none opacity-20;
-    animation: float 8s ease-in-out infinite;
+  /* Premium card design with enhanced shadows */
+  .premium-card {
+    @apply bg-card border border-border/50 shadow-xl shadow-primary/10 backdrop-blur-sm;
+    border-radius: var(--radius);
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   }
   
-  .floating-element:nth-child(2) {
-    animation-delay: -2s;
-  }
-  
-  .floating-element:nth-child(3) {
-    animation-delay: -4s;
+  .premium-card:hover {
+    @apply shadow-2xl shadow-primary/20 -translate-y-1;
+    transform: translateY(-4px) scale(1.02);
   }
 
-  /* Morphing cards */
-  .morph-card {
-    @apply transition-all duration-700 ease-out;
-    transform-origin: center;
-  }
-  
-  .morph-card:hover {
-    @apply shadow-2xl shadow-primary/20;
-    transform: perspective(1000px) rotateX(5deg) rotateY(5deg);
-  }
-
-  /* Interactive service grid for desktop */
-  .service-grid-desktop {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.5rem;
-  }
-
-  /* Mobile-first service stack */
-  .service-stack-mobile {
-    @apply space-y-3;
-  }
-
-  /* Parallax container */
-  .parallax-container {
-    transform-style: preserve-3d;
-    perspective: 1000px;
-  }
-
-  /* Hero background with animated particles */
-  .hero-bg {
-    background: var(--gradient-hero);
+  /* Elegant button with micro-interactions */
+  .btn-elegant {
+    @apply bg-gradient-primary text-primary-foreground font-medium px-6 py-3 rounded-xl;
+    @apply hover:shadow-lg hover:shadow-primary/30 active:scale-95;
+    @apply transition-all duration-300 ease-out;
     position: relative;
     overflow: hidden;
   }
+  
+  .btn-elegant::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .btn-elegant:hover::before {
+    left: 100%;
+  }
 
-  .hero-bg::before {
+  /* Circular progress indicator */
+  .progress-circle {
+    @apply relative w-20 h-20 rounded-full flex items-center justify-center;
+    background: conic-gradient(from 0deg, hsl(var(--primary)) var(--progress, 0%), hsl(var(--muted)) 0%);
+    padding: 3px;
+  }
+  
+  .progress-circle::before {
+    content: '';
+    @apply absolute inset-1 bg-background rounded-full;
+  }
+  
+  .progress-circle .progress-content {
+    @apply relative z-10 text-sm font-semibold text-primary;
+  }
+
+  /* Service card with unique hover effect */
+  .service-card {
+    @apply bg-card border border-border rounded-2xl p-6 cursor-pointer;
+    @apply transition-all duration-500 ease-out hover:shadow-xl hover:shadow-primary/15;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .service-card::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
-    animation: particles 20s linear infinite;
+    width: 100%;
+    height: 2px;
+    background: var(--gradient-primary);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+  }
+  
+  .service-card:hover::before {
+    transform: scaleX(1);
+  }
+  
+  .service-card:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Flowing text animations */
+  .text-flow {
+    background: var(--gradient-hero);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+    animation: textFlow 3s ease-in-out infinite;
+  }
+
+  /* Step indicator with connection lines */
+  .step-indicator {
+    @apply relative flex items-center justify-center w-12 h-12 rounded-full;
+    @apply bg-muted text-muted-foreground font-semibold text-sm;
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  .step-indicator.active {
+    @apply bg-primary text-primary-foreground shadow-lg shadow-primary/25;
+    transform: scale(1.1);
+  }
+  
+  .step-indicator.completed {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  /* Master selection card */
+  .master-card {
+    @apply bg-card border border-border rounded-xl p-4 cursor-pointer;
+    @apply transition-all duration-300 ease-out;
+    position: relative;
+  }
+  
+  .master-card:hover {
+    @apply shadow-lg shadow-primary/10 border-primary/30;
+    transform: translateY(-1px);
+  }
+  
+  .master-card.selected {
+    @apply border-primary bg-primary/5;
+  }
+
+  /* Time slot with tactile feedback */
+  .time-slot {
+    @apply bg-card border border-border rounded-lg px-4 py-3 text-sm cursor-pointer;
+    @apply transition-all duration-200 ease-out font-medium;
+    position: relative;
+  }
+  
+  .time-slot:hover {
+    @apply bg-primary/5 border-primary/30;
+  }
+  
+  .time-slot.selected {
+    @apply bg-primary text-primary-foreground border-primary;
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  }
+  
+  .time-slot:active {
+    transform: scale(0.98);
+  }
+
+  /* Floating notification */
+  .floating-notification {
+    @apply fixed bottom-6 left-1/2 transform -translate-x-1/2;
+    @apply bg-card border border-border rounded-full px-6 py-3 shadow-xl;
+    @apply backdrop-blur-md z-50;
+    animation: slideUpFade 0.5s ease-out;
   }
 
   /* Mobile safe area */
@@ -247,26 +316,31 @@ All colors MUST be HSL.
   }
 }
 
-/* Custom keyframes for unique effects */
-@keyframes float {
-  0%, 100% { 
-    transform: translateY(0px) rotate(0deg);
-    opacity: 0.2;
+/* Enhanced keyframes for premium feel */
+@keyframes textFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes slideUpFade {
+  0% {
+    transform: translate(-50%, 100%);
+    opacity: 0;
   }
-  50% { 
-    transform: translateY(-20px) rotate(180deg);
-    opacity: 0.4;
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 1;
   }
 }
 
-@keyframes particles {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(60px); }
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 @keyframes morphIn {
   0% {
-    transform: scale(0.8) rotateY(-15deg);
+    transform: scale(0.9) rotateY(-10deg);
     opacity: 0;
   }
   100% {
@@ -275,9 +349,9 @@ All colors MUST be HSL.
   }
 }
 
-@keyframes slideInFromLeft {
+@keyframes stepTransition {
   0% {
-    transform: translateX(-100%);
+    transform: translateX(-20px);
     opacity: 0;
   }
   100% {
@@ -286,13 +360,8 @@ All colors MUST be HSL.
   }
 }
 
-@keyframes slideInFromRight {
-  0% {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
+@keyframes cardHover {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.02); }
+  100% { transform: translateY(-4px) scale(1.02); }
 }

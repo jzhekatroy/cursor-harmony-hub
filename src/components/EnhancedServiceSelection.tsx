@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 interface EnhancedServiceSelectionProps {
   serviceGroups: ServiceGroup[];
+  ungroupedServices: Service[];
   selectedServices: Service[];
   onServiceSelect: (services: Service[]) => void;
   onNext?: () => void;
@@ -18,6 +19,7 @@ interface EnhancedServiceSelectionProps {
 
 export function EnhancedServiceSelection({
   serviceGroups,
+  ungroupedServices,
   selectedServices,
   onServiceSelect,
   onNext,
@@ -98,15 +100,11 @@ export function EnhancedServiceSelection({
                     const isSelected = selectedServices.some(s => s.id === service.id)
                     
                     return (
-                      <Card
+                      <Card 
                         key={service.id}
-                        className={cn(
-                          "morph-card cursor-pointer transition-all duration-500 rounded-xl border-0 touch-target animate-morph-in",
-                          isSelected 
-                            ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10" 
-                            : "hover:shadow-xl hover:shadow-primary/20 bg-gradient-card"
-                        )}
-                        style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
+                        className={`service-card ${
+                          isSelected ? 'selected ring-2 ring-primary bg-primary/5' : ''
+                        }`}
                         onClick={() => handleServiceToggle(service)}
                       >
                         <CardContent className="p-4">

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { Clock, ArrowRight, Sparkles } from 'lucide-react'
+import { Clock, ArrowRight, Sparkles, Scissors, Star, Zap } from 'lucide-react'
 import { ImageWithFallback } from '@/components/ImageWithFallback'
 import { Service, ServiceGroup } from '@/types/booking'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,20 @@ interface EnhancedServiceSelectionProps {
   showImagesOverride?: boolean;
 }
 
+// Иконки для категорий услуг
+const getCategoryIcon = (groupName: string) => {
+  if (groupName.toLowerCase().includes('маникюр') || groupName.toLowerCase().includes('ногти')) {
+    return <Star className="w-4 h-4 text-primary" />
+  }
+  if (groupName.toLowerCase().includes('стрижка') || groupName.toLowerCase().includes('волос')) {
+    return <Scissors className="w-4 h-4 text-primary" />
+  }
+  if (groupName.toLowerCase().includes('комплекс') || groupName.toLowerCase().includes('спа')) {
+    return <Zap className="w-4 h-4 text-primary" />
+  }
+  return <Sparkles className="w-4 h-4 text-primary" />
+}
+
 export function EnhancedServiceSelection({
   serviceGroups,
   ungroupedServices,
@@ -27,6 +41,7 @@ export function EnhancedServiceSelection({
   showImagesOverride = true
 }: EnhancedServiceSelectionProps) {
   const showImages = showImagesOverride
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   const totalPrice = useMemo(
     () => selectedServices.reduce((sum, service) => sum + Number(service.price || 0), 0),
@@ -56,24 +71,65 @@ export function EnhancedServiceSelection({
 
   return (
     <div className={cn("space-y-4", className)}>
+      {/* Категории услуг - закладки */}
+      {serviceGroups.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
+              activeCategory === null 
+                ? "bg-primary text-primary-foreground shadow-md" 
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            <Sparkles className="w-4 h-4" />
+            Все услуги
+          </button>
+          {serviceGroups.map((group) => (
+            <button
+              key={group.id}
+              onClick={() => setActiveCategory(group.id)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                activeCategory === group.id 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {getCategoryIcon(group.name)}
+              {group.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Modern Header */}
       <div className="modern-card rounded-2xl p-4">
         <h2 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-          Выберите услуги
+          {activeCategory 
+            ? serviceGroups.find(g => g.id === activeCategory)?.name || 'Выберите услуги'
+            : 'Выберите услуги'
+          }
         </h2>
       </div>
 
       {/* Responsive Service Groups */}
-      {serviceGroups.map((group, groupIndex) => (
+      {serviceGroups
+        .filter(group => activeCategory === null || group.id === activeCategory)
+        .map((group, groupIndex) => (
         <div key={group.id} className="animate-fade-in" style={{ animationDelay: `${groupIndex * 100}ms` }}>
           <Card className="modern-card rounded-2xl overflow-hidden border-0">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="w-4 h-4 text-primary" />
-                {group.name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
+            {/* Показываем заголовок только если не выбрана конкретная категория */}
+            {activeCategory === null && (
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  {getCategoryIcon(group.name)}
+                  {group.name}
+                </CardTitle>
+              </CardHeader>
+            )}
+            <CardContent className={cn("p-0", activeCategory === null ? "" : "pt-4")}>
               {/* Desktop Grid Layout */}
               <div className="hidden md:block">
                 <div className="service-grid-desktop p-4">

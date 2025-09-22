@@ -13,12 +13,15 @@ export function TeamBranding({ team, className, showDescription = true }: TeamBr
   return (
     <div className={cn("flex flex-col items-center text-center space-y-4 mb-8", className)}>
       {team.publicPageLogoUrl && (
-        <div className="flex justify-center p-4 bg-white rounded-2xl shadow-sm border border-border">
-          <ImageWithFallback
-            src={team.publicPageLogoUrl}
-            alt={`Логотип ${team.name}`}
-            className="h-12 w-auto object-contain filter drop-shadow-sm"
-          />
+        <div className="flex justify-center mb-2">
+          <div className="relative bg-white rounded-2xl shadow-lg border border-border overflow-hidden p-6 w-32 h-20 flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent"></div>
+            <ImageWithFallback
+              src={team.publicPageLogoUrl}
+              alt={`Логотип ${team.name}`}
+              className="max-h-8 w-auto object-contain relative z-10 filter drop-shadow-sm"
+            />
+          </div>
         </div>
       )}
       

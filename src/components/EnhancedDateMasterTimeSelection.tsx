@@ -238,27 +238,19 @@ export function EnhancedDateMasterTimeSelection({
         </Card>
       )}
 
-      {/* Mobile Summary для выбранного времени */}
+      {/* Mobile Summary для выбранного времени - убрали кнопку Далее */}
       {selectedDate && selectedTimeSlot && (
         <Card className="md:hidden bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20 animate-scale-in">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h3 className="font-bold text-sm">✓ Время выбрано</h3>
-                <p className="text-xs opacity-90">
-                  {new Date(selectedDate).toLocaleDateString('ru-RU', { 
-                    weekday: 'long', 
-                    day: 'numeric', 
-                    month: 'long' 
-                  })} в {selectedTimeSlot.time}
-                </p>
-              </div>
-              <Button
-                onClick={handleNext}
-                className="bg-white/20 text-primary-foreground hover:bg-white/30 rounded-full px-4 py-2 text-sm font-semibold backdrop-blur-sm border border-white/20 touch-target"
-              >
-                Далее
-              </Button>
+            <div className="text-center space-y-1">
+              <h3 className="font-bold text-sm">✓ Время выбрано</h3>
+              <p className="text-xs opacity-90">
+                {new Date(selectedDate).toLocaleDateString('ru-RU', { 
+                  weekday: 'long', 
+                  day: 'numeric', 
+                  month: 'long' 
+                })} в {selectedTimeSlot.time}
+              </p>
             </div>
           </CardContent>
         </Card>

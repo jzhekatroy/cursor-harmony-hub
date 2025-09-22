@@ -240,7 +240,7 @@ export function EnhancedDateMasterTimeSelection({
 
       {/* Mobile Summary для выбранного времени - только на мобильных */}
       {selectedDate && selectedTimeSlot && (
-        <div className="md:hidden">
+        <div className="md:hidden mb-24">
           <Card className="bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20 animate-scale-in">
             <CardContent className="p-4">
               <div className="text-center space-y-1">

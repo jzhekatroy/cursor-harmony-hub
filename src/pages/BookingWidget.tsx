@@ -376,7 +376,29 @@ export default function BookingWidget() {
         {/* Mobile Bottom Navigation */}
         {!loading && !error && team && (
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t px-4 py-4">
-            {currentStep > 1 && currentStep < 3 && (
+            {currentStep === 2 && (
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  size="lg"
+                  className="h-14 text-lg font-medium"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  Назад
+                </Button>
+                <Button
+                  onClick={goToNextStep}
+                  disabled={!canGoToNextStep()}
+                  size="lg"
+                  className="h-14 text-lg font-medium"
+                >
+                  Далее
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+              </div>
+            )}
+            {currentStep > 2 && currentStep < 3 && (
               <Button
                 onClick={goToNextStep}
                 disabled={!canGoToNextStep()}

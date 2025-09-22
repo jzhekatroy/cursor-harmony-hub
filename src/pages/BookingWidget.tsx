@@ -263,58 +263,180 @@ export default function BookingWidget() {
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Subtle Background Pattern */}
-      <div className="absolute inset-0 opacity-5">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='currentColor' fill-opacity='0.1'%3E%3Ccircle cx='20' cy='20' r='1'/%3E%3C/g%3E%3C/svg%3E")`,
-          backgroundRepeat: 'repeat'
-        }} />
+    <div className="min-h-screen bg-background">
+      {/* Mobile-First Layout */}
+      <div className="md:hidden">
+        {/* Mobile Header */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {currentStep > 1 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={goToPreviousStep}
+                  className="w-10 h-10"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+              )}
+              <div>
+                <h1 className="text-lg font-semibold">
+                  {currentStep === 1 && 'Выберите услуги'}
+                  {currentStep === 2 && 'Дата и время'}
+                  {currentStep === 3 && 'Подтверждение'}
+                </h1>
+                <p className="text-xs text-muted-foreground">Шаг {currentStep} из 3</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Mobile Progress Bar */}
+          <div className="mt-3 h-1 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-300 ease-out"
+              style={{ width: `${(currentStep / 3) * 100}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Mobile Content - Full Screen */}
+        <div className="pt-20 pb-24 px-4">
+          <div className="min-h-[calc(100vh-11rem)]">
+            {loading ? (
+              <div className="flex items-center justify-center min-h-96">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Загрузка...</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center min-h-96">
+                <div className="text-center">
+                  <div className="text-destructive text-6xl mb-4">⚠️</div>
+                  <p className="text-destructive">{error}</p>
+                </div>
+              </div>
+            ) : !team ? (
+              <div className="flex items-center justify-center min-h-96">
+                <div className="text-center">
+                  <div className="text-muted-foreground text-6xl mb-4">❌</div>
+                  <p>Команда не найдена</p>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full">
+                {currentStep === 1 && (
+                  <EnhancedServiceSelection
+                    serviceGroups={team.serviceGroups}
+                    ungroupedServices={team.ungroupedServices}
+                    selectedServices={bookingData.services}
+                    onServiceSelect={handleServiceSelect}
+                    onNext={goToNextStep}
+                  />
+                )}
+
+                {currentStep === 2 && (
+                  <EnhancedDateMasterTimeSelection
+                    masters={team.masters}
+                    selectedServices={bookingData.services}
+                    selectedDate={bookingData.date}
+                    selectedMaster={bookingData.master}
+                    selectedTimeSlot={bookingData.timeSlot}
+                    onDateTimeSelect={handleDateTimeSelect}
+                    onNext={goToNextStep}
+                    bookingStep={team.team.bookingStep}
+                    salonTimezone={team.team.timezone}
+                  />
+                )}
+
+                {currentStep === 3 && (
+                  <EnhancedClientInfoAndConfirmation
+                    bookingData={bookingData}
+                    onClientInfoChange={handleClientInfoChange}
+                    onBookingConfirmed={handleBookingConfirmed}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Bottom Navigation */}
+        {!loading && !error && team && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t px-4 py-4">
+            {currentStep < 3 && (
+              <Button
+                onClick={goToNextStep}
+                disabled={!canGoToNextStep()}
+                size="lg"
+                className="w-full h-14 text-lg font-medium"
+              >
+                {currentStep === 1 ? `Далее (${bookingData.services.length})` : 'Далее'}
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            )}
+            
+            {/* Service Summary on Mobile */}
+            {bookingData.services.length > 0 && currentStep > 1 && (
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>{bookingData.services.length} услуг • {bookingData.totalDuration} мин</span>
+                  <span className="font-semibold">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="flex min-h-screen relative z-10">
-        {/* Main Content */}
-        <main className="flex-1 p-4 space-y-6">
-          {/* Header with Flowing Text */}
-          <div className="text-center py-8">
-            <h1 className="text-4xl font-bold mb-2 text-flow">
-              Забронировать услугу
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Простое и удобное онлайн бронирование
-            </p>
-          </div>
+      {/* Desktop Layout */}
+      <div className="hidden md:block">
+        <div className="flex min-h-screen">
+          {/* Main Content */}
+          <main className="flex-1 p-6 lg:p-8">
+            {/* Desktop Header */}
+            <div className="text-center py-8 max-w-2xl mx-auto">
+              <h1 className="text-4xl font-bold mb-2">
+                Забронировать услугу
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Простое и удобное онлайн бронирование
+              </p>
+            </div>
 
-          {/* Step Progress */}
-          <StepProgress 
-            currentStep={currentStep}
-            totalSteps={3}
-            stepLabels={['Услуги', 'Дата и время', 'Подтверждение']}
-          />
+            {/* Desktop Step Progress */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <StepProgress 
+                currentStep={currentStep}
+                totalSteps={3}
+                stepLabels={['Услуги', 'Дата и время', 'Подтверждение']}
+              />
+            </div>
 
-          {/* Step Content */}
-          <div className="max-w-4xl mx-auto">
-            <div className="animate-morph-in">
+            {/* Desktop Step Content */}
+            <div className="max-w-4xl mx-auto">
               {loading ? (
-                <Card className="premium-card">
+                <Card>
                   <CardContent className="p-8 text-center">
-                    <div className="animate-pulse-soft">Загрузка...</div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-muted-foreground">Загрузка...</p>
                   </CardContent>
                 </Card>
               ) : error ? (
-                <Card className="premium-card">
+                <Card>
                   <CardContent className="p-8 text-center text-destructive">
                     <p>Ошибка: {error}</p>
                   </CardContent>
                 </Card>
               ) : !team ? (
-                <Card className="premium-card">
+                <Card>
                   <CardContent className="p-8 text-center">
                     <p>Команда не найдена</p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="animate-step-transition">
+                <div>
                   {currentStep === 1 && (
                     <EnhancedServiceSelection
                       serviceGroups={team.serviceGroups}
@@ -347,66 +469,85 @@ export default function BookingWidget() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Navigation */}
-          {!loading && !error && team && (
-            <div className="max-w-4xl mx-auto flex justify-between items-center p-4 glass rounded-2xl shadow-xl sticky bottom-4 border border-white/20">
-              <Button
-                variant="outline"
-                onClick={goToPreviousStep}
-                disabled={currentStep === 1}
-                className="flex items-center gap-2 hover:scale-105 transition-transform duration-200"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Назад
-              </Button>
+            {/* Desktop Navigation */}
+            {!loading && !error && team && (
+              <div className="max-w-4xl mx-auto flex justify-between items-center mt-8 p-4 bg-muted/30 rounded-lg">
+                <Button
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                  disabled={currentStep === 1}
+                  className="flex items-center gap-2"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Назад
+                </Button>
 
-              <div className="text-sm font-medium text-muted-foreground">
-                Шаг {currentStep} из 3
-              </div>
-
-              <Button
-                onClick={goToNextStep}
-                disabled={!canGoToNextStep()}
-                className="btn-elegant flex items-center gap-2"
-              >
-                {currentStep === 3 ? 'Завершить' : 'Далее'}
-                {currentStep !== 3 && <ArrowRight className="w-4 h-4" />}
-              </Button>
-            </div>
-          )}
-        </main>
-
-        {/* Sidebar for Booking Summary */}
-        <aside className="hidden lg:block lg:w-80 p-4">
-          {bookingData.services.length > 0 && (
-            <Card className="premium-card sticky top-4">
-              <CardContent className="p-6">
-                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                  📋 Ваша запись
-                </h3>
-                <div className="space-y-3">
-                  {bookingData.services.map((service) => (
-                    <div key={service.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{service.name}</span>
-                      <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
-                    </div>
-                  ))}
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex justify-between font-bold text-lg">
-                      <span>Итого:</span>
-                      <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Время: {bookingData.totalDuration} мин
-                    </div>
-                  </div>
+                <div className="text-sm font-medium text-muted-foreground">
+                  Шаг {currentStep} из 3
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </aside>
+
+                <Button
+                  onClick={goToNextStep}
+                  disabled={!canGoToNextStep()}
+                  className="flex items-center gap-2"
+                >
+                  {currentStep === 3 ? 'Завершить' : 'Далее'}
+                  {currentStep !== 3 && <ArrowRight className="w-4 h-4" />}
+                </Button>
+              </div>
+            )}
+          </main>
+
+          {/* Desktop Sidebar */}
+          <aside className="w-80 lg:w-96 p-6 border-l bg-muted/20">
+            <div className="sticky top-6">
+              <h3 className="font-semibold text-lg mb-4">Ваша запись</h3>
+              
+              {bookingData.services.length > 0 ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      {bookingData.services.map((service) => (
+                        <div key={service.id} className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">{service.name}</span>
+                          <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
+                        </div>
+                      ))}
+                      <div className="border-t pt-3 mt-3">
+                        <div className="flex justify-between font-semibold">
+                          <span>Итого:</span>
+                          <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Время: {bookingData.totalDuration} мин
+                        </div>
+                      </div>
+                      
+                      {bookingData.date && (
+                        <div className="border-t pt-3 mt-3 text-sm">
+                          <div className="text-muted-foreground">Дата: {bookingData.date}</div>
+                          {bookingData.timeSlot && (
+                            <div className="text-muted-foreground">Время: {bookingData.timeSlot.time}</div>
+                          )}
+                          {bookingData.master && (
+                            <div className="text-muted-foreground">
+                              Мастер: {bookingData.master.firstName} {bookingData.master.lastName}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="text-muted-foreground text-sm">
+                  Выберите услуги для начала бронирования
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   )

@@ -366,6 +366,22 @@ export default function BookingWidget() {
                     bookingData={bookingData}
                     onClientInfoChange={handleClientInfoChange}
                     onBookingConfirmed={handleBookingConfirmed}
+                    onServiceRemove={(serviceId) => {
+                      const updatedServices = bookingData.services.filter(s => s.id !== serviceId)
+                      handleServiceSelect(updatedServices)
+                    }}
+                    onStartOver={() => {
+                      setCurrentStep(1)
+                      setBookingData({
+                        services: [],
+                        date: '',
+                        master: null,
+                        timeSlot: null,
+                        clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
+                        totalPrice: 0,
+                        totalDuration: 0,
+                      })
+                    }}
                   />
                 )}
               </div>
@@ -492,6 +508,22 @@ export default function BookingWidget() {
                       bookingData={bookingData}
                       onClientInfoChange={handleClientInfoChange}
                       onBookingConfirmed={handleBookingConfirmed}
+                      onServiceRemove={(serviceId) => {
+                        const updatedServices = bookingData.services.filter(s => s.id !== serviceId)
+                        handleServiceSelect(updatedServices)
+                      }}
+                      onStartOver={() => {
+                        setCurrentStep(1)
+                        setBookingData({
+                          services: [],
+                          date: '',
+                          master: null,
+                          timeSlot: null,
+                          clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
+                          totalPrice: 0,
+                          totalDuration: 0,
+                        })
+                      }}
                     />
                   )}
                 </div>

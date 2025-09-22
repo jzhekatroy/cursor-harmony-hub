@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { 
   User, Phone, Mail, MessageSquare, Calendar, Clock, 
-  Check 
+  Check, X, RotateCcw 
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useTelegramWebApp } from '@/hooks/useTelegramWebApp'
@@ -15,6 +15,8 @@ interface EnhancedClientInfoAndConfirmationProps {
   bookingData: BookingData;
   onClientInfoChange: (info: ClientInfo) => void;
   onBookingConfirmed: () => void;
+  onServiceRemove?: (serviceId: string) => void;
+  onStartOver?: () => void;
   className?: string;
 }
 
@@ -22,6 +24,8 @@ export function EnhancedClientInfoAndConfirmation({
   bookingData,
   onClientInfoChange,
   onBookingConfirmed,
+  onServiceRemove,
+  onStartOver,
   className
 }: EnhancedClientInfoAndConfirmationProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -137,16 +141,39 @@ export function EnhancedClientInfoAndConfirmation({
           <div className="space-y-4">
             {/* Услуги */}
             <div>
-              <h4 className="font-medium mb-2">Выбранные услуги:</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-medium">Выбранные услуги:</h4>
+                {onStartOver && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={onStartOver}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-1" />
+                    Начать заново
+                  </Button>
+                )}
+              </div>
               <div className="space-y-2">
                 {bookingData.services.map((service) => (
                   <div key={service.id} className="flex justify-between items-center py-2 border-b">
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium">{service.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {service.duration} мин • {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
                       </p>
                     </div>
+                    {onServiceRemove && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onServiceRemove(service.id)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

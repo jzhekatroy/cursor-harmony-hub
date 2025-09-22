@@ -3,7 +3,7 @@ import { TeamData } from '@/types/booking';
 import { ImageWithFallback } from './ImageWithFallback';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import logoImage from '@/assets/2minutes-logo.png';
+import logoImage from '@/assets/2m-logo-mini.png';
 
 interface TeamBrandingProps {
   team: TeamData['team'];

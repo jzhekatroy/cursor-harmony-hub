@@ -44,7 +44,7 @@ export function TeamBranding({ team, className, showDescription = true }: TeamBr
         <img
           src={logoImage}
           alt="2Minutes Logo"
-          className="h-8 w-auto object-contain filter drop-shadow-md"
+          className="h-10 w-auto object-contain filter drop-shadow-md"
         />
       </div>
       

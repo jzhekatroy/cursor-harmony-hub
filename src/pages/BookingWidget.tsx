@@ -5,6 +5,7 @@ import { EnhancedDateMasterTimeSelection } from '../components/EnhancedDateMaste
 import { EnhancedClientInfoAndConfirmation } from '../components/EnhancedClientInfoAndConfirmation';
 import ActiveBookingsNotification from '../components/ActiveBookingsNotification';
 import { StepProgress } from '../components/StepProgress';
+import { TeamBranding } from '../components/TeamBranding';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
@@ -23,14 +24,16 @@ import type {
 const demoTeamData: TeamData = {
   team: {
     id: '1',
-    name: 'Beauty Studio',
-    slug: 'beauty-studio',
+    name: '2Minutes',
+    logoUrl: '/src/assets/logo.png',
+    slug: '2minutes',
     bookingStep: 3,
     timezone: 'Europe/Moscow',
     publicServiceCardsWithPhotos: true,
     publicTheme: 'light',
-    publicPageTitle: 'Запись в Beauty Studio',
-    publicPageDescription: 'Профессиональные услуги красоты',
+    publicPageTitle: 'Запись в 2Minutes',
+    publicPageDescription: 'Быстрые и качественные услуги красоты за 2 минуты',
+    publicPageLogoUrl: '/src/assets/logo.png',
   },
   serviceGroups: [
     {
@@ -266,6 +269,13 @@ export default function BookingWidget() {
     <div className="min-h-screen bg-background">
       {/* Mobile-First Layout */}
       <div className="md:hidden">
+        {/* Team Branding - показываем только на первом шаге */}
+        {currentStep === 1 && (
+          <div className="px-4 pt-6 pb-4">
+            <TeamBranding team={team.team} showDescription={true} />
+          </div>
+        )}
+        
         {/* Mobile Header */}
         <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3">
           <div className="flex items-center justify-between">
@@ -395,14 +405,9 @@ export default function BookingWidget() {
         <div className="flex min-h-screen">
           {/* Main Content */}
           <main className="flex-1 p-6 lg:p-8">
-            {/* Desktop Header */}
+            {/* Desktop Header with Team Branding */}
             <div className="text-center py-8 max-w-2xl mx-auto">
-              <h1 className="text-4xl font-bold mb-2">
-                Забронировать услугу
-              </h1>
-              <p className="text-muted-foreground text-lg">
-                Простое и удобное онлайн бронирование
-              </p>
+              <TeamBranding team={team.team} showDescription={true} />
             </div>
 
             {/* Desktop Step Progress */}

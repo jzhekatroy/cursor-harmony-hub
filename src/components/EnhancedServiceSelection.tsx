@@ -178,33 +178,33 @@ export function EnhancedServiceSelection({
                         }`}
                         onClick={() => handleServiceToggle(service)}
                       >
-                        <CardContent className="p-4">
+                        <CardContent className="p-3">
                           <div className="flex items-start gap-3">
                             <div className="mt-1">
                               <Checkbox checked={isSelected} className="rounded-full" />
                             </div>
                             <div className="flex-1 min-w-0">
                               {showImages && (service.image || service.photoUrl) && (
-                                <div className="mb-3">
+                                <div className="mb-2">
                                   <ImageWithFallback
                                     src={service.image || service.photoUrl}
                                     alt={service.name}
-                                    className="w-full h-32 object-cover rounded-xl shadow-sm"
+                                    className="w-full h-28 object-cover rounded-lg shadow-sm"
                                   />
                                 </div>
                               )}
-                              <h3 className="font-semibold text-foreground mb-1">{service.name}</h3>
+                              <h3 className="font-semibold text-foreground mb-1 text-sm">{service.name}</h3>
                               {service.description && (
-                                <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                                <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
                                   {service.description}
                                 </p>
                               )}
-                              <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center justify-between text-xs">
                                 <span className="flex items-center gap-1 text-muted-foreground">
-                                  <Clock className="w-4 h-4" />
+                                  <Clock className="w-3 h-3" />
                                   {service.duration} мин
                                 </span>
-                                <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full">
+                                <span className="font-bold text-primary bg-primary-soft px-2 py-1 rounded-full text-xs">
                                   {new Intl.NumberFormat('ru-RU').format(service.price)} ₽
                                 </span>
                               </div>

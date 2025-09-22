@@ -476,35 +476,7 @@ export default function BookingWidget() {
               )}
             </div>
 
-            {/* Desktop Navigation */}
-            {!loading && !error && team && (
-              <div className="max-w-4xl mx-auto flex justify-between items-center mt-8 p-4 bg-muted/30 rounded-lg">
-                <Button
-                  variant="outline"
-                  onClick={goToPreviousStep}
-                  disabled={currentStep === 1}
-                  className="flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Назад
-                </Button>
-
-                <div className="text-sm font-medium text-muted-foreground">
-                  Шаг {currentStep} из 3
-                </div>
-
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!canGoToNextStep()}
-                  className="flex items-center gap-2"
-                >
-                  {currentStep === 3 ? 'Завершить' : 'Далее'}
-                  {currentStep !== 3 && <ArrowRight className="w-4 h-4" />}
-                </Button>
-              </div>
-            )}
-
-            {/* Desktop Summary */}
+            {/* Desktop Summary - над кнопками навигации */}
             {bookingData.services.length > 0 && (
               <div className="max-w-4xl mx-auto mt-8 p-6 bg-muted/20 rounded-2xl">
                 <h3 className="font-semibold text-lg mb-4">Ваша запись</h3>
@@ -539,6 +511,37 @@ export default function BookingWidget() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Desktop Navigation */}
+            {!loading && !error && team && (
+              <div className="max-w-4xl mx-auto flex justify-between items-center mt-6 p-4 bg-muted/30 rounded-lg">
+                {currentStep > 1 ? (
+                  <Button
+                    variant="outline"
+                    onClick={goToPreviousStep}
+                    className="flex items-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Назад
+                  </Button>
+                ) : (
+                  <div></div>
+                )}
+
+                <div className="text-sm font-medium text-muted-foreground">
+                  Шаг {currentStep} из 3
+                </div>
+
+                <Button
+                  onClick={goToNextStep}
+                  disabled={!canGoToNextStep()}
+                  className="flex items-center gap-2"
+                >
+                  {currentStep === 3 ? 'Завершить' : 'Далее'}
+                  {currentStep !== 3 && <ArrowRight className="w-4 h-4" />}
+                </Button>
               </div>
             )}
           </main>

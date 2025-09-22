@@ -375,14 +375,14 @@ export default function BookingWidget() {
         {/* Mobile Bottom Navigation */}
         {!loading && !error && team && (
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t px-4 py-4">
-            {currentStep < 3 && (
+            {currentStep > 1 && currentStep < 3 && (
               <Button
                 onClick={goToNextStep}
                 disabled={!canGoToNextStep()}
                 size="lg"
                 className="w-full h-14 text-lg font-medium"
               >
-                {currentStep === 1 ? `Далее (${bookingData.services.length})` : 'Далее'}
+                Далее
                 <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             )}

@@ -159,7 +159,7 @@ export function EnhancedServiceSelection({
                           "cursor-pointer transition-all duration-300 rounded-xl border-0 touch-target animate-slide-up",
                           isSelected 
                             ? "ring-2 ring-primary bg-primary-soft shadow-lg shadow-primary/10 scale-[1.02]" 
-                            : "hover:shadow-md hover:scale-[1.01] bg-gradient-card"
+                            : "hover:shadow-md hover:scale-[1.01] hover:border-primary/20 bg-gradient-card"
                         )}
                         style={{ animationDelay: `${(groupIndex * 100) + (serviceIndex * 50)}ms` }}
                         onClick={() => handleServiceToggle(service)}

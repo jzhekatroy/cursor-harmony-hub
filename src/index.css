@@ -196,7 +196,7 @@ All colors MUST be HSL.
   /* Простая карточка услуги */
   .service-card {
     @apply bg-card border border-border rounded-lg p-6 cursor-pointer;
-    @apply transition-all duration-200 ease-out hover:bg-accent;
+    @apply transition-all duration-200 ease-out hover:shadow-md hover:border-primary/30;
   }
 
   /* Flowing text animations */

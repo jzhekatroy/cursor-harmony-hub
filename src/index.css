@@ -19,13 +19,13 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 220 13% 15%;
 
-    /* Фиолетовый как основной бренд-цвет */
-    --primary: 259 94% 51%;
+    /* Синий как основной бренд-цвет из логотипа 2Minutes */
+    --primary: 207 90% 61%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 259 94% 65%;
-    --primary-soft: 259 30% 97%;
+    --primary-glow: 207 90% 75%;
+    --primary-soft: 207 50% 97%;
 
-    /* Теплый серый вторичный */
+    /* Нейтральный серый вторичный */
     --secondary: 220 13% 91%;
     --secondary-foreground: 220 13% 15%;
     --secondary-soft: 220 13% 96%;
@@ -34,10 +34,10 @@ All colors MUST be HSL.
     --muted: 220 13% 95%;
     --muted-foreground: 220 9% 46%;
 
-    /* Золотистый акцент */
-    --accent: 33 100% 52%;
+    /* Темно-серый акцент под черный текст логотипа */
+    --accent: 220 13% 20%;
     --accent-foreground: 0 0% 98%;
-    --accent-soft: 33 50% 96%;
+    --accent-soft: 220 13% 96%;
 
     /* Современные статусные цвета */
     --destructive: 0 84% 60%;
@@ -49,13 +49,13 @@ All colors MUST be HSL.
     /* Тонкие границы */
     --border: 220 13% 91%;
     --input: 220 13% 96%;
-    --ring: 259 94% 51%;
+    --ring: 207 90% 61%;
 
-    /* Элегантные градиенты */
-    --gradient-primary: linear-gradient(135deg, hsl(259 94% 51%), hsl(33 100% 52%));
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(259 10% 98%));
+    /* Градиенты в стиле 2Minutes */
+    --gradient-primary: linear-gradient(135deg, hsl(207 90% 61%), hsl(207 90% 75%));
+    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(207 30% 98%));
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(220 13% 98%));
-    --gradient-hero: linear-gradient(135deg, hsl(259 94% 51%), hsl(33 100% 52%));
+    --gradient-hero: linear-gradient(135deg, hsl(207 90% 61%), hsl(207 90% 45%));
 
     /* Современные скругления */
     --radius: 1rem;

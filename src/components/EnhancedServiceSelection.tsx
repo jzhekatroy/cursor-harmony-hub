@@ -26,7 +26,7 @@ export function EnhancedServiceSelection({
   className,
   showImagesOverride = true
 }: EnhancedServiceSelectionProps) {
-  const [showImages, setShowImages] = useState(showImagesOverride)
+  const showImages = showImagesOverride
 
   const totalPrice = useMemo(
     () => selectedServices.reduce((sum, service) => sum + Number(service.price || 0), 0),
@@ -56,30 +56,11 @@ export function EnhancedServiceSelection({
 
   return (
     <div className={cn("space-y-4", className)}>
-      {/* Modern Header with Toggle */}
+      {/* Modern Header */}
       <div className="modern-card rounded-2xl p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
-            Выберите услуги
-          </h2>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Фото</span>
-            <button
-              onClick={() => setShowImages(!showImages)}
-              className={cn(
-                "relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-300",
-                showImages ? "bg-gradient-primary shadow-lg shadow-primary/25" : "bg-muted"
-              )}
-            >
-              <span
-                className={cn(
-                  "inline-block h-3 w-3 transform rounded-full bg-white transition-transform duration-300",
-                  showImages ? "translate-x-5" : "translate-x-1"
-                )}
-              />
-            </button>
-          </div>
-        </div>
+        <h2 className="text-lg font-bold bg-gradient-primary bg-clip-text text-transparent">
+          Выберите услуги
+        </h2>
       </div>
 
       {/* Responsive Service Groups */}

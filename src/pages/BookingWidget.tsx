@@ -271,13 +271,13 @@ export default function BookingWidget() {
       <div className="md:hidden">
         {/* Team Branding - показываем только на первом шаге */}
         {currentStep === 1 && (
-          <div className="px-4 pt-6 pb-4">
+          <div className="px-4 pt-6 pb-2">
             <TeamBranding team={team.team} showDescription={true} />
           </div>
         )}
         
         {/* Mobile Header */}
-        <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3">
+        <div className={currentStep === 1 ? "relative bg-background/95 backdrop-blur-sm border-b px-4 py-3" : "fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3"}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {currentStep > 1 && (

@@ -238,22 +238,24 @@ export function EnhancedDateMasterTimeSelection({
         </Card>
       )}
 
-      {/* Mobile Summary для выбранного времени - убрали кнопку Далее */}
+      {/* Mobile Summary для выбранного времени - только на мобильных */}
       {selectedDate && selectedTimeSlot && (
-        <Card className="md:hidden bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20 animate-scale-in">
-          <CardContent className="p-4">
-            <div className="text-center space-y-1">
-              <h3 className="font-bold text-sm">✓ Время выбрано</h3>
-              <p className="text-xs opacity-90">
-                {new Date(selectedDate).toLocaleDateString('ru-RU', { 
-                  weekday: 'long', 
-                  day: 'numeric', 
-                  month: 'long' 
-                })} в {selectedTimeSlot.time}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="md:hidden">
+          <Card className="bg-gradient-primary text-primary-foreground rounded-2xl border-0 shadow-xl shadow-primary/20 animate-scale-in">
+            <CardContent className="p-4">
+              <div className="text-center space-y-1">
+                <h3 className="font-bold text-sm">✓ Время выбрано</h3>
+                <p className="text-xs opacity-90">
+                  {new Date(selectedDate).toLocaleDateString('ru-RU', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long' 
+                  })} в {selectedTimeSlot.time}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   )

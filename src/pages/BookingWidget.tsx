@@ -403,9 +403,9 @@ export default function BookingWidget() {
 
       {/* Desktop Layout */}
       <div className="hidden md:block">
-        <div className="flex min-h-screen">
-          {/* Main Content */}
-          <main className="flex-1 p-6 lg:p-8">
+        <div className="min-h-screen">
+          {/* Main Content - Centered */}
+          <main className="max-w-4xl mx-auto p-6 lg:p-8">
             {/* Desktop Header with Team Branding */}
             <div className="text-center py-8 max-w-2xl mx-auto">
               <TeamBranding team={team.team} showDescription={true} />
@@ -503,56 +503,45 @@ export default function BookingWidget() {
                 </Button>
               </div>
             )}
-          </main>
 
-          {/* Desktop Sidebar */}
-          <aside className="w-80 lg:w-96 p-6 border-l bg-muted/20">
-            <div className="sticky top-6">
-              <h3 className="font-semibold text-lg mb-4">Ваша запись</h3>
-              
-              {bookingData.services.length > 0 ? (
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      {bookingData.services.map((service) => (
-                        <div key={service.id} className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">{service.name}</span>
-                          <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
-                        </div>
-                      ))}
-                      <div className="border-t pt-3 mt-3">
-                        <div className="flex justify-between font-semibold">
-                          <span>Итого:</span>
-                          <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Время: {bookingData.totalDuration} мин
-                        </div>
-                      </div>
-                      
-                      {bookingData.date && (
-                        <div className="border-t pt-3 mt-3 text-sm">
-                          <div className="text-muted-foreground">Дата: {bookingData.date}</div>
-                          {bookingData.timeSlot && (
-                            <div className="text-muted-foreground">Время: {bookingData.timeSlot.time}</div>
-                          )}
-                          {bookingData.master && (
-                            <div className="text-muted-foreground">
-                              Мастер: {bookingData.master.firstName} {bookingData.master.lastName}
-                            </div>
-                          )}
+            {/* Desktop Summary */}
+            {bookingData.services.length > 0 && (
+              <div className="max-w-4xl mx-auto mt-8 p-6 bg-muted/20 rounded-2xl">
+                <h3 className="font-semibold text-lg mb-4">Ваша запись</h3>
+                <div className="space-y-3">
+                  {bookingData.services.map((service) => (
+                    <div key={service.id} className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{service.name}</span>
+                      <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
+                    </div>
+                  ))}
+                  <div className="border-t pt-3 mt-3">
+                    <div className="flex justify-between font-semibold">
+                      <span>Итого:</span>
+                      <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Время: {bookingData.totalDuration} мин
+                    </div>
+                  </div>
+                  
+                  {bookingData.date && (
+                    <div className="border-t pt-3 mt-3 text-sm">
+                      <div className="text-muted-foreground">Дата: {bookingData.date}</div>
+                      {bookingData.timeSlot && (
+                        <div className="text-muted-foreground">Время: {bookingData.timeSlot.time}</div>
+                      )}
+                      {bookingData.master && (
+                        <div className="text-muted-foreground">
+                          Мастер: {bookingData.master.firstName} {bookingData.master.lastName}
                         </div>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="text-muted-foreground text-sm">
-                  Выберите услуги для начала бронирования
+                  )}
                 </div>
-              )}
-            </div>
-          </aside>
+              </div>
+            )}
+          </main>
         </div>
       </div>
     </div>

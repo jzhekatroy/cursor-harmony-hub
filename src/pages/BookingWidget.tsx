@@ -242,7 +242,6 @@ export default function BookingWidget() {
       setIsLoadingBookings(false)
     }
   }
-  }
 
   const goToNextStep = () => {
     console.log('goToNextStep called, currentStep:', currentStep)
@@ -535,6 +534,16 @@ export default function BookingWidget() {
                 </Card>
               ) : (
                 <div>
+                  {/* Active Bookings на десктопе */}
+                  {currentStep === 1 && (
+                    <div className="mb-6">
+                      <ActiveBookingsNotification
+                        activeBookings={activeBookings}
+                        isLoading={isLoadingBookings}
+                      />
+                    </div>
+                  )}
+
                   {currentStep === 1 && (
                     <EnhancedServiceSelection
                       serviceGroups={team.serviceGroups}

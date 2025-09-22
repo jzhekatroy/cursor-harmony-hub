@@ -411,7 +411,7 @@ export default function BookingWidget() {
             )}
             
             {/* Service Summary on Mobile */}
-            {bookingData.services.length > 0 && currentStep > 1 && (
+            {bookingData.services.length > 0 && currentStep > 1 && currentStep !== 2 && (
               <div className="mt-3 p-3 bg-muted/50 rounded-lg">
                 <div className="flex justify-between text-sm">
                   <span>{bookingData.services.length} услуг • {bookingData.totalDuration} мин</span>

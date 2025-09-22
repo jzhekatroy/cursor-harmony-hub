@@ -132,6 +132,10 @@ export default {
         'gradient-card': 'var(--gradient-card)',
         'gradient-hero': 'var(--gradient-hero)'
       },
+      fontFamily: {
+        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        'display': ['Playfair Display', 'serif'],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

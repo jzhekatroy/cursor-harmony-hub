@@ -4,6 +4,7 @@ import { EnhancedServiceSelection } from '../components/EnhancedServiceSelection
 import { EnhancedDateMasterTimeSelection } from '../components/EnhancedDateMasterTimeSelection';
 import { EnhancedClientInfoAndConfirmation } from '../components/EnhancedClientInfoAndConfirmation';
 import ActiveBookingsNotification from '../components/ActiveBookingsNotification';
+import ActiveBookingsNotificationMobile from '../components/ActiveBookingsNotificationMobile';
 import { StepProgress } from '../components/StepProgress';
 import { TeamBranding } from '../components/TeamBranding';
 import { Button } from '../components/ui/button';
@@ -123,7 +124,24 @@ export default function BookingWidget() {
   })
 
   // Состояния для активных записей
-  const [activeBookings, setActiveBookings] = useState<any[]>([])
+  const [activeBookings, setActiveBookings] = useState([
+    {
+      id: '1',
+      serviceName: 'Маникюр классический',
+      date: '2024-09-25',
+      time: '14:00',
+      masterName: 'Анна Иванова',
+      status: 'confirmed' as const
+    },
+    {
+      id: '2', 
+      serviceName: 'Женская стрижка',
+      date: '2024-09-26',
+      time: '16:30',
+      masterName: 'Мария Петрова',
+      status: 'pending' as const
+    }
+  ])
   const [isLoadingBookings, setIsLoadingBookings] = useState(false)
 
   // Умное заполнение полей из Telegram
@@ -199,6 +217,31 @@ export default function BookingWidget() {
         variant: "destructive"
       })
     }
+  }
+
+  const handleCancelBooking = async (bookingId: string) => {
+    try {
+      setIsLoadingBookings(true)
+      // Имитация API запроса
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      setActiveBookings(prev => prev.filter(booking => booking.id !== bookingId))
+      
+      toast({
+        title: "Запись отменена",
+        description: "Ваша запись успешно отменена",
+      })
+    } catch (error) {
+      console.error('Error canceling booking:', error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось отменить запись. Попробуйте еще раз.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsLoadingBookings(false)
+    }
+  }
   }
 
   const goToNextStep = () => {
@@ -313,6 +356,17 @@ export default function BookingWidget() {
 
         {/* Mobile Content - Full Screen */}
         <div className="pt-20 pb-24 px-4">
+          {/* Active Bookings на мобильной версии - показываем только на первом шаге */}
+          {currentStep === 1 && (
+            <div className="mb-4">
+              <ActiveBookingsNotificationMobile
+                activeBookings={activeBookings}
+                isLoading={isLoadingBookings}
+                onCancelBooking={handleCancelBooking}
+              />
+            </div>
+          )}
+          
           <div className="min-h-[calc(100vh-11rem)]">
             {loading ? (
               <div className="flex items-center justify-center min-h-96">

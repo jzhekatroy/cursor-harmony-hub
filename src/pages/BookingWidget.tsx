@@ -540,6 +540,7 @@ export default function BookingWidget() {
                       <ActiveBookingsNotification
                         activeBookings={activeBookings}
                         isLoading={isLoadingBookings}
+                        onCancelBooking={handleCancelBooking}
                       />
                     </div>
                   )}

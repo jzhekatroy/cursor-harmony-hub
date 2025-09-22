@@ -186,10 +186,13 @@ export function EnhancedServiceSelection({
                             <div className="flex-1 min-w-0">
                               {showImages && (service.image || service.photoUrl) && (
                                 <div className="mb-2">
-                                  <ImageWithFallback
+                                  <img
                                     src={service.image || service.photoUrl}
                                     alt={service.name}
                                     className="w-full h-28 object-cover rounded-lg shadow-sm"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
                                   />
                                 </div>
                               )}
@@ -243,10 +246,13 @@ export function EnhancedServiceSelection({
                             <div className="flex-1 min-w-0">
                               {showImages && (service.image || service.photoUrl) && (
                                 <div className="mb-3">
-                                  <ImageWithFallback
+                                  <img
                                     src={service.image || service.photoUrl}
                                     alt={service.name}
                                     className="w-full h-24 object-cover rounded-xl shadow-sm"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
                                   />
                                 </div>
                               )}

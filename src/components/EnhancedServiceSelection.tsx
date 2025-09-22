@@ -73,34 +73,68 @@ export function EnhancedServiceSelection({
     <div className={cn("space-y-4", className)}>
       {/* Категории услуг - закладки */}
       {serviceGroups.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          <button
-            onClick={() => setActiveCategory(null)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
-              activeCategory === null 
-                ? "bg-primary text-primary-foreground shadow-md" 
-                : "bg-muted text-muted-foreground hover:bg-muted/80"
-            )}
-          >
-            <Sparkles className="w-4 h-4" />
-            Все услуги
-          </button>
-          {serviceGroups.map((group) => (
+        <div className="space-y-2">
+          {/* Мобильная версия - сетка */}
+          <div className="grid grid-cols-2 gap-2 md:hidden">
             <button
-              key={group.id}
-              onClick={() => setActiveCategory(group.id)}
+              onClick={() => setActiveCategory(null)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
-                activeCategory === group.id 
+                "flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                activeCategory === null 
                   ? "bg-primary text-primary-foreground shadow-md" 
                   : "bg-muted text-muted-foreground hover:bg-muted/80"
               )}
             >
-              {getCategoryIcon(group.name)}
-              {group.name}
+              <Sparkles className="w-4 h-4" />
+              Все услуги
             </button>
-          ))}
+            {serviceGroups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => setActiveCategory(group.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  activeCategory === group.id 
+                    ? "bg-primary text-primary-foreground shadow-md" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {getCategoryIcon(group.name)}
+                {group.name}
+              </button>
+            ))}
+          </div>
+          
+          {/* Десктопная версия - горизонтальная прокрутка */}
+          <div className="hidden md:flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                activeCategory === null 
+                  ? "bg-primary text-primary-foreground shadow-md" 
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              <Sparkles className="w-4 h-4" />
+              Все услуги
+            </button>
+            {serviceGroups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => setActiveCategory(group.id)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                  activeCategory === group.id 
+                    ? "bg-primary text-primary-foreground shadow-md" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                )}
+              >
+                {getCategoryIcon(group.name)}
+                {group.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

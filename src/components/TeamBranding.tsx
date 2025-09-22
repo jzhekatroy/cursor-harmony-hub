@@ -3,6 +3,7 @@ import { TeamData } from '@/types/booking';
 import { ImageWithFallback } from './ImageWithFallback';
 import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logoImage from '@/assets/2minutes-logo.png';
 
 interface TeamBrandingProps {
   team: TeamData['team'];
@@ -39,15 +40,13 @@ const getMapLink = (address: string) => {
 export function TeamBranding({ team, className, showDescription = true }: TeamBrandingProps) {
   return (
     <div className={cn("flex flex-col items-center text-center space-y-4 mb-8", className)}>
-      {team.publicPageLogoUrl && (
-        <div className="flex justify-center mb-4">
-          <ImageWithFallback
-            src={team.publicPageLogoUrl}
-            alt={`Логотип ${team.name}`}
-            className="h-16 w-auto object-contain filter drop-shadow-md"
-          />
-        </div>
-      )}
+      <div className="flex justify-center mb-4">
+        <img
+          src={logoImage}
+          alt="2Minutes Logo"
+          className="h-16 w-auto object-contain filter drop-shadow-md"
+        />
+      </div>
       
       <div className="space-y-2">
         <h1 className="text-3xl font-bold text-foreground">

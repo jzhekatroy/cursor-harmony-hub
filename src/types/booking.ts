@@ -72,6 +72,7 @@ export interface TeamData {
     publicPageTitle?: string
     publicPageDescription?: string
     publicPageLogoUrl?: string
+    publicPageAddress?: string
   }
   serviceGroups: ServiceGroup[]
   ungroupedServices: Service[]

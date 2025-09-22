@@ -1,6 +1,7 @@
 import React from 'react';
 import { TeamData } from '@/types/booking';
 import { ImageWithFallback } from './ImageWithFallback';
+import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TeamBrandingProps {
@@ -31,6 +32,13 @@ export function TeamBranding({ team, className, showDescription = true }: TeamBr
           <p className="text-lg text-muted-foreground max-w-md mx-auto">
             {team.publicPageDescription}
           </p>
+        )}
+        
+        {team.publicPageAddress && (
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <MapPin className="w-4 h-4" />
+            <span>{team.publicPageAddress}</span>
+          </div>
         )}
       </div>
     </div>

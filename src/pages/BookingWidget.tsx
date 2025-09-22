@@ -34,6 +34,7 @@ const demoTeamData: TeamData = {
     publicPageTitle: 'Запись в 2Minutes',
     publicPageDescription: 'Быстрые и качественные услуги красоты за 2 минуты',
     publicPageLogoUrl: '/src/assets/logo.png',
+    publicPageAddress: 'ул. Примерная, 15, Москва',
   },
   serviceGroups: [
     {

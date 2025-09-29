@@ -28,15 +28,15 @@ export default function ActiveBookingsNotificationMobile({
   }
 
   return (
-    <Card className="border-orange-200 bg-orange-50 rounded-2xl border-0 shadow-sm">
+    <Card className="border-primary/20 bg-primary/5 rounded-md border shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center gap-3 mb-4">
-          <AlertCircle className="w-5 h-5 text-orange-600" />
+          <AlertCircle className="w-5 h-5 text-primary" />
           <div>
-            <h3 className="font-medium text-orange-900">
+            <h3 className="font-medium text-foreground">
               Активные записи
             </h3>
-            <p className="text-sm text-orange-700">
+            <p className="text-sm text-muted-foreground">
               У вас {activeBookings.length} {activeBookings.length === 1 ? 'запись' : 'записи'}
             </p>
           </div>
@@ -44,11 +44,11 @@ export default function ActiveBookingsNotificationMobile({
         
         <div className="space-y-3">
           {activeBookings.map((booking) => (
-            <Card key={booking.id} className="bg-white border-orange-100">
+            <Card key={booking.id} className="bg-card border-border">
               <CardContent className="p-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 space-y-1">
-                    <p className="font-medium text-sm">{booking.serviceName}</p>
+                    <p className="font-medium text-sm text-foreground">{booking.serviceName}</p>
                     
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
@@ -69,8 +69,8 @@ export default function ActiveBookingsNotificationMobile({
                     <div className="mt-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         booking.status === 'confirmed' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-yellow-100 text-yellow-800'
+                          ? 'bg-success/10 text-success' 
+                          : 'bg-muted text-muted-foreground'
                       }`}>
                         {booking.status === 'confirmed' ? 'Подтверждена' : 'Ожидает подтверждения'}
                       </span>
@@ -81,7 +81,7 @@ export default function ActiveBookingsNotificationMobile({
                     variant="ghost"
                     size="sm"
                     onClick={() => onCancelBooking(booking.id)}
-                    className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-100"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                   >
                     <X className="w-4 h-4" />
                   </Button>

@@ -5,7 +5,7 @@ import { EnhancedDateMasterTimeSelection } from '../components/EnhancedDateMaste
 import { EnhancedClientInfoAndConfirmation } from '../components/EnhancedClientInfoAndConfirmation';
 import ActiveBookingsNotification from '../components/ActiveBookingsNotification';
 import ActiveBookingsNotificationMobile from '../components/ActiveBookingsNotificationMobile';
-import { StepProgress } from '../components/StepProgress';
+
 import { TeamBranding } from '../components/TeamBranding';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
@@ -502,14 +502,6 @@ export default function BookingWidget() {
               <TeamBranding team={team.team} showDescription={true} />
             </div>
 
-            {/* Desktop Step Progress */}
-            <div className="max-w-2xl mx-auto mb-8">
-              <StepProgress 
-                currentStep={currentStep}
-                totalSteps={3}
-                stepLabels={['Услуги', 'Дата и время', 'Подтверждение']}
-              />
-            </div>
 
             {/* Desktop Step Content */}
             <div className="max-w-4xl mx-auto">

@@ -126,10 +126,11 @@ All colors MUST be HSL.
     @apply bg-background text-foreground font-normal;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
     line-height: 1.5;
+    min-height: 100vh;
   }
 
-  /* Mobile-first smooth scrolling */
   html {
+    @apply bg-background;
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
   }

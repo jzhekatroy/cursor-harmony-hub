@@ -315,7 +315,7 @@ export default function BookingWidget() {
         {/* Team Branding - показываем только на первом шаге */}
         {currentStep === 1 && (
           <div className="px-4 pt-6 pb-2">
-            <TeamBranding team={team.team} showDescription={true} />
+            <TeamBranding team={team.team} showDescription={false} />
           </div>
         )}
         
@@ -499,7 +499,7 @@ export default function BookingWidget() {
           <main className="max-w-4xl mx-auto p-6 lg:p-8">
             {/* Desktop Header with Team Branding */}
             <div className="text-center py-8 max-w-2xl mx-auto">
-              <TeamBranding team={team.team} showDescription={true} />
+              <TeamBranding team={team.team} showDescription={false} />
             </div>
 
 

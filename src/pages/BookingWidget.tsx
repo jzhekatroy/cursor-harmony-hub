@@ -3,13 +3,12 @@ import { useTelegramWebApp } from '../hooks/useTelegramWebApp';
 import { EnhancedServiceSelection } from '../components/EnhancedServiceSelection';
 import { EnhancedDateMasterTimeSelection } from '../components/EnhancedDateMasterTimeSelection';
 import { EnhancedClientInfoAndConfirmation } from '../components/EnhancedClientInfoAndConfirmation';
-import ActiveBookingsNotification from '../components/ActiveBookingsNotification';
 import ActiveBookingsNotificationMobile from '../components/ActiveBookingsNotificationMobile';
-
 import { TeamBranding } from '../components/TeamBranding';
+import { ThemeToggle } from '../components/ThemeToggle';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MoreVertical } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import type { 
   BookingData, 
@@ -71,16 +70,14 @@ const demoTeamData: TeamData = {
           name: 'Женская стрижка',
           duration: 45,
           price: 2500,
-          description: 'Модная стрижка с учетом типа лица',
-          image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400'
+          description: 'Модная стрижка с учетом типа лица'
         },
         {
           id: '4',
           name: 'Укладка волос',
           duration: 30,
           price: 1500,
-          description: 'Профессиональная укладка',
-          image: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400'
+          description: 'Профессиональная укладка'
         }
       ]
     }
@@ -283,12 +280,12 @@ export default function BookingWidget() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-destructive text-6xl mb-4">⚠️</div>
-          <h1 className="text-2xl font-bold mb-2">Ошибка</h1>
+          <div className="text-destructive text-4xl mb-4">⚠️</div>
+          <h1 className="text-xl font-semibold mb-2">Ошибка</h1>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>
+          <Button onClick={() => window.location.reload()} variant="outline">
             Попробовать снова
           </Button>
         </div>
@@ -298,365 +295,178 @@ export default function BookingWidget() {
 
   if (!team) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="text-muted-foreground text-6xl mb-4">❌</div>
-          <h1 className="text-2xl font-bold mb-2">Команда не найдена</h1>
+          <div className="text-muted-foreground text-4xl mb-4">❌</div>
+          <h1 className="text-xl font-semibold mb-2">Команда не найдена</h1>
           <p className="text-muted-foreground">Проверьте правильность ссылки</p>
         </div>
       </div>
     )
   }
 
+  const stepTitles = ['Услуги', 'Дата и время', 'Подтверждение']
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile-First Layout */}
-      <div className="md:hidden">
-        {/* Team Branding - показываем только на первом шаге */}
-        {currentStep === 1 && (
-          <div className="px-4 pt-6 pb-2">
-            <TeamBranding team={team.team} showDescription={false} />
-          </div>
-        )}
+      {/* Mobile Header */}
+      <header className={`${currentStep === 1 ? 'relative' : 'fixed top-0 left-0 right-0 z-50'} 
+        bg-background border-b border-border`}>
         
-        {/* Mobile Header */}
-        <div className={currentStep === 1 ? "relative bg-background/95 backdrop-blur-sm border-b px-4 py-3" : "fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b px-4 py-3"}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {currentStep > 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={goToPreviousStep}
-                  className="w-10 h-10"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              )}
-              <div>
-                <h1 className="text-lg font-semibold">
-                  {currentStep === 1 && 'Выберите услуги'}
-                  {currentStep === 2 && 'Дата и время'}
-                  {currentStep === 3 && 'Подтверждение'}
-                </h1>
-                <p className="text-xs text-muted-foreground">Шаг {currentStep} из 3</p>
-              </div>
+        {/* Main Header */}
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3 flex-1">
+            {currentStep > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPreviousStep}
+                className="w-8 h-8 p-0"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Button>
+            )}
+            
+            <div className="flex-1">
+              <h1 className="text-lg font-medium truncate">
+                {stepTitles[currentStep - 1]}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                Шаг {currentStep} из {stepTitles.length}
+              </p>
             </div>
           </div>
-          
-          {/* Mobile Progress Bar */}
-          <div className="mt-3 h-1 bg-muted rounded-full overflow-hidden">
+
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="px-4 pb-4">
+          <div className="h-1 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-primary transition-all duration-300 ease-out"
-              style={{ width: `${(currentStep / 3) * 100}%` }}
+              className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+              style={{ width: `${(currentStep / stepTitles.length) * 100}%` }}
             />
           </div>
         </div>
 
-        {/* Mobile Content - Full Screen */}
-        <div className="pt-20 pb-24 px-4">
-          {/* Active Bookings на мобильной версии - показываем только на первом шаге */}
-          {currentStep === 1 && (
-            <div className="mb-4">
-              <ActiveBookingsNotificationMobile
-                activeBookings={activeBookings}
-                isLoading={isLoadingBookings}
-                onCancelBooking={handleCancelBooking}
-              />
-            </div>
-          )}
-          
-          <div className="min-h-[calc(100vh-11rem)]">
-            {loading ? (
-              <div className="flex items-center justify-center min-h-96">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                  <p className="text-muted-foreground">Загрузка...</p>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="flex items-center justify-center min-h-96">
-                <div className="text-center">
-                  <div className="text-destructive text-6xl mb-4">⚠️</div>
-                  <p className="text-destructive">{error}</p>
-                </div>
-              </div>
-            ) : !team ? (
-              <div className="flex items-center justify-center min-h-96">
-                <div className="text-center">
-                  <div className="text-muted-foreground text-6xl mb-4">❌</div>
-                  <p>Команда не найдена</p>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full">
-                {currentStep === 1 && (
-                  <EnhancedServiceSelection
-                    serviceGroups={team.serviceGroups}
-                    ungroupedServices={team.ungroupedServices}
-                    selectedServices={bookingData.services}
-                    onServiceSelect={handleServiceSelect}
-                    onNext={goToNextStep}
-                  />
-                )}
-
-                {currentStep === 2 && (
-                  <EnhancedDateMasterTimeSelection
-                    masters={team.masters}
-                    selectedServices={bookingData.services}
-                    selectedDate={bookingData.date}
-                    selectedMaster={bookingData.master}
-                    selectedTimeSlot={bookingData.timeSlot}
-                    onDateTimeSelect={handleDateTimeSelect}
-                    onNext={goToNextStep}
-                    bookingStep={team.team.bookingStep}
-                    salonTimezone={team.team.timezone}
-                  />
-                )}
-
-                {currentStep === 3 && (
-                  <EnhancedClientInfoAndConfirmation
-                    bookingData={bookingData}
-                    onClientInfoChange={handleClientInfoChange}
-                    onBookingConfirmed={handleBookingConfirmed}
-                    onServiceRemove={(serviceId) => {
-                      const updatedServices = bookingData.services.filter(s => s.id !== serviceId)
-                      handleServiceSelect(updatedServices)
-                    }}
-                    onStartOver={() => {
-                      setCurrentStep(1)
-                      setBookingData({
-                        services: [],
-                        date: '',
-                        master: null,
-                        timeSlot: null,
-                        clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
-                        totalPrice: 0,
-                        totalDuration: 0,
-                      })
-                    }}
-                  />
-                )}
-              </div>
-            )}
+        {/* Team Branding на первом шаге */}
+        {currentStep === 1 && (
+          <div className="px-4 pb-4">
+            <TeamBranding team={team.team} showDescription={false} />
           </div>
-        </div>
+        )}
+      </header>
 
-        {/* Mobile Bottom Navigation */}
-        {!loading && !error && team && (
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t px-4 py-4">
-            {currentStep === 2 && (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  variant="outline"
-                  onClick={goToPreviousStep}
-                  size="lg"
-                  className="h-14 text-lg font-medium"
-                >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
-                  Назад
-                </Button>
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!canGoToNextStep()}
-                  size="lg"
-                  className="h-14 text-lg font-medium"
-                >
-                  Далее
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </div>
-            )}
-            {currentStep > 2 && currentStep < 3 && (
+      {/* Main Content */}
+      <main className={`${currentStep === 1 ? 'pt-0' : 'pt-32'} pb-24 p-4`}>
+        {/* Active Bookings - только на первом шаге */}
+        {currentStep === 1 && activeBookings.length > 0 && (
+          <div className="mb-6">
+            <ActiveBookingsNotificationMobile
+              activeBookings={activeBookings}
+              isLoading={isLoadingBookings}
+              onCancelBooking={handleCancelBooking}
+            />
+          </div>
+        )}
+
+        {/* Step Content */}
+        <div className="max-w-md mx-auto">
+          {currentStep === 1 && (
+            <EnhancedServiceSelection
+              serviceGroups={team.serviceGroups}
+              ungroupedServices={team.ungroupedServices}
+              selectedServices={bookingData.services}
+              onServiceSelect={handleServiceSelect}
+              onNext={goToNextStep}
+            />
+          )}
+
+          {currentStep === 2 && (
+            <EnhancedDateMasterTimeSelection
+              masters={team.masters}
+              selectedServices={bookingData.services}
+              selectedDate={bookingData.date}
+              selectedMaster={bookingData.master}
+              selectedTimeSlot={bookingData.timeSlot}
+              onDateTimeSelect={handleDateTimeSelect}
+              onNext={goToNextStep}
+              bookingStep={team.team.bookingStep}
+              salonTimezone={team.team.timezone}
+            />
+          )}
+
+          {currentStep === 3 && (
+            <EnhancedClientInfoAndConfirmation
+              bookingData={bookingData}
+              onClientInfoChange={handleClientInfoChange}
+              onBookingConfirmed={handleBookingConfirmed}
+              onServiceRemove={(serviceId) => {
+                const updatedServices = bookingData.services.filter(s => s.id !== serviceId)
+                handleServiceSelect(updatedServices)
+              }}
+              onStartOver={() => {
+                setCurrentStep(1)
+                setBookingData({
+                  services: [],
+                  date: '',
+                  master: null,
+                  timeSlot: null,
+                  clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
+                  totalPrice: 0,
+                  totalDuration: 0,
+                })
+              }}
+            />
+          )}
+        </div>
+      </main>
+
+      {/* Bottom Navigation */}
+      {currentStep === 2 && (
+        <footer className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
+          <div className="max-w-md mx-auto">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                onClick={goToPreviousStep}
+                className="h-12"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Назад
+              </Button>
               <Button
                 onClick={goToNextStep}
                 disabled={!canGoToNextStep()}
-                size="lg"
-                className="w-full h-14 text-lg font-medium"
+                className="h-12"
               >
                 Далее
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            )}
-            
-            {/* Service Summary on Mobile */}
-            {bookingData.services.length > 0 && currentStep > 1 && currentStep !== 2 && (
-              <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+            </div>
+
+            {/* Service Summary */}
+            {bookingData.services.length > 0 && (
+              <div className="mt-3 p-3 bg-muted/30 rounded-md">
                 <div className="flex justify-between text-sm">
-                  <span>{bookingData.services.length} услуг • {bookingData.totalDuration} мин</span>
-                  <span className="font-semibold">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
+                  <span className="text-muted-foreground">
+                    {bookingData.services.length} услуг • {bookingData.totalDuration} мин
+                  </span>
+                  <span className="font-medium">
+                    {new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽
+                  </span>
                 </div>
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Desktop Layout */}
-      <div className="hidden md:block">
-        <div className="min-h-screen">
-          {/* Main Content - Centered */}
-          <main className="max-w-4xl mx-auto p-6 lg:p-8">
-            {/* Desktop Header with Team Branding */}
-            <div className="text-center py-8 max-w-2xl mx-auto">
-              <TeamBranding team={team.team} showDescription={false} />
-            </div>
-
-
-            {/* Desktop Step Content */}
-            <div className="max-w-4xl mx-auto">
-              {loading ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-muted-foreground">Загрузка...</p>
-                  </CardContent>
-                </Card>
-              ) : error ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-destructive">
-                    <p>Ошибка: {error}</p>
-                  </CardContent>
-                </Card>
-              ) : !team ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <p>Команда не найдена</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div>
-                  {/* Active Bookings на десктопе */}
-                  {currentStep === 1 && (
-                    <div className="mb-6">
-                      <ActiveBookingsNotification
-                        activeBookings={activeBookings}
-                        isLoading={isLoadingBookings}
-                        onCancelBooking={handleCancelBooking}
-                      />
-                    </div>
-                  )}
-
-                  {currentStep === 1 && (
-                    <EnhancedServiceSelection
-                      serviceGroups={team.serviceGroups}
-                      ungroupedServices={team.ungroupedServices}
-                      selectedServices={bookingData.services}
-                      onServiceSelect={handleServiceSelect}
-                    />
-                  )}
-
-                  {currentStep === 2 && (
-                    <EnhancedDateMasterTimeSelection
-                      masters={team.masters}
-                      selectedServices={bookingData.services}
-                      selectedDate={bookingData.date}
-                      selectedMaster={bookingData.master}
-                      selectedTimeSlot={bookingData.timeSlot}
-                      onDateTimeSelect={handleDateTimeSelect}
-                      bookingStep={team.team.bookingStep}
-                      salonTimezone={team.team.timezone}
-                    />
-                  )}
-
-                  {currentStep === 3 && (
-                    <EnhancedClientInfoAndConfirmation
-                      bookingData={bookingData}
-                      onClientInfoChange={handleClientInfoChange}
-                      onBookingConfirmed={handleBookingConfirmed}
-                      onServiceRemove={(serviceId) => {
-                        const updatedServices = bookingData.services.filter(s => s.id !== serviceId)
-                        handleServiceSelect(updatedServices)
-                      }}
-                      onStartOver={() => {
-                        setCurrentStep(1)
-                        setBookingData({
-                          services: [],
-                          date: '',
-                          master: null,
-                          timeSlot: null,
-                          clientInfo: { name: '', firstName: '', lastName: '', phone: '', email: '', notes: '' },
-                          totalPrice: 0,
-                          totalDuration: 0,
-                        })
-                      }}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Desktop Summary - над кнопками навигации */}
-            {bookingData.services.length > 0 && (
-              <div className="max-w-4xl mx-auto mt-8 p-6 bg-muted/20 rounded-2xl">
-                <h3 className="font-semibold text-lg mb-4">Ваша запись</h3>
-                <div className="space-y-3">
-                  {bookingData.services.map((service) => (
-                    <div key={service.id} className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">{service.name}</span>
-                      <span className="font-medium">{new Intl.NumberFormat('ru-RU').format(service.price)} ₽</span>
-                    </div>
-                  ))}
-                  <div className="border-t pt-3 mt-3">
-                    <div className="flex justify-between font-semibold">
-                      <span>Итого:</span>
-                      <span className="text-primary">{new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1">
-                      Время: {bookingData.totalDuration} мин
-                    </div>
-                  </div>
-                  
-                  {bookingData.date && (
-                    <div className="border-t pt-3 mt-3 text-sm">
-                      <div className="text-muted-foreground">Дата: {bookingData.date}</div>
-                      {bookingData.timeSlot && (
-                        <div className="text-muted-foreground">Время: {bookingData.timeSlot.time}</div>
-                      )}
-                      {bookingData.master && (
-                        <div className="text-muted-foreground">
-                          Мастер: {bookingData.master.firstName} {bookingData.master.lastName}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Desktop Navigation */}
-            {!loading && !error && team && (
-              <div className="max-w-4xl mx-auto flex justify-between items-center mt-6 p-4 bg-muted/30 rounded-lg">
-                {currentStep > 1 ? (
-                  <Button
-                    variant="outline"
-                    onClick={goToPreviousStep}
-                    className="flex items-center gap-2"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    Назад
-                  </Button>
-                ) : (
-                  <div></div>
-                )}
-
-                <div className="text-sm font-medium text-muted-foreground">
-                  Шаг {currentStep} из 3
-                </div>
-
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!canGoToNextStep()}
-                  className="flex items-center gap-2"
-                >
-                  {currentStep === 3 ? 'Завершить' : 'Далее'}
-                  {currentStep !== 3 && <ArrowRight className="w-4 h-4" />}
-                </Button>
-              </div>
-            )}
-          </main>
-        </div>
-      </div>
+        </footer>
+      )}
     </div>
   )
 }

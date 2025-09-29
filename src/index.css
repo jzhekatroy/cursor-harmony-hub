@@ -8,57 +8,47 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Современная палитра на основе лого */
+    /* Минималистичная светлая тема */
     --background: 0 0% 100%;
-    --foreground: 220 13% 15%;
+    --foreground: 0 0% 10%;
 
-    /* Элегантные карточки */
-    --card: 0 0% 100%;
-    --card-foreground: 220 13% 15%;
+    /* Строгие карточки */
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 13% 15%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Синий как основной бренд-цвет из логотипа 2Minutes */
-    --primary: 207 90% 61%;
+    /* Строгий черный primary */
+    --primary: 0 0% 10%;
     --primary-foreground: 0 0% 98%;
-    --primary-glow: 207 90% 75%;
-    --primary-soft: 207 50% 97%;
 
-    /* Нейтральный серый вторичный */
-    --secondary: 220 13% 91%;
-    --secondary-foreground: 220 13% 15%;
-    --secondary-soft: 220 13% 96%;
+    /* Нейтральный вторичный */
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 10%;
 
-    /* Нейтральные тона */
-    --muted: 220 13% 95%;
-    --muted-foreground: 220 9% 46%;
+    /* Приглушенные тона */
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
 
-    /* Темно-серый акцент под черный текст логотипа */
-    --accent: 220 13% 20%;
-    --accent-foreground: 0 0% 98%;
-    --accent-soft: 220 13% 96%;
+    /* Строгий акцент */
+    --accent: 0 0% 92%;
+    --accent-foreground: 0 0% 10%;
 
-    /* Современные статусные цвета */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 98%;
+    /* Минимальные статусы */
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
     
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 98%;
+    --success: 120 70% 40%;
+    --success-foreground: 0 0% 100%;
 
-    /* Тонкие границы */
-    --border: 220 13% 91%;
-    --input: 220 13% 96%;
-    --ring: 207 90% 61%;
+    /* Четкие границы */
+    --border: 0 0% 90%;
+    --input: 0 0% 100%;
+    --ring: 0 0% 10%;
 
-    /* Градиенты в стиле 2Minutes */
-    --gradient-primary: linear-gradient(135deg, hsl(207 90% 61%), hsl(207 90% 75%));
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%), hsl(207 30% 98%));
-    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(220 13% 98%));
-    --gradient-hero: linear-gradient(135deg, hsl(207 90% 61%), hsl(207 90% 45%));
-
-    /* Современные скругления */
-    --radius: 1rem;
+    /* Минимальные радиусы */
+    --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -78,54 +68,44 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Темная минималистичная тема */
-    --background: 0 0% 8%;
-    --foreground: 0 0% 90%;
+    /* Строгая темная тема */
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
 
     /* Темные карточки */
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 90%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 90%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Темный основной */
-    --primary: 0 0% 70%;
-    --primary-foreground: 0 0% 10%;
-    --primary-glow: 0 0% 80%;
-    --primary-soft: 0 0% 15%;
+    /* Белый на темном */
+    --primary: 0 0% 95%;
+    --primary-foreground: 0 0% 5%;
 
     /* Темный вторичный */
-    --secondary: 0 0% 60%;
-    --secondary-foreground: 0 0% 10%;
-    --secondary-soft: 0 0% 15%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
 
     /* Темные нейтралы */
-    --muted: 0 0% 18%;
+    --muted: 0 0% 10%;
     --muted-foreground: 0 0% 65%;
 
     /* Темный акцент */
-    --accent: 0 0% 20%;
-    --accent-foreground: 0 0% 90%;
-    --accent-soft: 0 0% 15%;
+    --accent: 0 0% 15%;
+    --accent-foreground: 0 0% 95%;
 
-    /* Темные статусные */
-    --destructive: 0 60% 60%;
-    --destructive-foreground: 0 0% 90%;
+    /* Темные статусы */
+    --destructive: 0 70% 60%;
+    --destructive-foreground: 0 0% 95%;
     
-    --success: 120 60% 60%;
-    --success-foreground: 0 0% 90%;
+    --success: 120 70% 50%;
+    --success-foreground: 0 0% 95%;
 
     /* Темные границы */
-    --border: 0 0% 20%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 60%;
-
-    /* Темные градиенты */
-    --gradient-primary: linear-gradient(180deg, hsl(0 0% 15%), hsl(0 0% 12%));
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 10%), hsl(0 0% 8%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 12%), hsl(0 0% 10%));
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 15%), hsl(0 0% 10%));
+    --border: 0 0% 15%;
+    --input: 0 0% 8%;
+    --ring: 0 0% 95%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -143,8 +123,9 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground font-medium;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    @apply bg-background text-foreground font-normal;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    line-height: 1.5;
   }
 
   /* Mobile-first smooth scrolling */
@@ -160,21 +141,21 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* Минималистичная карточка */
-  .premium-card {
-    @apply bg-card border border-border rounded-lg shadow-sm;
-    transition: all 0.2s ease-out;
+  /* Строгая карточка */
+  .minimal-card {
+    @apply bg-card border border-border rounded-md p-4;
+    transition: border-color 0.2s ease;
   }
   
-  .premium-card:hover {
-    @apply shadow-md -translate-y-0.5;
+  .minimal-card:hover {
+    @apply border-foreground/20;
   }
 
-  /* Минималистичная кнопка */
-  .btn-elegant {
-    @apply bg-primary text-primary-foreground font-normal px-8 py-3 rounded-lg;
-    @apply hover:bg-primary/90 transition-colors duration-200;
-    @apply border-0 shadow-none;
+  /* Строгая кнопка */
+  .btn-minimal {
+    @apply bg-primary text-primary-foreground font-normal px-6 py-3 rounded-md;
+    @apply hover:bg-foreground transition-colors duration-200;
+    @apply border border-primary;
   }
 
   /* Circular progress indicator */
@@ -193,46 +174,20 @@ All colors MUST be HSL.
     @apply relative z-10 text-sm font-semibold text-primary;
   }
 
-  /* Простая карточка услуги */
+  /* Строгая карточка */
   .service-card {
-    @apply bg-card border border-border rounded-lg p-6 cursor-pointer;
-    @apply transition-all duration-200 ease-out hover:shadow-md hover:border-primary/30;
-  }
-
-  /* Flowing text animations */
-  .text-flow {
-    background: var(--gradient-hero);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-size: 200% 200%;
-    animation: textFlow 3s ease-in-out infinite;
-  }
-
-  /* Step indicator with connection lines */
-  .step-indicator {
-    @apply relative flex items-center justify-center w-12 h-12 rounded-full;
-    @apply bg-muted text-muted-foreground font-semibold text-sm;
-    @apply transition-all duration-300 ease-out;
+    @apply bg-card border border-border rounded-md p-4 cursor-pointer;
+    @apply transition-colors duration-200 hover:border-foreground/20;
   }
   
-  .step-indicator.active {
-    @apply bg-primary text-primary-foreground shadow-lg shadow-primary/25;
-    transform: scale(1.1);
-  }
-  
-  .step-indicator.completed {
-    @apply bg-accent text-accent-foreground;
+  .service-card.selected {
+    @apply border-primary bg-primary/5;
   }
 
   /* Карточка мастера */
   .master-card {
-    @apply bg-card border border-border rounded-lg p-4 cursor-pointer;
-    @apply transition-all duration-200 ease-out;
-  }
-  
-  .master-card:hover {
-    @apply bg-accent;
+    @apply bg-card border border-border rounded-md p-3 cursor-pointer;
+    @apply transition-colors duration-200 hover:border-foreground/20;
   }
   
   .master-card.selected {
@@ -241,101 +196,17 @@ All colors MUST be HSL.
 
   /* Временные слоты */
   .time-slot {
-    @apply bg-card border border-border rounded-lg px-4 py-3 text-sm cursor-pointer;
-    @apply transition-all duration-200 ease-out font-normal;
-  }
-  
-  .time-slot:hover {
-    @apply bg-accent;
+    @apply bg-card border border-border rounded-md px-3 py-2 text-sm cursor-pointer;
+    @apply transition-colors duration-200 hover:border-foreground/20;
   }
   
   .time-slot.selected {
     @apply bg-primary text-primary-foreground border-primary;
   }
-
-  /* Floating notification */
-  .floating-notification {
-    @apply fixed bottom-6 left-1/2 transform -translate-x-1/2;
-    @apply bg-card border border-border rounded-full px-6 py-3 shadow-xl;
-    @apply backdrop-blur-md z-50;
-    animation: slideUpFade 0.5s ease-out;
-  }
-
-  /* Mobile safe area */
-  .safe-area {
-    @apply pb-safe-area-inset-bottom;
-  }
 }
 
-/* Enhanced keyframes for premium feel */
-@keyframes textFlow {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-@keyframes slideUpFade {
-  0% {
-    transform: translate(-50%, 100%);
-    opacity: 0;
-  }
-  100% {
-    transform: translate(-50%, 0);
-    opacity: 1;
-  }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes morphIn {
-  0% {
-    transform: scale(0.9) rotateY(-10deg);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1) rotateY(0deg);
-    opacity: 1;
-  }
-}
-
-@keyframes stepTransition {
-  0% {
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@keyframes cardHover {
-  0% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-2px) scale(1.02); }
-  100% { transform: translateY(-4px) scale(1.02); }
-}
-
-/* Компактная сетка для карточек услуг на десктопе */
-.service-grid-desktop {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
-  max-width: 100%;
-}
-
-@media (min-width: 1024px) {
-  .service-grid-desktop {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .service-grid-desktop {
-    grid-template-columns: repeat(3, 1fr);
-    max-width: 1000px;
-    margin: 0 auto;
-  }
+/* Минимальная анимация для строгого дизайна */
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }

@@ -308,66 +308,63 @@ export default function BookingWidget() {
   const stepTitles = ['Услуги', 'Дата и время', 'Подтверждение']
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30">
+      {/* Compact Mobile Header */}
       <header className={`${currentStep === 1 ? 'relative' : 'fixed top-0 left-0 right-0 z-50'} 
-        bg-background border-b border-border`}>
+        bg-background/80 backdrop-blur-md border-b border-border/50`}>
         
-        {/* Main Header */}
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center gap-3 flex-1">
+        {/* Minimal Header */}
+        <div className="flex items-center justify-between p-3">
+          <div className="flex items-center gap-2 flex-1">
             {currentStep > 1 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={goToPreviousStep}
-                className="w-8 h-8 p-0"
+                className="w-8 h-8 p-0 rounded-full"
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
             )}
             
             <div className="flex-1">
-              <h1 className="text-lg font-medium truncate">
+              <h1 className="text-base font-semibold truncate">
                 {stepTitles[currentStep - 1]}
               </h1>
               <p className="text-xs text-muted-foreground">
-                Шаг {currentStep} из {stepTitles.length}
+                {currentStep} / {stepTitles.length}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <ThemeToggle />
-            <Button variant="ghost" size="sm" className="w-8 h-8 p-0">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="px-4 pb-4">
-          <div className="h-1 bg-muted rounded-full overflow-hidden">
+        {/* Compact Progress Bar */}
+        <div className="px-3 pb-3">
+          <div className="h-1 bg-muted/50 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-primary transition-all duration-300 ease-out rounded-full"
+              className="h-full bg-gradient-to-r from-primary to-primary/80 transition-all duration-500 ease-out rounded-full shadow-sm shadow-primary/20"
               style={{ width: `${(currentStep / stepTitles.length) * 100}%` }}
             />
           </div>
         </div>
 
-        {/* Team Branding на первом шаге */}
+        {/* Compact Team Branding */}
         {currentStep === 1 && (
-          <div className="px-4 pb-4">
+          <div className="px-3 pb-3">
             <TeamBranding team={team.team} showDescription={false} />
           </div>
         )}
       </header>
 
       {/* Main Content */}
-      <main className={`${currentStep === 1 ? 'pt-0' : 'pt-32'} pb-24 p-4`}>
+      <main className={`${currentStep === 1 ? 'pt-0' : 'pt-28'} pb-20 p-3`}>
         {/* Active Bookings - только на первом шаге */}
         {currentStep === 1 && activeBookings.length > 0 && (
-          <div className="mb-6">
+          <div className="mb-4">
             <ActiveBookingsNotificationMobile
               activeBookings={activeBookings}
               isLoading={isLoadingBookings}
@@ -377,7 +374,7 @@ export default function BookingWidget() {
         )}
 
         {/* Step Content */}
-        <div className="max-w-md mx-auto">
+        <div className="max-w-sm mx-auto">
           {currentStep === 1 && (
             <EnhancedServiceSelection
               serviceGroups={team.serviceGroups}
@@ -428,37 +425,37 @@ export default function BookingWidget() {
         </div>
       </main>
 
-      {/* Bottom Navigation */}
+      {/* Compact Bottom Navigation */}
       {currentStep === 2 && (
-        <footer className="fixed bottom-0 left-0 right-0 bg-background border-t border-border p-4">
-          <div className="max-w-md mx-auto">
-            <div className="grid grid-cols-2 gap-3">
+        <footer className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md border-t border-border/50 p-3">
+          <div className="max-w-sm mx-auto">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 variant="outline"
                 onClick={goToPreviousStep}
-                className="h-12"
+                className="h-11"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
+                <ArrowLeft className="w-4 h-4 mr-1" />
                 Назад
               </Button>
               <Button
                 onClick={goToNextStep}
                 disabled={!canGoToNextStep()}
-                className="h-12"
+                className="h-11"
               >
                 Далее
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </div>
 
-            {/* Service Summary */}
+            {/* Compact Service Summary */}
             {bookingData.services.length > 0 && (
-              <div className="mt-3 p-3 bg-muted/30 rounded-md">
-                <div className="flex justify-between text-sm">
+              <div className="mt-2 p-2 bg-muted/20 rounded-lg">
+                <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">
                     {bookingData.services.length} услуг • {bookingData.totalDuration} мин
                   </span>
-                  <span className="font-medium">
+                  <span className="font-semibold text-primary">
                     {new Intl.NumberFormat('ru-RU').format(bookingData.totalPrice)} ₽
                   </span>
                 </div>

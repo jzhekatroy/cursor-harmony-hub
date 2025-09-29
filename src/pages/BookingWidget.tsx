@@ -32,7 +32,7 @@ const demoTeamData: TeamData = {
     timezone: 'Europe/Moscow',
     publicServiceCardsWithPhotos: true,
     publicTheme: 'light',
-    publicPageTitle: 'Запись в 2Minutes',
+    publicPageTitle: 'Салон каких-то красивых ногтей',
     publicPageDescription: 'Быстрые и качественные услуги красоты за 2 минуты',
     publicPageLogoUrl: '/src/assets/logo.png',
     publicPageAddress: 'ул. Примерная, 15, Москва',

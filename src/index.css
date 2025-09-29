@@ -8,44 +8,44 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Минималистичная светлая тема */
+    /* Синяя палитра из логотипа */
     --background: 0 0% 100%;
     --foreground: 0 0% 10%;
 
-    /* Строгие карточки */
+    /* Карточки */
     --card: 0 0% 98%;
     --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
 
-    /* Строгий черный primary */
-    --primary: 0 0% 10%;
+    /* Синий primary из логотипа */
+    --primary: 207 90% 61%;
     --primary-foreground: 0 0% 98%;
 
-    /* Нейтральный вторичный */
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 10%;
+    /* Светло-синий вторичный */
+    --secondary: 207 30% 96%;
+    --secondary-foreground: 207 90% 25%;
 
-    /* Приглушенные тона */
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    /* Приглушенные синие тона */
+    --muted: 207 20% 96%;
+    --muted-foreground: 207 15% 45%;
 
-    /* Строгий акцент */
-    --accent: 0 0% 92%;
-    --accent-foreground: 0 0% 10%;
+    /* Темно-синий акцент */
+    --accent: 207 90% 25%;
+    --accent-foreground: 0 0% 98%;
 
-    /* Минимальные статусы */
+    /* Статусы */
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
     
     --success: 120 70% 40%;
     --success-foreground: 0 0% 100%;
 
-    /* Четкие границы */
-    --border: 0 0% 90%;
+    /* Границы в синих тонах */
+    --border: 207 30% 90%;
     --input: 0 0% 100%;
-    --ring: 0 0% 10%;
+    --ring: 207 90% 61%;
 
     /* Минимальные радиусы */
     --radius: 0.5rem;
@@ -68,32 +68,32 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Строгая темная тема */
-    --background: 0 0% 5%;
-    --foreground: 0 0% 95%;
+    /* Темная синяя тема */
+    --background: 207 20% 5%;
+    --foreground: 207 10% 95%;
 
-    /* Темные карточки */
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 95%;
+    /* Темные синие карточки */
+    --card: 207 20% 8%;
+    --card-foreground: 207 10% 95%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 207 20% 8%;
+    --popover-foreground: 207 10% 95%;
 
-    /* Белый на темном */
-    --primary: 0 0% 95%;
-    --primary-foreground: 0 0% 5%;
+    /* Светло-синий на темном */
+    --primary: 207 90% 75%;
+    --primary-foreground: 207 20% 5%;
 
-    /* Темный вторичный */
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 95%;
+    /* Темный синий вторичный */
+    --secondary: 207 20% 12%;
+    --secondary-foreground: 207 10% 95%;
 
-    /* Темные нейтралы */
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 65%;
+    /* Темные синие нейтралы */
+    --muted: 207 20% 10%;
+    --muted-foreground: 207 10% 65%;
 
-    /* Темный акцент */
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 95%;
+    /* Средний синий акцент */
+    --accent: 207 50% 15%;
+    --accent-foreground: 207 10% 95%;
 
     /* Темные статусы */
     --destructive: 0 70% 60%;
@@ -102,10 +102,10 @@ All colors MUST be HSL.
     --success: 120 70% 50%;
     --success-foreground: 0 0% 95%;
 
-    /* Темные границы */
-    --border: 0 0% 15%;
-    --input: 0 0% 8%;
-    --ring: 0 0% 95%;
+    /* Темные синие границы */
+    --border: 207 20% 15%;
+    --input: 207 20% 8%;
+    --ring: 207 90% 75%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
